@@ -74,6 +74,11 @@ export default function Accountant1InvoicesPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // TODO: Implement create invoice modal
+  if (showCreateModal) {
+    // Modal implementation pending
+  }
+
   const getStatusConfig = (status: string) => {
     switch (status) {
       case "paid":

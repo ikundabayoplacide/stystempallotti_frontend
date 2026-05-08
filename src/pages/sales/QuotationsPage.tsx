@@ -119,7 +119,7 @@ const statusConfig: Record<
 };
 
 export default function QuotationsPage() {
-  const [quotations, setQuotations] = useState<Quotation[]>(initialQuotations);
+  const [quotations] = useState<Quotation[]>(initialQuotations);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | QuotationStatus>("all");
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
