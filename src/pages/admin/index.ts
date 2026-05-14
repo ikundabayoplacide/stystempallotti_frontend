@@ -15,5 +15,8 @@ export { default as ReportsPage } from './ReportsPage';
 export { default as SalesPage } from './SalesPage';
 export { default as StockPage } from './StockPage';
 export { default as SystemSettingsPage } from './SystemSettingsPage';
+export { default as UIPermissionsPage } from './UIPermissionsPage';
 export { default as UserManagementPage } from './UserManagementPage';
+export { default as WorkflowConfigPage } from './WorkflowConfigPage';
+
 

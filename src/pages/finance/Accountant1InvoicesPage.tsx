@@ -95,7 +95,7 @@ export default function Accountant1InvoicesPage() {
   };
 
   return (
-    <DashboardLayout userRole="accountant1" userName="Accountant 1" notificationCount={3}>
+    <DashboardLayout userRole="accountant" userName="Accountant" notificationCount={3}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

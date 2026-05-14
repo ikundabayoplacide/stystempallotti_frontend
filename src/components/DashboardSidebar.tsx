@@ -1,21 +1,25 @@
+import * as HeroIcons from "react-icons/hi";
 import {
-  HiOutlineArchive,
-  HiOutlineBriefcase,
-  HiOutlineChartBar,
-  HiOutlineClipboardList,
-  HiOutlineClock,
-  HiOutlineCog,
-  HiOutlineCube,
-  HiOutlineCurrencyDollar,
-  HiOutlineDocumentText,
-  HiOutlineHome,
-  HiOutlineLogout,
-  HiOutlineMenu,
-  HiOutlineUsers,
-  HiOutlineX
+    HiOutlineAdjustments,
+    HiOutlineArchive,
+    HiOutlineBriefcase,
+    HiOutlineChartBar,
+    HiOutlineClipboardList,
+    HiOutlineClock,
+    HiOutlineCog,
+    HiOutlineCube,
+    HiOutlineCurrencyDollar,
+    HiOutlineDocumentText,
+    HiOutlineHome,
+    HiOutlineLogout,
+    HiOutlineMenu,
+    HiOutlineUsers,
+    HiOutlineViewGrid,
+    HiOutlineX
 } from "react-icons/hi";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
+import { useUIPermissions } from "../context/UIPermissionsContext";
 
 interface MenuItem {
   label: string;
@@ -45,6 +49,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       path: "/admin/reports/view",
       icon: HiOutlineDocumentText,
     },
+    { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments },
+    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid },
     { label: "Settings", path: "/admin/settings", icon: HiOutlineCog },
   ],
   receptionist: [
@@ -79,6 +85,11 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   daf: [
     { label: "Dashboard", path: "/finance/daf", icon: HiOutlineHome },
     {
+      label: "Job Approvals",
+      path: "/finance/daf/approvals",
+      icon: HiOutlineClipboardList,
+    },
+    {
       label: "Finance Control",
       path: "/finance/daf/control",
       icon: HiOutlineCurrencyDollar,
@@ -86,7 +97,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "HR Management", path: "/finance/daf/hr", icon: HiOutlineUsers },
     { label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
   ],
-  accountant1: [
+  accountant: [
     { label: "Dashboard", path: "/finance/accountant1", icon: HiOutlineHome },
     {
       label: "Invoices",
@@ -103,9 +114,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       path: "/finance/accountant1/documents",
       icon: HiOutlineClipboardList,
     },
-  ],
-  accountant2: [
-    { label: "Dashboard", path: "/finance/accountant2", icon: HiOutlineHome },
     {
       label: "E-Procurement",
       path: "/finance/accountant2/procurement",
@@ -194,9 +202,19 @@ export default function DashboardSidebar({
   isCollapsed,
   onToggle,
 }: DashboardSidebarProps) {
-  const items = menuItems[userRole] || [];
+  const { currentRoleConfig } = useUIPermissions();
   const navigate = useNavigate();
   const { logout } = useAuth();
+
+  // Use configured menu items if available, fallback to hardcoded
+  const items = currentRoleConfig?.sidebarMenu
+    .filter(item => item.enabled)
+    .sort((a, b) => a.order - b.order)
+    .map(item => ({
+      label: item.label,
+      path: item.path,
+      icon: (HeroIcons as any)[item.icon] || HiOutlineHome,
+    })) || menuItems[userRole] || [];
 
   const handleLogout = () => {
     logout();
@@ -267,30 +285,39 @@ export default function DashboardSidebar({
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {items.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === `/${userRole}` || item.path.includes(userRole.split("-")[0])}
-              className={({ isActive }) =>
-                `
-                  flex items-center gap-3 px-3 py-2.5 rounded-xl
+          {items.map((item) => {
+            const isActive = window.location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🔗 Navigating to:", item.path);
+                  navigate(item.path);
+                  // Close mobile sidebar after navigation
+                  if (window.innerWidth < 1024 && !isCollapsed) {
+                    onToggle();
+                  }
+                }}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
                   transition-all duration-200
                   ${isActive
                     ? "bg-primary-500 text-secondary-200"
                     : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
                   }
                   ${isCollapsed ? "justify-center" : ""}
-                `
-              }
-              title={isCollapsed ? item.label : undefined}
-            >
-              <item.icon className="w-5 h-5 flex-shrink-0" />
-              {!isCollapsed && (
-                <span className="font-semibold text-sm">{item.label}</span>
-              )}
-            </NavLink>
-          ))}
+                `}
+                title={isCollapsed ? item.label : undefined}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {!isCollapsed && (
+                  <span className="font-semibold text-sm">{item.label}</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
 
         {/* Footer Actions */}

@@ -309,7 +309,7 @@ export default function HRManagementPage() {
                               }}
                               className="px-3 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-xs font-semibold"
                             >
-                              <HiOutlineEye className="w-3 h-3 inline mr-1" />
+                              <HiOutlineEye className="w-2 h-2 inline mr-1" />
                               View
                             </button>
                           </div>

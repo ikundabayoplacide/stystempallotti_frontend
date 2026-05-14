@@ -1,12 +1,11 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
 type UserRole = 
   | "admin" 
   | "receptionist" 
   | "sales" 
   | "daf" 
-  | "accountant1" 
-  | "accountant2" 
+  | "accountant" 
   | "production-manager" 
   | "stock" 
   | "supervisor" 
@@ -38,22 +37,32 @@ export type { Department, UserRole };
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Check if user was previously logged in
-    return localStorage.getItem("isAuthenticated") === "true";
-  });
-  
-  const [userRole, setUserRole] = useState<UserRole | null>(() => {
-    return (localStorage.getItem("userRole") as UserRole) || null;
-  });
-  
-  const [userName, setUserName] = useState<string | null>(() => {
-    return localStorage.getItem("userName") || null;
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userDepartment, setUserDepartment] = useState<Department | null>(null);
 
-  const [userDepartment, setUserDepartment] = useState<Department | null>(() => {
-    return (localStorage.getItem("userDepartment") as Department) || null;
-  });
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    const storedAuth = localStorage.getItem("isAuthenticated") === "true";
+    const storedRole = localStorage.getItem("userRole");
+    const storedName = localStorage.getItem("userName");
+    const storedDept = localStorage.getItem("userDepartment") as Department;
+
+    // Migrate old accountant roles
+    let finalRole = storedRole;
+    if (storedRole === "accountant1" || storedRole === "accountant2") {
+      finalRole = "accountant";
+      localStorage.setItem("userRole", "accountant");
+    }
+
+    setIsAuthenticated(storedAuth);
+    setUserRole(finalRole as UserRole);
+    setUserName(storedName);
+    setUserDepartment(storedDept);
+    setIsLoading(false);
+  }, []);
 
   const login = (role: UserRole, name: string, department?: Department) => {
     setIsAuthenticated(true);
@@ -81,7 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, userRole, userName, userDepartment, login, logout }}>
-      {children}
+      {isLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          Loading...
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

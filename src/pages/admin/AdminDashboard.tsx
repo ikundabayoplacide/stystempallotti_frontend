@@ -1,15 +1,15 @@
 import { useState } from "react";
 import {
-  HiOutlineChartBar,
-  HiOutlineCheckCircle,
-  HiOutlineChevronDown,
-  HiOutlineChevronUp,
-  HiOutlineClipboardList,
-  HiOutlineClock,
-  HiOutlineCurrencyDollar,
-  HiOutlineExclamationCircle,
-  HiOutlineTrendingUp,
-  HiOutlineUsers
+    HiOutlineChartBar,
+    HiOutlineCheckCircle,
+    HiOutlineChevronDown,
+    HiOutlineChevronUp,
+    HiOutlineClipboardList,
+    HiOutlineClock,
+    HiOutlineCurrencyDollar,
+    HiOutlineExclamationCircle,
+    HiOutlineTrendingUp,
+    HiOutlineUsers
 } from "react-icons/hi";
 import BottleneckDetection from "../../components/BottleneckDetection";
 import DelayedJobsTracker from "../../components/DelayedJobsTracker";

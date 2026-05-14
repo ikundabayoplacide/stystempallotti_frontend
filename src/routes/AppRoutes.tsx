@@ -5,16 +5,18 @@ import LoginPage from "../pages/LoginPage";
 
 // Admin Pages
 import {
-  AdminPage,
-  ReportsPage as AdminReportsPage,
-  SalesPage as AdminSalesPage,
-  StockPage as AdminStockPage,
-  AdminViewReportsPage,
-  FinancePage,
-  JobManagementPage,
-  ProductionOverviewPage,
-  SystemSettingsPage,
-  UserManagementPage,
+    AdminPage,
+    ReportsPage as AdminReportsPage,
+    SalesPage as AdminSalesPage,
+    StockPage as AdminStockPage,
+    AdminViewReportsPage,
+    FinancePage,
+    JobManagementPage,
+    ProductionOverviewPage,
+    SystemSettingsPage,
+    UIPermissionsPage,
+    UserManagementPage,
+    WorkflowConfigPage
 } from "../pages/admin";
 
 // Sales Officer Pages
@@ -24,18 +26,19 @@ import ProformaInvoicePage from "../pages/sales/ProformaInvoicePage";
 
 // Finance Pages
 import {
-  Accountant1DocumentsPage,
-  Accountant1InvoicesPage,
-  Accountant1Page,
-  Accountant1PaymentsPage,
-  Accountant2Page,
-  Accountant2ProcurementPage,
-  Accountant2RecoveryPage,
-  Accountant2TaxesPage,
-  DAFPage,
-  DAFReportsPage,
-  FinanceControlPage,
-  HRManagementPage
+    Accountant1DocumentsPage,
+    Accountant1InvoicesPage,
+    Accountant1Page,
+    Accountant1PaymentsPage,
+    Accountant2Page,
+    Accountant2ProcurementPage,
+    Accountant2RecoveryPage,
+    Accountant2TaxesPage,
+    DAFJobApprovalPage,
+    DAFPage,
+    DAFReportsPage,
+    FinanceControlPage,
+    HRManagementPage
 } from "../pages/finance";
 
 // Production Manager Pages
@@ -59,10 +62,10 @@ import WorkerReportsPage from "../pages/worker/WorkerReportsPage";
 // Reception Pages
 import NotificationsPage from "../pages/NotificationsPage";
 import {
-  DeliveriesPage,
-  NewJobPage,
-  ReceptionPage,
-  TaskAssignmentPage,
+    DeliveriesPage,
+    NewJobPage,
+    ReceptionPage,
+    TaskAssignmentPage,
 } from "../pages/receptionalist";
 import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, TeamsPage, WorkerManagementPage } from "../pages/supervisor";
 import { MaterialRequestPage } from "../pages/worker";
@@ -75,30 +78,32 @@ export default function AppRoutes() {
 
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPage /></ProtectedRoute>} />
-      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]}><UserManagementPage /></ProtectedRoute>} />
-      <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]}><JobManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]} pageId="users"><UserManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
       <Route path="/admin/production" element={<ProtectedRoute allowedRoles={["admin"]}><ProductionOverviewPage /></ProtectedRoute>} />
       <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><FinancePage /></ProtectedRoute>} />
       <Route path="/admin/sales" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSalesPage /></ProtectedRoute>} />
       <Route path="/admin/stock" element={<ProtectedRoute allowedRoles={["admin"]}><AdminStockPage /></ProtectedRoute>} />
-      <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]}><AdminReportsPage /></ProtectedRoute>} />
-      <Route path="/admin/reports/view" element={<ProtectedRoute allowedRoles={["admin"]}><AdminViewReportsPage /></ProtectedRoute>} />
+      <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]} pageId="reports"><AdminReportsPage /></ProtectedRoute>} />
+      <Route path="/admin/reports/view" element={<ProtectedRoute allowedRoles={["admin"]} pageId="reports"><AdminViewReportsPage /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><SystemSettingsPage /></ProtectedRoute>} />
+      <Route path="/admin/workflow" element={<ProtectedRoute allowedRoles={["admin"]}><WorkflowConfigPage /></ProtectedRoute>} />
+      <Route path="/admin/ui-permissions" element={<ProtectedRoute allowedRoles={["admin"]}><UIPermissionsPage /></ProtectedRoute>} />
       <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={["admin"]}><NotificationsPage userRole="admin" userName="Admin" /></ProtectedRoute>} />
 
       {/* Reception Routes */}
       <Route path="/reception" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionPage /></ProtectedRoute>} />
-      <Route path="/reception/new" element={<ProtectedRoute allowedRoles={["receptionist"]}><NewJobPage /></ProtectedRoute>} />
-      <Route path="/reception/tasks" element={<ProtectedRoute allowedRoles={["receptionist"]}><TaskAssignmentPage /></ProtectedRoute>} />
-      <Route path="/reception/deliveries" element={<ProtectedRoute allowedRoles={["receptionist"]}><DeliveriesPage /></ProtectedRoute>} />
+      <Route path="/reception/new" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="new-job"><NewJobPage /></ProtectedRoute>} />
+      <Route path="/reception/tasks" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="tasks"><TaskAssignmentPage /></ProtectedRoute>} />
+      <Route path="/reception/deliveries" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="deliveries"><DeliveriesPage /></ProtectedRoute>} />
       <Route path="/reception/notifications" element={<ProtectedRoute allowedRoles={["receptionist"]}><NotificationsPage userRole="receptionist" userName="Receptionist" /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}
       <Route path="/sales" element={<ProtectedRoute allowedRoles={["sales"]}><SalesPage /></ProtectedRoute>} />
-      <Route path="/sales/quotations" element={<ProtectedRoute allowedRoles={["sales"]}><QuotationsPage /></ProtectedRoute>} />
-      <Route path="/sales/invoices" element={<ProtectedRoute allowedRoles={["sales"]}><ProformaInvoicePage /></ProtectedRoute>} />
-      <Route path="/sales/dossiers" element={<ProtectedRoute allowedRoles={["sales"]}><DossierPage /></ProtectedRoute>} />
-      <Route path="/sales/clients" element={<ProtectedRoute allowedRoles={["sales"]}><ClientsPage /></ProtectedRoute>} />
+      <Route path="/sales/quotations" element={<ProtectedRoute allowedRoles={["sales"]} pageId="quotations"><QuotationsPage /></ProtectedRoute>} />
+      <Route path="/sales/invoices" element={<ProtectedRoute allowedRoles={["sales"]} pageId="proforma"><ProformaInvoicePage /></ProtectedRoute>} />
+      <Route path="/sales/dossiers" element={<ProtectedRoute allowedRoles={["sales"]} pageId="dossier"><DossierPage /></ProtectedRoute>} />
+      <Route path="/sales/clients" element={<ProtectedRoute allowedRoles={["sales"]} pageId="clients"><ClientsPage /></ProtectedRoute>} />
       <Route path="/sales/notifications" element={<ProtectedRoute allowedRoles={["sales"]}><NotificationsPage userRole="sales" userName="Sales Officer" /></ProtectedRoute>} />
 
       {/* Finance Routes */}
@@ -107,21 +112,21 @@ export default function AppRoutes() {
       <Route path="/finance/daf/control" element={<ProtectedRoute allowedRoles={["daf"]}><FinanceControlPage /></ProtectedRoute>} />
       <Route path="/finance/daf/hr" element={<ProtectedRoute allowedRoles={["daf"]}><HRManagementPage /></ProtectedRoute>} />
       <Route path="/finance/daf/reports" element={<ProtectedRoute allowedRoles={["daf"]}><DAFReportsPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/approvals" element={<ProtectedRoute allowedRoles={["daf"]} pageId="finance-control"><DAFJobApprovalPage /></ProtectedRoute>} />
       <Route path="/finance/daf/notifications" element={<ProtectedRoute allowedRoles={["daf"]}><NotificationsPage userRole="daf" userName="DAF" /></ProtectedRoute>} />
       
-      {/* Accountant 1 Routes */}
-      <Route path="/finance/accountant1" element={<ProtectedRoute allowedRoles={["accountant1"]}><Accountant1Page /></ProtectedRoute>} />
-      <Route path="/finance/accountant1/invoices" element={<ProtectedRoute allowedRoles={["accountant1"]}><Accountant1InvoicesPage /></ProtectedRoute>} />
-      <Route path="/finance/accountant1/payments" element={<ProtectedRoute allowedRoles={["accountant1"]}><Accountant1PaymentsPage /></ProtectedRoute>} />
-      <Route path="/finance/accountant1/documents" element={<ProtectedRoute allowedRoles={["accountant1"]}><Accountant1DocumentsPage /></ProtectedRoute>} />
-      <Route path="/finance/accountant1/notifications" element={<ProtectedRoute allowedRoles={["accountant1"]}><NotificationsPage userRole="accountant1" userName="Accountant 1" /></ProtectedRoute>} />
+      {/* Accountant Routes - Unified */}
+      <Route path="/finance/accountant1" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant1Page /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/invoices" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="invoices"><Accountant1InvoicesPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/payments" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="payments"><Accountant1PaymentsPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/documents" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="documents"><Accountant1DocumentsPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/notifications" element={<ProtectedRoute allowedRoles={["accountant"]}><NotificationsPage userRole="accountant" userName="Accountant" /></ProtectedRoute>} />
       
-      {/* Accountant 2 Routes */}
-      <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant2"]}><Accountant2Page /></ProtectedRoute>} />
-      <Route path="/finance/accountant2/procurement" element={<ProtectedRoute allowedRoles={["accountant2"]}><Accountant2ProcurementPage /></ProtectedRoute>} />
-      <Route path="/finance/accountant2/taxes" element={<ProtectedRoute allowedRoles={["accountant2"]}><Accountant2TaxesPage /></ProtectedRoute>} />
-      <Route path="/finance/accountant2/recovery" element={<ProtectedRoute allowedRoles={["accountant2"]}><Accountant2RecoveryPage /></ProtectedRoute>} />
-      <Route path="/finance/accountant2/notifications" element={<ProtectedRoute allowedRoles={["accountant2"]}><NotificationsPage userRole="accountant2" userName="Accountant 2" /></ProtectedRoute>} />
+      <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant2Page /></ProtectedRoute>} />
+      <Route path="/finance/accountant2/procurement" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="procurement"><Accountant2ProcurementPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant2/taxes" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="taxes"><Accountant2TaxesPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant2/recovery" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="recovery"><Accountant2RecoveryPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant2/notifications" element={<ProtectedRoute allowedRoles={["accountant"]}><NotificationsPage userRole="accountant" userName="Accountant" /></ProtectedRoute>} />
 
       {/* Production Manager Routes */}
       <Route path="/production-manager" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerPage /></ProtectedRoute>} />
@@ -148,11 +153,11 @@ export default function AppRoutes() {
 
       {/* Worker Routes */}
       <Route path="/worker" element={<ProtectedRoute allowedRoles={["worker"]}><WorkerPage /></ProtectedRoute>} />
-      <Route path="/worker/tasks" element={<ProtectedRoute allowedRoles={["worker"]}><TaskManagementPage /></ProtectedRoute>} />
-      <Route path="/worker/time-logs" element={<ProtectedRoute allowedRoles={["worker"]}><TimeLogsPage /></ProtectedRoute>} />
+      <Route path="/worker/tasks" element={<ProtectedRoute allowedRoles={["worker"]} pageId="tasks"><TaskManagementPage /></ProtectedRoute>} />
+      <Route path="/worker/time-logs" element={<ProtectedRoute allowedRoles={["worker"]} pageId="time-logs"><TimeLogsPage /></ProtectedRoute>} />
       <Route path="/worker/stats" element={<ProtectedRoute allowedRoles={["worker"]}><StatsPage /></ProtectedRoute>} />
       <Route path="/worker/reports" element={<ProtectedRoute allowedRoles={["worker"]}><WorkerReportsPage /></ProtectedRoute>} />
-      <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]}><MaterialRequestPage /></ProtectedRoute>} />
+      <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]} pageId="material-requests"><MaterialRequestPage /></ProtectedRoute>} />
       <Route path="/worker/notifications" element={<ProtectedRoute allowedRoles={["worker"]}><NotificationsPage userRole="worker" userName="Worker" /></ProtectedRoute>} />
 
       {/* Public Routes with Layout (if needed) */}

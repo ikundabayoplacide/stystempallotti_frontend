@@ -27,7 +27,19 @@ export default function DashboardLayout({
   };
 
   const handleNotificationClick = () => {
-    navigate(`/${userRole}/notifications`);
+    // Map roles to their correct notification paths
+    const notificationPaths: Record<UserRole, string> = {
+      admin: "/admin/notifications",
+      receptionist: "/reception/notifications",
+      sales: "/sales/notifications",
+      daf: "/finance/daf/notifications",
+      accountant: "/finance/accountant1/notifications",
+      "production-manager": "/production-manager/notifications",
+      stock: "/stock/notifications",
+      supervisor: "/supervisor/notifications",
+      worker: "/worker/notifications",
+    };
+    navigate(notificationPaths[userRole] || `/${userRole}/notifications`);
   };
 
   return (

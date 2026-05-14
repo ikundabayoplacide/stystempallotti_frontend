@@ -14,7 +14,7 @@ export default function Input({ label, error, fullWidth = false, className = "",
       {label && (
         <label
           htmlFor={inputId}
-          className="text-sm font-semibold text-secondary-100 font-[family-name:var(--font-family-primary)]"
+          className="text-sm font-semibold text-secondary-100 font-family-primary"
         >
           {label}
         </label>
@@ -23,7 +23,7 @@ export default function Input({ label, error, fullWidth = false, className = "",
         id={inputId}
         className={`
           px-4 py-2.5 rounded-xl border bg-style-500 text-secondary-100
-          font-[family-name:var(--font-family-primary)] text-sm
+          font-family-primary text-sm
           placeholder:text-custom-700
           border-custom-400 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200
           transition-colors duration-200
@@ -35,7 +35,7 @@ export default function Input({ label, error, fullWidth = false, className = "",
         {...props}
       />
       {error && (
-        <span className="text-xs text-primary-600 font-[family-name:var(--font-family-primary)]">{error}</span>
+        <span className="text-xs text-primary-600 font-family-primary">{error}</span>
       )}
     </div>
   );

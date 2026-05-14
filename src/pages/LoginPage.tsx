@@ -44,14 +44,10 @@ export default function LoginPage() {
       role = "daf";
       department = "finance";
       route = "/finance/daf";
-    } else if (userRole.includes("accountant1") || userRole.includes("acc1")) {
-      role = "accountant1";
+    } else if (userRole.includes("accountant") || userRole.includes("acc")) {
+      role = "accountant";
       department = "finance";
       route = "/finance/accountant1";
-    } else if (userRole.includes("accountant2") || userRole.includes("acc2")) {
-      role = "accountant2";
-      department = "finance";
-      route = "/finance/accountant2";
     } else if (userRole.includes("production-manager") || userRole.includes("prodmanager")) {
       role = "production-manager";
       department = "management";

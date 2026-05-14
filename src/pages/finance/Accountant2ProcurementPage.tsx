@@ -84,7 +84,7 @@ export default function Accountant2ProcurementPage() {
   };
 
   return (
-    <DashboardLayout userRole="accountant2" userName="Accountant 2" notificationCount={4}>
+    <DashboardLayout userRole="accountant" userName="Accountant" notificationCount={4}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

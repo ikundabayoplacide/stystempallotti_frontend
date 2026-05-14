@@ -11,6 +11,7 @@ export { default as Accountant2RecoveryPage } from "./Accountant2RecoveryPage";
 export { default as Accountant2TaxesPage } from "./Accountant2TaxesPage";
 
 export { default as DAFDashboard } from "./DAFDashboard";
+export { default as DAFJobApprovalPage } from "./DAFJobApprovalPage";
 export { default as DAFPage } from "./DAFPage";
 export { default as DAFReportsPage } from "./DAFReportsPage";
 export { default as FinanceControlPage } from "./FinanceControlPage";

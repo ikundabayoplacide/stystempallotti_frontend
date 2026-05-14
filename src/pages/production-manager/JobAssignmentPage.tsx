@@ -32,7 +32,7 @@ const initialJobs: Job[] = [
     service: "Offset Printing",
     deadline: "2026-05-02",
     priority: "High",
-    status: "paid",
+    status: "approved", // DAF approved (high value job)
   },
   {
     id: "JOB-002",
@@ -41,7 +41,7 @@ const initialJobs: Job[] = [
     service: "Binding",
     deadline: "2026-05-01",
     priority: "Medium",
-    status: "paid",
+    status: "paid", // Low value, skips DAF approval
   },
   {
     id: "JOB-003",
@@ -50,7 +50,7 @@ const initialJobs: Job[] = [
     service: "Composition",
     deadline: "2026-05-03",
     priority: "Low",
-    status: "paid",
+    status: "paid", // Low value, skips DAF approval
   },
   {
     id: "JOB-005",
@@ -59,7 +59,7 @@ const initialJobs: Job[] = [
     service: "Digital Printing",
     deadline: "2026-05-04",
     priority: "High",
-    status: "in-production",
+    status: "in-printing",
     assignedDepartment: "Printing",
     estimatedDuration: "2 days",
   },
@@ -97,7 +97,7 @@ export default function JobAssignmentPage() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [estimatedDuration, setEstimatedDuration] = useState("");
 
-  const paidJobs = jobs.filter((job) => job.status === "paid");
+  const paidJobs = jobs.filter((job) => job.status === "paid" || job.status === "approved");
   const inProductionJobs = jobs.filter(
     (job) =>
       job.status === "in-production" ||
@@ -163,7 +163,7 @@ export default function JobAssignmentPage() {
             Job Assignment & Planning
           </h1>
           <p className="text-sm text-custom-700 mt-1">
-            Assign paid jobs to production departments
+            Assign approved jobs to production departments (requires DAF approval for jobs &gt; 500,000 RWF)
           </p>
         </div>
 
@@ -175,7 +175,7 @@ export default function JobAssignmentPage() {
                 <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-xs text-custom-700">Paid & Ready</p>
+                <p className="text-xs text-custom-700">Approved & Ready</p>
                 <p className="text-2xl font-bold text-secondary-100">{paidJobs.length}</p>
               </div>
             </div>
@@ -372,7 +372,7 @@ export default function JobAssignmentPage() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center justify-end gap-2">
-                            {job.status === "paid" && (
+                            {(job.status === "paid" || job.status === "approved") && (
                               <button
                                 onClick={() => {
                                   setSelectedJob(job);
@@ -384,6 +384,7 @@ export default function JobAssignmentPage() {
                               </button>
                             )}
                             {job.status !== "paid" &&
+                              job.status !== "approved" &&
                               job.status !== "completed" &&
                               job.status !== "delivered" && (
                                 <button
