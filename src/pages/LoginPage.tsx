@@ -69,7 +69,7 @@ export default function LoginPage() {
           className="
             hidden md:flex flex-1 items-center justify-center
             bg-gradient-to-br from-primary-400 to-primary-900
-            p-8 lg:p-12 flex flex-col
+            p-6 lg:p-12 flex flex-col
           "
         >
           <div className="text-white lg:text-2xl">
