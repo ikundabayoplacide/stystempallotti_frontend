@@ -2,90 +2,48 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { useState } from "react";
 import { FiLock, FiUser } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import loginAnimation from "../assets/Login.json";
 import { Button, Card, Input, SectionTitle } from "../components/ui";
-import { useAuth } from "../context/AuthContext";
+import { useAppDispatch } from "../store/hooks";
+import { useLoginMutation } from "../store/services/authService";
+import { setCredentials } from "../store/slices/authSlice";
 
 
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const dispatch = useAppDispatch();
+  const [login, { isLoading }] = useLoginMutation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log("Login submitted with username:", username);
-    
-    // TODO: Replace with actual authentication logic
-    // For now, route based on username
-    const userRole = username.toLowerCase();
-    console.log("User role detected:", userRole);
-    
-    let role: import("../context/AuthContext").UserRole = "admin";
-    let department: import("../context/AuthContext").Department | undefined = undefined;
-    let route = "/admin";
-    
-    if (userRole.includes("admin") || userRole.includes("director")) {
-      role = "admin";
-      route = "/admin";
-    } else if (userRole.includes("reception")) {
-      role = "receptionist";
-      department = "reception";
-      route = "/reception";
-    } else if (userRole.includes("sales")) {
-      role = "sales";
-      department = "sales";
-      route = "/sales";
-    } else if (userRole.includes("daf")) {
-      role = "daf";
-      department = "finance";
-      route = "/finance/daf";
-    } else if (userRole.includes("accountant") || userRole.includes("acc")) {
-      role = "accountant";
-      department = "finance";
-      route = "/finance/accountant1";
-    } else if (userRole.includes("production-manager") || userRole.includes("prodmanager")) {
-      role = "production-manager";
-      department = "management";
-      route = "/production-manager";
-    } else if (userRole.includes("stock")) {
-      role = "stock";
-      department = "stock";
-      route = "/stock";
-    } else if (userRole.includes("supervisor")) {
-      role = "supervisor";
-      department = "management";
-      route = "/supervisor";
-    } else if (userRole.includes("worker")) {
-      role = "worker";
-      // Determine department from username
-      if (userRole.includes("composition")) {
-        department = "composition";
-      } else if (userRole.includes("montage")) {
-        department = "montage";
-      } else if (userRole.includes("printing")) {
-        department = "printing";
-      } else if (userRole.includes("binding")) {
-        department = "binding";
-      } else if (userRole.includes("packaging")) {
-        department = "packaging";
-      } else {
-        department = "printing"; // default
-      }
-      route = "/worker";
+    try {
+      // 1. Call the API
+      const result = await login({ email, password }).unwrap();
+
+      // 2. Save token + user in Redux (and localStorage)
+      dispatch(setCredentials(result));
+
+      // 3. Navigate based on the role the backend returned
+      const roleRoutes: Record<string, string> = {
+        ADMIN: "/admin",
+        RECEPTIONIST: "/reception",
+        SALES: "/sales",
+        DAF: "/finance/daf",
+        ACCOUNTANT: "/finance/accountant1",
+        PRODUCTION_MANAGER: "/production-manager",
+        STOCK: "/stock",
+        SUPERVISOR: "/supervisor",
+        WORKER: "/worker",
+      };
+      navigate(roleRoutes[result.data.user.role] ?? "/");
+    } catch {
+      toast.error("Invalid email or password.");
     }
-    
-    console.log("Navigating to:", route, "Department:", department);
-    
-    // Set authentication state
-    login(role, username, department);
-    
-    // Navigate to appropriate dashboard
-    navigate(route);
   };
 
   return (
@@ -155,12 +113,12 @@ export default function LoginPage() {
                 <FiUser className="w-4 h-4" />
               </span>
               <Input
-                id="username"
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
+                id="email"
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
                 fullWidth
                 className="!bg-secondary-200 !border-transparent pl-9 focus:!border-primary-300 focus:!ring-primary-300/40"
@@ -216,13 +174,15 @@ export default function LoginPage() {
               type="submit"
               fullWidth
               size="lg"
+              disabled={isLoading}
               className="
                 !bg-yellow-400 hover:!bg-yellow-300 active:!bg-yellow-500
                 !text-secondary-100 tracking-widest uppercase
                 focus:!ring-yellow-300/60
+                disabled:opacity-60 disabled:cursor-not-allowed
               "
             >
-              Login
+              {isLoading ? "Logging in..." : "Login"}
             </Button>
           </form>
 

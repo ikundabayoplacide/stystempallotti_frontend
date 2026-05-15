@@ -1,16 +1,11 @@
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useContext } from "react";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { clearCredentials } from "../store/slices/authSlice";
+import type { UserRole } from "../store/services/authService";
 
-type UserRole = 
-  | "admin" 
-  | "receptionist" 
-  | "sales" 
-  | "daf" 
-  | "accountant" 
-  | "production-manager" 
-  | "stock" 
-  | "supervisor" 
-  | "worker";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
+// Keep Department type for the rest of the app that still uses it
 type Department =
   | "composition"
   | "montage"
@@ -23,80 +18,67 @@ type Department =
   | "reception"
   | "management";
 
+// Map backend UPPER_CASE roles to the lowercase roles the rest of the app uses
+const roleMap: Record<UserRole, LegacyRole> = {
+  ADMIN: "admin",
+  RECEPTIONIST: "receptionist",
+  SALES: "sales",
+  DAF: "daf",
+  ACCOUNTANT: "accountant",
+  PRODUCTION_MANAGER: "production-manager",
+  STOCK: "stock",
+  SUPERVISOR: "supervisor",
+  WORKER: "worker",
+};
+
+// Legacy lowercase roles — kept so existing components don't break
+type LegacyRole =
+  | "admin"
+  | "receptionist"
+  | "sales"
+  | "daf"
+  | "accountant"
+  | "production-manager"
+  | "stock"
+  | "supervisor"
+  | "worker";
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  userRole: UserRole | null;
+  userRole: LegacyRole | null;
   userName: string | null;
   userDepartment: Department | null;
-  login: (role: UserRole, name: string, department?: Department) => void;
   logout: () => void;
 }
 
-export type { Department, UserRole };
+export type { Department, LegacyRole as UserRole };
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [userDepartment, setUserDepartment] = useState<Department | null>(null);
-
-  // Initialize from localStorage on mount
-  useEffect(() => {
-    const storedAuth = localStorage.getItem("isAuthenticated") === "true";
-    const storedRole = localStorage.getItem("userRole");
-    const storedName = localStorage.getItem("userName");
-    const storedDept = localStorage.getItem("userDepartment") as Department;
-
-    // Migrate old accountant roles
-    let finalRole = storedRole;
-    if (storedRole === "accountant1" || storedRole === "accountant2") {
-      finalRole = "accountant";
-      localStorage.setItem("userRole", "accountant");
-    }
-
-    setIsAuthenticated(storedAuth);
-    setUserRole(finalRole as UserRole);
-    setUserName(storedName);
-    setUserDepartment(storedDept);
-    setIsLoading(false);
-  }, []);
-
-  const login = (role: UserRole, name: string, department?: Department) => {
-    setIsAuthenticated(true);
-    setUserRole(role);
-    setUserName(name);
-    setUserDepartment(department || null);
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", role);
-    localStorage.setItem("userName", name);
-    if (department) {
-      localStorage.setItem("userDepartment", department);
-    }
-  };
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   const logout = () => {
-    setIsAuthenticated(false);
-    setUserRole(null);
-    setUserName(null);
-    setUserDepartment(null);
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userDepartment");
+    dispatch(clearCredentials());
   };
 
+  // Convert backend role to legacy lowercase role for existing components
+  const userRole = user?.role ? (roleMap[user.role] ?? null) : null;
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, userRole, userName, userDepartment, login, logout }}>
-      {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          Loading...
-        </div>
-      ) : (
-        children
-      )}
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        userRole,
+        userName: user?.name ?? null,
+        userDepartment: null, // backend doesn't return department yet
+        logout,
+      }}
+    >
+      {children}
     </AuthContext.Provider>
   );
 }
