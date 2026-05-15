@@ -1,10 +1,10 @@
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { useState } from "react";
-import { FiLock, FiUser } from "react-icons/fi";
+import { FiLock, FiMail } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import loginAnimation from "../assets/Login.json";
-import { Button, Card, Input, SectionTitle } from "../components/ui";
+import { Button, Card, Input, PasswordInput, SectionTitle } from "../components/ui";
 import { useAppDispatch } from "../store/hooks";
 import { useLoginMutation } from "../store/services/authService";
 import { setCredentials } from "../store/slices/authSlice";
@@ -107,10 +107,10 @@ export default function LoginPage() {
             className="flex flex-col gap-5"
             noValidate
           >
-            {/* Username */}
+            {/* Email */}
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-300 pointer-events-none select-none z-10">
-                <FiUser className="w-4 h-4" />
+                <FiMail className="w-4 h-4" />
               </span>
               <Input
                 id="email"
@@ -130,16 +130,13 @@ export default function LoginPage() {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary-300 pointer-events-none select-none z-10">
                 <FiLock className="w-4 h-4" />
               </span>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
-                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
                 autoComplete="current-password"
-                required
-                fullWidth
-                className="!bg-secondary-200 !border-transparent pl-9 focus:!border-primary-300 focus:!ring-primary-300/40"
+                inputClassName="!bg-secondary-200 !border-transparent pl-9 focus:!border-primary-300 focus:!ring-primary-300/40 !rounded-xl"
               />
             </div>
 
