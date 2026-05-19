@@ -357,14 +357,14 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
       ],
       sidebarMenu: [
         { id: "dashboard", label: "Dashboard", path: "/sales", icon: "HiOutlineHome", enabled: true, order: 1 },
-        { id: "clients", label: "Clients", path: "/sales/clients", icon: "HiOutlineUsers", enabled: true, order: 2 },
+        { id: "jobs", label: "Jobs", path: "/sales/jobs", icon: "HiOutlineBriefcase", enabled: true, order: 2 },
         { id: "quotations", label: "Quotations", path: "/sales/quotations", icon: "HiOutlineDocumentText", enabled: true, order: 3 },
         { id: "proforma", label: "Proforma Invoice", path: "/sales/invoices", icon: "HiOutlineClipboardList", enabled: true, order: 4 },
         { id: "dossier", label: "Dossier", path: "/sales/dossiers", icon: "HiOutlineFolder", enabled: true, order: 5 },
         { id: "confirmation", label: "Client Confirmation", path: "/sales/confirmation", icon: "HiOutlineCheckCircle", enabled: false, order: 6 },
       ],
       pagePermissions: [
-        { pageId: "clients", pageName: "Clients", enabled: true, allowedActions: ["view", "create", "edit"] },
+        { pageId: "jobs", pageName: "Jobs", enabled: true, allowedActions: ["view", "create", "edit"] },
         { pageId: "quotations", pageName: "Quotations", enabled: true, allowedActions: ["view", "create", "edit", "export"] },
         { pageId: "proforma", pageName: "Proforma Invoice", enabled: true, allowedActions: ["view", "create", "edit"] },
         { pageId: "dossier", pageName: "Dossier", enabled: true, allowedActions: ["view", "create", "edit"] },

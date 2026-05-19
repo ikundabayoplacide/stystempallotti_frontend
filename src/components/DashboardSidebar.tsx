@@ -77,7 +77,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       icon: HiOutlineCurrencyDollar,
     },
     { label: "Dossiers", path: "/sales/dossiers", icon: HiOutlineArchive },
-    { label: "Clients", path: "/sales/clients", icon: HiOutlineUsers },
+    { label: "Jobs", path: "/sales/jobs", icon: HiOutlineBriefcase },
   ],
   daf: [
     { label: "Dashboard", path: "/finance/daf", icon: HiOutlineHome },

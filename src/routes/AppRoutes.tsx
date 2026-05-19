@@ -11,7 +11,6 @@ import {
     StockPage as AdminStockPage,
     AdminViewReportsPage,
     FinancePage,
-    JobManagementPage,
     ProductionOverviewPage,
     SystemSettingsPage,
     UIPermissionsPage,
@@ -20,7 +19,7 @@ import {
 } from "../pages/admin";
 
 // Sales Officer Pages
-import { ClientsPage, QuotationsPage, SalesPage } from "../pages/sales";
+import { QuotationsPage, SalesPage } from "../pages/sales";
 import DossierPage from "../pages/sales/DossierPage";
 import ProformaInvoicePage from "../pages/sales/ProformaInvoicePage";
 
@@ -71,6 +70,7 @@ import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, TeamsPage,
 import { MaterialRequestPage } from "../pages/worker";
 import CustomerPage from "../pages/admin/customaPage";
 import VisitorPage from "../pages/receptionalist/VisitorPage";
+import JobManagementPage from "../pages/sales/JobManagementPage";
 
 export default function AppRoutes() {
   return (
@@ -105,9 +105,9 @@ export default function AppRoutes() {
       {/* Sales Officer Routes */}
       <Route path="/sales" element={<ProtectedRoute allowedRoles={["sales"]}><SalesPage /></ProtectedRoute>} />
       <Route path="/sales/quotations" element={<ProtectedRoute allowedRoles={["sales"]} pageId="quotations"><QuotationsPage /></ProtectedRoute>} />
+        <Route path="/sales/jobs" element={<ProtectedRoute allowedRoles={["sales"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
       <Route path="/sales/invoices" element={<ProtectedRoute allowedRoles={["sales"]} pageId="proforma"><ProformaInvoicePage /></ProtectedRoute>} />
       <Route path="/sales/dossiers" element={<ProtectedRoute allowedRoles={["sales"]} pageId="dossier"><DossierPage /></ProtectedRoute>} />
-      <Route path="/sales/clients" element={<ProtectedRoute allowedRoles={["sales"]} pageId="clients"><ClientsPage /></ProtectedRoute>} />
       <Route path="/sales/notifications" element={<ProtectedRoute allowedRoles={["sales"]}><NotificationsPage userRole="sales" userName="Sales Officer" /></ProtectedRoute>} />
 
       {/* Finance Routes */}

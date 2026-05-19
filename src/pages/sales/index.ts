@@ -1,4 +1,3 @@
-export { default as ClientsPage } from "./ClientsPage";
 export { default as DossierPage } from "./DossierPage";
 export { default as ProformaInvoicePage } from "./ProformaInvoicePage";
 export { default as QuotationsPage } from "./QuotationsPage";
