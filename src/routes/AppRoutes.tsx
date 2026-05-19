@@ -63,12 +63,14 @@ import WorkerReportsPage from "../pages/worker/WorkerReportsPage";
 import NotificationsPage from "../pages/NotificationsPage";
 import {
     DeliveriesPage,
-    NewJobPage,
+    PaymentCollectionPage,
     ReceptionPage,
-    TaskAssignmentPage,
+    // TaskAssignmentPage,
 } from "../pages/receptionalist";
 import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, TeamsPage, WorkerManagementPage } from "../pages/supervisor";
 import { MaterialRequestPage } from "../pages/worker";
+import CustomerPage from "../pages/admin/customaPage";
+import VisitorPage from "../pages/receptionalist/VisitorPage";
 
 export default function AppRoutes() {
   return (
@@ -79,6 +81,7 @@ export default function AppRoutes() {
       {/* Admin Routes */}
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPage /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]} pageId="users"><UserManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={["admin"]}><CustomerPage/></ProtectedRoute>} />
       <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
       <Route path="/admin/production" element={<ProtectedRoute allowedRoles={["admin"]}><ProductionOverviewPage /></ProtectedRoute>} />
       <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><FinancePage /></ProtectedRoute>} />
@@ -93,9 +96,10 @@ export default function AppRoutes() {
 
       {/* Reception Routes */}
       <Route path="/reception" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionPage /></ProtectedRoute>} />
-      <Route path="/reception/new" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="new-job"><NewJobPage /></ProtectedRoute>} />
-      <Route path="/reception/tasks" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="tasks"><TaskAssignmentPage /></ProtectedRoute>} />
+      <Route path="/reception/visitor" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="visitor"><VisitorPage /></ProtectedRoute>} />
+      {/* <Route path="/reception/tasks" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="tasks"><TaskAssignmentPage /></ProtectedRoute>} /> */}
       <Route path="/reception/deliveries" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="deliveries"><DeliveriesPage /></ProtectedRoute>} />
+      <Route path="/reception/payments" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="payments"><PaymentCollectionPage /></ProtectedRoute>} />
       <Route path="/reception/notifications" element={<ProtectedRoute allowedRoles={["receptionist"]}><NotificationsPage userRole="receptionist" userName="Receptionist" /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}

@@ -38,6 +38,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   admin: [
     { label: "Dashboard", path: "/admin", icon: HiOutlineHome },
     { label: "Users", path: "/admin/users", icon: HiOutlineUsers },
+    { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers },
     { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList },
     { label: "Production", path: "/admin/production", icon: HiOutlineCube },
     { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase },
@@ -55,12 +56,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   ],
   receptionist: [
     { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
-    { label: "New Job", path: "/reception/new", icon: HiOutlineClipboardList },
-    {
-      label: "Task Assignment",
-      path: "/reception/tasks",
-      icon: HiOutlineUsers,
-    },
+    { label: "Visitor", path: "/reception/visitor", icon: HiOutlineClipboardList },
+    { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar },
     {
       label: "Deliveries",
       path: "/reception/deliveries",
@@ -206,15 +203,17 @@ export default function DashboardSidebar({
   const navigate = useNavigate();
   const { logout } = useAuth();
 
-  // Use configured menu items if available, fallback to hardcoded
-  const items = currentRoleConfig?.sidebarMenu
+  // Use configured menu items if available and non-empty, fallback to hardcoded
+  const configuredItems = currentRoleConfig?.sidebarMenu
     .filter(item => item.enabled)
     .sort((a, b) => a.order - b.order)
     .map(item => ({
       label: item.label,
       path: item.path,
       icon: (HeroIcons as any)[item.icon] || HiOutlineHome,
-    })) || menuItems[userRole] || [];
+    })) ?? [];
+
+  const items = configuredItems.length > 0 ? configuredItems : (menuItems[userRole] ?? []);
 
   const handleLogout = () => {
     logout();

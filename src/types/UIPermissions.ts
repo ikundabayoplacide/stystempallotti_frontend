@@ -117,7 +117,7 @@ export interface UIPermissionsConfiguration {
 // Default UI Permissions Configuration
 export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
   id: "default-ui-permissions",
-  version: "1.0.0",
+  version: "1.5.0",
   roles: [
     {
       roleId: "admin",
@@ -145,16 +145,17 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
       sidebarMenu: [
         { id: "dashboard", label: "Dashboard", path: "/admin", icon: "HiOutlineHome", enabled: true, order: 1 },
         { id: "users", label: "Users", path: "/admin/users", icon: "HiOutlineUsers", enabled: true, order: 2 },
-        { id: "jobs", label: "Jobs", path: "/admin/jobs", icon: "HiOutlineClipboardList", enabled: true, order: 3 },
-        { id: "production", label: "Production", path: "/admin/production", icon: "HiOutlineCube", enabled: true, order: 4 },
-        { id: "sales", label: "Sales", path: "/admin/sales", icon: "HiOutlineBriefcase", enabled: true, order: 5 },
-        { id: "finance", label: "Finance", path: "/admin/finance", icon: "HiOutlineCurrencyDollar", enabled: true, order: 6 },
-        { id: "stock", label: "Stock", path: "/admin/stock", icon: "HiOutlineArchive", enabled: true, order: 7 },
-        { id: "reports", label: "Reports", path: "/admin/reports", icon: "HiOutlineChartBar", enabled: true, order: 8 },
-        { id: "view-reports", label: "View Reports", path: "/admin/reports/view", icon: "HiOutlineDocumentText", enabled: true, order: 9 },
-        { id: "workflow", label: "Workflow Config", path: "/admin/workflow", icon: "HiOutlineAdjustments", enabled: true, order: 10 },
-        { id: "ui-permissions", label: "UI Permissions", path: "/admin/ui-permissions", icon: "HiOutlineViewGrid", enabled: true, order: 11 },
-        { id: "settings", label: "Settings", path: "/admin/settings", icon: "HiOutlineCog", enabled: true, order: 12 },
+        { id: "customers", label: "Customers", path: "/admin/customers", icon: "HiOutlineUserGroup", enabled: true, order: 3 },
+        { id: "jobs", label: "Jobs", path: "/admin/jobs", icon: "HiOutlineClipboardList", enabled: true, order: 4 },
+        { id: "production", label: "Production", path: "/admin/production", icon: "HiOutlineCube", enabled: true, order: 5 },
+        { id: "sales", label: "Sales", path: "/admin/sales", icon: "HiOutlineBriefcase", enabled: true, order: 6 },
+        { id: "finance", label: "Finance", path: "/admin/finance", icon: "HiOutlineCurrencyDollar", enabled: true, order: 7 },
+        { id: "stock", label: "Stock", path: "/admin/stock", icon: "HiOutlineArchive", enabled: true, order: 8 },
+        { id: "reports", label: "Reports", path: "/admin/reports", icon: "HiOutlineChartBar", enabled: true, order: 9 },
+        { id: "view-reports", label: "View Reports", path: "/admin/reports/view", icon: "HiOutlineDocumentText", enabled: true, order: 10 },
+        { id: "workflow", label: "Workflow Config", path: "/admin/workflow", icon: "HiOutlineAdjustments", enabled: true, order: 11 },
+        { id: "ui-permissions", label: "UI Permissions", path: "/admin/ui-permissions", icon: "HiOutlineViewGrid", enabled: true, order: 12 },
+        { id: "settings", label: "Settings", path: "/admin/settings", icon: "HiOutlineCog", enabled: true, order: 13 },
       ],
       pagePermissions: [
         { 
@@ -213,12 +214,14 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
       ],
       sidebarMenu: [
         { id: "dashboard", label: "Dashboard", path: "/reception", icon: "HiOutlineHome", enabled: true, order: 1 },
-        { id: "new-job", label: "New Job", path: "/reception/new", icon: "HiOutlineClipboardList", enabled: true, order: 2 },
-        { id: "tasks", label: "Task Assignment", path: "/reception/tasks", icon: "HiOutlineClipboardCheck", enabled: true, order: 3 },
-        { id: "deliveries", label: "Deliveries", path: "/reception/deliveries", icon: "HiOutlineTruck", enabled: true, order: 4 },
+        { id: "visitor", label: "Visitor", path: "/reception/visitor", icon: "HiOutlineClipboardList", enabled: true, order: 2 },
+        { id: "payments", label: "Payments", path: "/reception/payments", icon: "HiOutlineCurrencyDollar", enabled: true, order: 3 },
+        { id: "tasks", label: "Task Assignment", path: "/reception/tasks", icon: "HiOutlineClipboardCheck", enabled: false, order: 4 },
+        { id: "deliveries", label: "Deliveries", path: "/reception/deliveries", icon: "HiOutlineTruck", enabled: true, order: 5 },
       ],
       pagePermissions: [
-        { pageId: "new-job", pageName: "New Job", enabled: true, allowedActions: ["view", "create"] },
+        { pageId: "visitor", pageName: "Visitor", enabled: true, allowedActions: ["view", "create"] },
+        { pageId: "payments", pageName: "Payments", enabled: true, allowedActions: ["view", "create"] },
         { pageId: "tasks", pageName: "Tasks", enabled: true, allowedActions: ["view", "assign"] },
         { pageId: "deliveries", pageName: "Deliveries", enabled: true, allowedActions: ["view", "edit"] },
       ],

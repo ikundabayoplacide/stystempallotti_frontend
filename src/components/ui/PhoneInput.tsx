@@ -106,6 +106,18 @@ export const COUNTRIES: Country[] = [
 
 const DEFAULT_COUNTRY = COUNTRIES[0]; // Rwanda
 
+// Parse a full phone string like "+250788000004" into { country, localNumber }
+function parsePhone(full: string): { country: Country; localNumber: string } {
+  if (!full) return { country: DEFAULT_COUNTRY, localNumber: "" };
+  // Sort by dial length descending so "+1868" matches before "+1"
+  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+  const match = sorted.find((c) => full.startsWith(c.dial));
+  if (match) {
+    return { country: match, localNumber: full.slice(match.dial.length).replace(/\D/g, "") };
+  }
+  return { country: DEFAULT_COUNTRY, localNumber: full.replace(/\D/g, "") };
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface PhoneInputProps {
@@ -118,8 +130,10 @@ interface PhoneInputProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PhoneInput({ value, onChange, error, className = "" }: PhoneInputProps) {
-  const [selected, setSelected] = useState<Country>(DEFAULT_COUNTRY);
-  const [number, setNumber] = useState("");
+  // Parse initial value so edit mode pre-fills correctly
+  const parsed = parsePhone(value);
+  const [selected, setSelected] = useState<Country>(parsed.country);
+  const [number, setNumber] = useState(parsed.localNumber);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
