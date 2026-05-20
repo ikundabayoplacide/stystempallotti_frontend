@@ -8,10 +8,11 @@ import {
   HiOutlineSearch,
   HiOutlineTruck,
   HiOutlineUser,
+  HiOutlinePhone,
   HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
-import { Button, Card } from "../../components/ui";
+import { Button, Card, PhoneInput } from "../../components/ui";
 import {
   useGetJobsQuery,
   useDeliverJobMutation,
@@ -36,11 +37,19 @@ interface MarkDeliveredModalProps {
 }
 
 function MarkDeliveredModal({ job, onClose, onSuccess }: MarkDeliveredModalProps) {
+  const [deliveryType, setDeliveryType] = useState<"own" | "shipper">("own");
+  const [shipperName, setShipperName] = useState("");
+  const [shipperContact, setShipperContact] = useState("");
   const [deliverJob, { isLoading }] = useDeliverJobMutation();
 
   const handleConfirm = async () => {
+    const isOwn = deliveryType === "own";
     try {
-      await deliverJob(job.id).unwrap();
+      await deliverJob({
+        id: job.id,
+        deliveredByName: isOwn ? (job.customer?.name ?? undefined) : shipperName.trim() || undefined,
+        deliveredByContact: isOwn ? (job.customer?.phone ?? undefined) : shipperContact.trim() || undefined,
+      }).unwrap();
       toast.success(`Job #${job.jobNumber} marked as delivered`);
       onSuccess();
     } catch (err: any) {
@@ -58,6 +67,7 @@ function MarkDeliveredModal({ job, onClose, onSuccess }: MarkDeliveredModalProps
           </button>
         </div>
 
+        {/* Job summary */}
         <div className="rounded-xl bg-custom-100 border border-custom-300 p-4 mb-5 space-y-1.5">
           <div className="flex items-center gap-2 text-sm">
             <span className="font-mono font-bold text-primary-500">#{job.jobNumber}</span>
@@ -76,9 +86,52 @@ function MarkDeliveredModal({ job, onClose, onSuccess }: MarkDeliveredModalProps
           )}
         </div>
 
-        <p className="text-sm text-custom-700 mb-5">
-          Confirm that this job has been physically handed over to the client. This will update the status to <span className="font-semibold text-secondary-100">delivered</span>.
-        </p>
+        {/* Own / Shipper toggle */}
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-secondary-100 mb-2">Received by</label>
+          <div className="flex gap-3">
+            {(["own", "shipper"] as const).map((t) => (
+              <button key={t} type="button" onClick={() => setDeliveryType(t)}
+                className={`flex-1 py-2 rounded-xl border text-sm font-semibold transition-colors capitalize ${
+                  deliveryType === t
+                    ? "bg-primary-500 text-white border-primary-500"
+                    : "border-custom-300 text-custom-700 hover:bg-custom-100"
+                }`}>
+                {t === "own" ? "Owner" : "Shipper"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Own — show pre-filled read-only info */}
+        {deliveryType === "own" && (
+          <div className="rounded-xl bg-custom-50 border border-custom-200 p-3 mb-5 space-y-1">
+            <div className="flex items-center gap-2 text-sm text-custom-700">
+              <HiOutlineUser className="w-4 h-4 shrink-0" />
+              <span>{job.customer?.name ?? "—"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-custom-700">
+              <HiOutlinePhone className="w-4 h-4 shrink-0" />
+              <span>{job.customer?.phone ?? "—"}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Shipper — input fields */}
+        {deliveryType === "shipper" && (
+          <div className="space-y-3 mb-5">
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Shipper Name</label>
+              <input type="text" value={shipperName} onChange={(e) => setShipperName(e.target.value)}
+                placeholder="e.g. John Doe"
+                className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Shipper Contact</label>
+              <PhoneInput value={shipperContact} onChange={setShipperContact} />
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -295,7 +348,7 @@ export default function DeliveriesPage() {
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Job #</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Title</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Customer</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Received By</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Payment</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Priority</th>
                 </tr>
@@ -319,21 +372,13 @@ export default function DeliveriesPage() {
                         <p className="text-sm text-secondary-100">{job.customer?.name ?? "—"}</p>
                         {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
                       </td>
-                     <td className="px-4 py-3">
-                        {job.paymentStatus === "paid" ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                              <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
-                            </span>
-                            {job.payments?.map((p) => (
-                              <span key={p.id} className="text-xs text-custom-700">
-                                {p.paymentMethod.replace(/_/g, " ")} ( {p.paymentState === "PARTIAL" ? "Partial" : "Full"})
-                              </span>
-                            ))}
+                      <td className="px-4 py-3">
+                        {job.deliveredByName ? (
+                          <div>
+                            <p className="text-sm text-secondary-100">{job.deliveredByName}</p>
+                            {job.deliveredByContact && <p className="text-xs text-custom-700">{job.deliveredByContact}</p>}
                           </div>
-                        ) : (
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">Unpaid</span>
-                        )}
+                        ) : <span className="text-xs text-custom-400">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         {job.paymentStatus === "paid" ? (
@@ -341,8 +386,15 @@ export default function DeliveriesPage() {
                             <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
                               <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
                             </span>
-                            {job.paymentMethod && (
-                              <span className="text-xs text-custom-700">{job.paymentMethod.replace(/_/g, " ")}</span>
+                            {job.payments?.map((p) => (
+                              <span key={p.id} className="text-xs text-custom-700">
+                                {p.paymentMethod.replace(/_/g, " ")} ({p.paymentState === "PARTIAL" ? "Partial" : "Full"})
+                              </span>
+                            ))}
+                            {job.payments?.some((p) => p.paymentState === "PARTIAL") && (
+                              <span className="text-xs font-semibold text-red-500">
+                                Balance: {Number(job.payments.find((p) => p.paymentState === "PARTIAL")?.balance ?? 0).toLocaleString()} RWF
+                              </span>
                             )}
                           </div>
                         ) : (

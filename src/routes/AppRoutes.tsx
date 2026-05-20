@@ -19,7 +19,7 @@ import {
 } from "../pages/admin";
 
 // Sales Officer Pages
-import { QuotationsPage, SalesPage } from "../pages/sales";
+import { QuotationsPage, SalesPage, SalesStockPage, SalesCustomerPage } from "../pages/sales";
 import DossierPage from "../pages/sales/DossierPage";
 import ProformaInvoicePage from "../pages/sales/ProformaInvoicePage";
 
@@ -110,6 +110,9 @@ export default function AppRoutes() {
       <Route path="/sales/invoices" element={<ProtectedRoute allowedRoles={["sales"]} pageId="proforma"><ProformaInvoicePage /></ProtectedRoute>} />
       <Route path="/sales/dossiers" element={<ProtectedRoute allowedRoles={["sales"]} pageId="dossier"><DossierPage /></ProtectedRoute>} />
       <Route path="/sales/notifications" element={<ProtectedRoute allowedRoles={["sales"]}><NotificationsPage userRole="sales" userName="Sales Officer" /></ProtectedRoute>} />
+      <Route path="/sales/stocks" element={<ProtectedRoute allowedRoles={["sales"]} pageId="stocks"><SalesStockPage /></ProtectedRoute>} />
+      <Route path="/sales/customers" element={<ProtectedRoute allowedRoles={["sales"]} pageId="customers"><SalesCustomerPage /></ProtectedRoute>} />
+
 
       {/* Finance Routes */}
       {/* DAF Routes */}

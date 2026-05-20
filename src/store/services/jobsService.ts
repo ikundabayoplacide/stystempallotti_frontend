@@ -58,8 +58,43 @@ export interface Job {
   createdById: string;
   departmentAssignedToId?: string;
   payments?: JobPayment[];
+  deliveredByName?: string;
+  deliveredByContact?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Job item linked to a stock item
+export interface JobItem {
+  id: string;
+  jobId: string;
+  stockItemId: string;
+  stockItem?: {
+    id: string;
+    name: string;
+    unit: string;
+    currentStock: number;
+    stockStatus: string;
+  };
+  quantityNeeded: number;
+  quantityUsed?: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobItemPayload {
+  stockItemId: string;
+  quantityNeeded: number;
+  notes?: string;
+}
+
+export interface UpdateJobItemPayload {
+  jobId: string;
+  itemId: string;
+  quantityNeeded?: number;
+  quantityUsed?: number;
+  notes?: string;
 }
 
 // POST /api/jobs — what frontend sends
@@ -76,6 +111,7 @@ export interface CreateJobPayload {
   amount?: number;         // price in RWF
   dueDate?: string;        // ISO 8601
   notes?: string;
+  items?: JobItemPayload[]; // optional stock items
 }
 
 // PUT /api/jobs/:id — all fields optional
@@ -295,8 +331,8 @@ export const jobsApi = createApi({
     }),
 
     // PATCH /jobs/:id/deliver — mark job as delivered
-    deliverJob: builder.mutation<Job, string>({
-      query: (id) => ({ url: `/jobs/${id}/deliver`, method: "PATCH" }),
+    deliverJob: builder.mutation<Job, { id: string; deliveredByName?: string; deliveredByContact?: string }>({
+      query: ({ id, ...body }) => ({ url: `/jobs/${id}/deliver`, method: "PATCH", body }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
       invalidatesTags: (_r, _e, id) => [
         { type: "Job", id },
@@ -337,6 +373,46 @@ export const jobsApi = createApi({
         { type: "Job", id: "LIST" },
       ],
     }),
+
+    // ── Job Items ─────────────────────────────────────────────────────────────
+
+    // GET /jobs/:jobId/items
+    getJobItems: builder.query<JobItem[], string>({
+      query: (jobId) => `/jobs/${jobId}/items`,
+      transformResponse: (res: ApiResponse<JobItem[]>) => res.data ?? [],
+      providesTags: (_r, _e, jobId) => [{ type: "Job", id: `${jobId}-items` }],
+    }),
+
+    // POST /jobs/:jobId/items — ADMIN, RECEPTIONIST, SALES
+    addJobItem: builder.mutation<JobItem, { jobId: string } & JobItemPayload>({
+      query: ({ jobId, ...body }) => ({
+        url: `/jobs/${jobId}/items`,
+        method: "POST",
+        body,
+      }),
+      transformResponse: (res: ApiResponse<JobItem>) => res.data,
+      invalidatesTags: (_r, _e, { jobId }) => [{ type: "Job", id: `${jobId}-items` }],
+    }),
+
+    // PUT /jobs/:jobId/items/:id — ADMIN, RECEPTIONIST, SALES, SUPERVISOR
+    updateJobItem: builder.mutation<JobItem, UpdateJobItemPayload>({
+      query: ({ jobId, itemId, ...body }) => ({
+        url: `/jobs/${jobId}/items/${itemId}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (res: ApiResponse<JobItem>) => res.data,
+      invalidatesTags: (_r, _e, { jobId }) => [{ type: "Job", id: `${jobId}-items` }],
+    }),
+
+    // DELETE /jobs/:jobId/items/:id — ADMIN, RECEPTIONIST, SALES
+    removeJobItem: builder.mutation<void, { jobId: string; itemId: string }>({
+      query: ({ jobId, itemId }) => ({
+        url: `/jobs/${jobId}/items/${itemId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, { jobId }) => [{ type: "Job", id: `${jobId}-items` }],
+    }),
   }),
 });
 
@@ -354,4 +430,8 @@ export const {
   useCompleteJobMutation,
   useAssignJobMutation,
   useDeleteJobMutation,
+  useGetJobItemsQuery,
+  useAddJobItemMutation,
+  useUpdateJobItemMutation,
+  useRemoveJobItemMutation,
 } = jobsApi;

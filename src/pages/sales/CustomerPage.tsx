@@ -265,7 +265,7 @@ const emptyForm: FormData = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function CustomerPage() {
+export default function SalesCustomerPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<CustomerType | "">("");
   const [page, setPage] = useState(1);

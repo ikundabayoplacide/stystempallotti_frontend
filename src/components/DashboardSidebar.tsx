@@ -70,19 +70,12 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     },
   ],
   sales: [
-    { label: "Dashboard", path: "/sales", icon: HiOutlineHome },
-    {
-      label: "Quotations",
-      path: "/sales/quotations",
-      icon: HiOutlineDocumentText,
-    },
-    {
-      label: "Invoices",
-      path: "/sales/invoices",
-      icon: HiOutlineCurrencyDollar,
-    },
-    { label: "Dossiers", path: "/sales/dossiers", icon: HiOutlineArchive },
-    { label: "Jobs", path: "/sales/jobs", icon: HiOutlineBriefcase },
+    { label: "Dashboard",  path: "/sales",           icon: HiOutlineHome },
+    { label: "Jobs",       path: "/sales/jobs",       icon: HiOutlineBriefcase },
+    { label: "Stock",      path: "/sales/stocks",     icon: HiOutlineArchive },
+    { label: "Quotations", path: "/sales/quotations", icon: HiOutlineDocumentText },
+    { label: "Invoices",   path: "/sales/invoices",   icon: HiOutlineCurrencyDollar },
+    { label: "Dossiers",   path: "/sales/dossiers",   icon: HiOutlineArchive },
   ],
   daf: [
     { label: "Dashboard", path: "/finance/daf", icon: HiOutlineHome },
