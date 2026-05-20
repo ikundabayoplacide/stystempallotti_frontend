@@ -1,21 +1,21 @@
 import * as HeroIcons from "react-icons/hi";
 import {
-    HiOutlineAdjustments,
-    HiOutlineArchive,
-    HiOutlineBriefcase,
-    HiOutlineChartBar,
-    HiOutlineClipboardList,
-    HiOutlineClock,
-    HiOutlineCog,
-    HiOutlineCube,
-    HiOutlineCurrencyDollar,
-    HiOutlineDocumentText,
-    HiOutlineHome,
-    HiOutlineLogout,
-    HiOutlineMenu,
-    HiOutlineUsers,
-    HiOutlineViewGrid,
-    HiOutlineX
+  HiOutlineAdjustments,
+  HiOutlineArchive,
+  HiOutlineBriefcase,
+  HiOutlineChartBar,
+  HiOutlineClipboardList,
+  HiOutlineClock,
+  HiOutlineCog,
+  HiOutlineCube,
+  HiOutlineCurrencyDollar,
+  HiOutlineDocumentText,
+  HiOutlineHome,
+  HiOutlineLogout,
+  HiOutlineMenu,
+  HiOutlineUsers,
+  HiOutlineViewGrid,
+  HiOutlineX
 } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
@@ -62,6 +62,11 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       label: "Deliveries",
       path: "/reception/deliveries",
       icon: HiOutlineArchive,
+    },
+    {
+      label: "Boutique",
+      path: "/reception/boutique",
+      icon: HiOutlineViewGrid,
     },
   ],
   sales: [

@@ -54,12 +54,14 @@ function NoteCell({ text }: { text: string }) {
 
 const typeColor: Record<CustomerType, string> = {
   BUSINESS: "bg-blue-100 text-blue-700",
-  VISITOR: "bg-purple-100 text-purple-700",
+  VISITOR:  "bg-purple-100 text-purple-700",
+  BOUTIQUE: "bg-pink-100 text-pink-700",
 };
 
 const typeLabel: Record<CustomerType, string> = {
   BUSINESS: "Business",
-  VISITOR: "Visitor",
+  VISITOR:  "Visit",
+  BOUTIQUE: "Boutique",
 };
 
 const PAGE_SIZE = 10;
@@ -83,7 +85,7 @@ const emptyForm: FormData = {
   company: "",
   address: "",
   notes: "",
-  type: "VISITOR",
+  type: "BUSINESS",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -218,7 +220,7 @@ export default function CustomerPage() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
-    <DashboardLayout userRole="sales" userName="Sales Officer" notificationCount={0}>
+    <DashboardLayout notificationCount={0}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}
@@ -271,7 +273,7 @@ export default function CustomerPage() {
             <p className="text-2xl font-bold text-secondary-100">
               {customers.filter((c) => c.type === "VISITOR").length}
             </p>
-            <p className="text-xs text-custom-700">Visitors</p>
+            <p className="text-xs text-custom-700">Visits</p>
           </Card>
         </div>
 
@@ -293,9 +295,10 @@ export default function CustomerPage() {
               onChange={handleTypeFilter}
               className="px-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
             >
-              <option value="">All Types</option>
+              <option value="">All Categories</option>
               <option value="BUSINESS">Business</option>
-              <option value="VISITOR">Visitor</option>
+              <option value="VISITOR">Visit</option>
+              <option value="BOUTIQUE">Boutique</option>
             </select>
           </div>
         </Card>
@@ -310,7 +313,7 @@ export default function CustomerPage() {
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Company</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Contact</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Location</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-bold text-secondary-100 uppercase">Actions</th>
                 </tr>
@@ -513,10 +516,10 @@ export default function CustomerPage() {
                     />
                   </div>
 
-                  {/* Type */}
+                  {/* Category */}
                   <div>
                     <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Type <span className="text-red-500">*</span>
+                      Category <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.type}
@@ -527,8 +530,8 @@ export default function CustomerPage() {
                       className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
                     >
                       <option value="BUSINESS">Business</option>
-                      <option value="VISITOR">Visitor</option>
-
+                      <option value="VISITOR">Visit</option>
+                      <option value="BOUTIQUE">Boutique</option>
                     </select>
                   </div>
 

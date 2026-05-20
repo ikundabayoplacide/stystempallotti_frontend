@@ -218,12 +218,14 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
         { id: "payments", label: "Payments", path: "/reception/payments", icon: "HiOutlineCurrencyDollar", enabled: true, order: 3 },
         { id: "tasks", label: "Task Assignment", path: "/reception/tasks", icon: "HiOutlineClipboardCheck", enabled: false, order: 4 },
         { id: "deliveries", label: "Deliveries", path: "/reception/deliveries", icon: "HiOutlineTruck", enabled: true, order: 5 },
+        { id: "boutique", label: "Boutique", path: "/reception/boutique", icon: "HiOutlineShoppingBag", enabled: true, order: 6 },
       ],
       pagePermissions: [
         { pageId: "visitor", pageName: "Visitor", enabled: true, allowedActions: ["view", "create"] },
         { pageId: "payments", pageName: "Payments", enabled: true, allowedActions: ["view", "create"] },
         { pageId: "tasks", pageName: "Tasks", enabled: true, allowedActions: ["view", "assign"] },
         { pageId: "deliveries", pageName: "Deliveries", enabled: true, allowedActions: ["view", "edit"] },
+        { pageId: "boutique", pageName: "Boutique", enabled: true, allowedActions: ["view"] },
       ],
       uiSettings: {
         showNotifications: true,

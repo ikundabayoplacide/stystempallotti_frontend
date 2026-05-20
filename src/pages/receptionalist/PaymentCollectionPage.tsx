@@ -17,12 +17,13 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
+import { useGetJobsQuery, type Job, type PaymentMethod } from "../../store/services/jobsService";
 import {
-  useGetJobsQuery,
-  useRecordJobPaymentMutation,
-  type Job,
-  type PaymentMethod,
-} from "../../store/services/jobsService";
+  useRecordPaymentMutation,
+  type PaymentState,
+} from "../../store/services/paymentsService";
+import { useAuth } from "../../context/AuthContext";
+import { useAppSelector } from "../../store/hooks";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -195,57 +196,125 @@ function Pagination({
 
 interface PaymentModalProps {
   job: Job;
+  receivedById: string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function PaymentModal({ job, onClose, onSuccess }: PaymentModalProps) {
-  const [method, setMethod] = useState<PaymentMethod | null>(null);
-  const [paymentNote, setPaymentNote] = useState("");
+function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalProps) {
+  const [method, setMethod]               = useState<PaymentMethod | null>(null);
+  const [paymentState, setPaymentState]   = useState<PaymentState>("FULL");
+  const [partialAmount, setPartialAmount] = useState("");
+  const [paymentNote, setPaymentNote]     = useState("");
+  const [receipt, setReceipt]             = useState<{ receiptNo: string; amountPaid: number; balance: number } | null>(null);
 
-  const [recordPayment, { isLoading }] = useRecordJobPaymentMutation();
+  const [recordPayment, { isLoading }] = useRecordPaymentMutation();
+
+  const totalAmount  = job.amount ?? 0;
+  const amountPaid   = paymentState === "FULL" ? totalAmount : Number(partialAmount) || 0;
+  const balance      = totalAmount - amountPaid;
+  const partialValid = paymentState === "PARTIAL" && amountPaid > 0 && amountPaid < totalAmount;
+  const canSubmit    = !!method && (paymentState === "FULL" || partialValid);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!method) {
-      toast.error("Please select a payment method");
-      return;
-    }
+    if (!method) { toast.error("Please select a payment method"); return; }
+    if (paymentState === "PARTIAL" && amountPaid <= 0) { toast.error("Enter a valid partial amount"); return; }
+    if (paymentState === "PARTIAL" && amountPaid >= totalAmount) { toast.error("Partial amount must be less than the total"); return; }
 
     try {
-      await recordPayment({
-        id: job.id,
+      const result = await recordPayment({
+        jobId:         job.id,
+        receivedById,
+        amountPaid,
         paymentMethod: method,
-        paymentNote: paymentNote.trim() || undefined,
+        paymentState,
+        paymentNote:   paymentNote.trim() || undefined,
       }).unwrap();
+
+      setReceipt({
+        receiptNo:  result.receiptNo,
+        amountPaid: result.payment.amountPaid,
+        balance:    result.payment.balance,
+      });
       toast.success(`Payment recorded for job #${job.jobNumber}`);
-      onSuccess();
     } catch (err: any) {
-      const msg = err?.data?.message ?? "Failed to record payment. Please try again.";
-      toast.error(msg);
+      toast.error(err?.data?.message ?? "Failed to record payment. Please try again.");
     }
   };
 
-  const customerName = job.customer?.name ?? "Unknown";
-  const customerPhone = job.customer?.phone ?? "";
+  // ── Receipt confirmation screen ──────────────────────────────────────────
+  if (receipt) {
+    return (
+      <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+        <Card className="!p-8 max-w-md w-full my-8 text-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center">
+              <HiOutlineBadgeCheck className="w-9 h-9 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-secondary-100">Payment Recorded</h3>
+              <p className="text-sm text-custom-700 mt-1">Job #{job.jobNumber}</p>
+            </div>
 
+            <div className="w-full rounded-xl bg-custom-100 border border-custom-300 p-4 space-y-2.5 text-left">
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Customer</span>
+                <span className="font-semibold text-secondary-100">{job.customer?.name ?? "—"}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Total Amount</span>
+                <span className="font-semibold text-secondary-100">{totalAmount.toLocaleString()} RWF</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Amount Paid</span>
+                <span className="font-bold text-emerald-600">{receipt.amountPaid.toLocaleString()} RWF</span>
+              </div>
+              {receipt.balance > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-custom-700">Remaining Balance</span>
+                  <span className="font-bold text-orange-600">{receipt.balance.toLocaleString()} RWF</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Method</span>
+                <span className="font-semibold text-secondary-100">
+                  {PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Type</span>
+                <span className={`font-bold ${paymentState === "FULL" ? "text-emerald-600" : "text-orange-600"}`}>
+                  {paymentState === "FULL" ? "Full Payment" : "Partial Payment"}
+                </span>
+              </div>
+              <div className="pt-2 mt-1 border-t border-custom-300 flex justify-between items-center">
+                <span className="text-sm text-custom-700">Receipt No.</span>
+                <span className="font-mono font-bold text-primary-600 text-base tracking-wide">{receipt.receiptNo}</span>
+              </div>
+            </div>
+
+            <Button onClick={() => { onSuccess(); onClose(); }} fullWidth>
+              Done
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // ── Payment form ─────────────────────────────────────────────────────────
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
       <Card className="!p-6 max-w-lg w-full my-8">
+
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-xl font-bold text-secondary-100">
-              Record Payment
-            </h3>
-            <p className="text-sm text-custom-700 mt-0.5">
-              Job #{job.jobNumber}
-            </p>
+            <h3 className="text-xl font-bold text-secondary-100">Record Payment</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Job #{job.jobNumber}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-custom-700 hover:text-secondary-100 transition-colors"
-          >
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100 transition-colors">
             <HiOutlineX className="w-6 h-6" />
           </button>
         </div>
@@ -254,50 +323,76 @@ function PaymentModal({ job, onClose, onSuccess }: PaymentModalProps) {
         <div className="rounded-xl bg-custom-100 border border-custom-300 p-4 mb-5 space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <HiOutlineUser className="w-4 h-4 text-custom-700 flex-shrink-0" />
-            <span className="font-semibold text-secondary-100">
-              {customerName}
-            </span>
-            {customerPhone && (
-              <span className="text-custom-700">· {customerPhone}</span>
-            )}
+            <span className="font-semibold text-secondary-100">{job.customer?.name ?? "Unknown"}</span>
+            {job.customer?.phone && <span className="text-custom-700">· {job.customer.phone}</span>}
           </div>
           <div className="flex items-center gap-2 text-sm">
             <HiOutlineBriefcase className="w-4 h-4 text-custom-700 flex-shrink-0" />
             <span className="text-secondary-100">{job.title}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                statusColors[job.status] ?? "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {job.status.replace(/-/g, " ")}
-            </span>
-            {job.jobType && (
-              <span className="text-xs text-custom-700 bg-custom-200 px-2.5 py-1 rounded-full">
-                {job.jobType}
-              </span>
-            )}
-          </div>
           {job.amount != null && (
-            <div className="pt-1 border-t border-custom-200">
-              <span className="text-sm font-bold text-secondary-100">
-                {job.amount.toLocaleString()}{" "}
-                <span className="text-xs font-normal text-custom-700">RWF</span>
+            <div className="pt-2 border-t border-custom-200 flex items-center justify-between">
+              <span className="text-xs text-custom-700">Total Amount</span>
+              <span className="text-base font-bold text-secondary-100">
+                {job.amount.toLocaleString()} <span className="text-xs font-normal text-custom-700">RWF</span>
               </span>
             </div>
           )}
         </div>
 
-        {/* Already paid notice */}
-        {job.paidAt && (
-          <div className="mb-5 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold flex items-center gap-2">
-            <HiOutlineBadgeCheck className="w-5 h-5 flex-shrink-0" />
-            This job is already marked as paid.
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Payment type — Full / Partial */}
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-3">
+              Payment Type <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {(["FULL", "PARTIAL"] as PaymentState[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => { setPaymentState(type); setPartialAmount(""); }}
+                  className={`py-3 px-4 rounded-xl border-2 font-semibold text-sm transition-all ${
+                    paymentState === type
+                      ? type === "FULL"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm scale-[1.02]"
+                        : "border-orange-400 bg-orange-50 text-orange-700 shadow-sm scale-[1.02]"
+                      : "border-custom-300 text-custom-700 hover:border-primary-300 hover:bg-custom-100"
+                  }`}
+                >
+                  {type === "FULL" ? "Full Payment" : "Partial Payment"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Partial amount input */}
+          {paymentState === "PARTIAL" && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-secondary-100 mb-2">
+                  Amount to Pay (RWF) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={totalAmount - 1}
+                  placeholder={`Max ${(totalAmount - 1).toLocaleString()} RWF`}
+                  value={partialAmount}
+                  onChange={(e) => setPartialAmount(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-white text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
+                />
+              </div>
+              {amountPaid > 0 && amountPaid < totalAmount && (
+                <div className="flex items-center justify-between text-sm pt-1 border-t border-orange-200">
+                  <span className="text-orange-700 font-semibold">Remaining balance</span>
+                  <span className="font-bold text-orange-700">{balance.toLocaleString()} RWF</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Payment method */}
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-3">
@@ -325,26 +420,21 @@ function PaymentModal({ job, onClose, onSuccess }: PaymentModalProps) {
           {/* Payment note */}
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-2">
-              Payment Note
+              Payment Note <span className="text-xs font-normal text-custom-700">(optional)</span>
             </label>
             <textarea
-              placeholder="e.g. Client paid in full, partial deposit, MoMo ref 12345..."
+              placeholder="e.g. MoMo ref 12345, client paid deposit..."
               value={paymentNote}
               onChange={(e) => setPaymentNote(e.target.value)}
-              rows={3}
+              rows={2}
               className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors resize-none"
             />
           </div>
 
           <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !method || !!job.paidAt}
-            >
-              {isLoading ? "Saving..." : "Mark as Paid"}
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isLoading || !canSubmit}>
+              {isLoading ? "Saving..." : "Confirm Payment"}
             </Button>
           </div>
         </form>
@@ -356,6 +446,8 @@ function PaymentModal({ job, onClose, onSuccess }: PaymentModalProps) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PaymentCollectionPage() {
+  const { userRole, userName } = useAuth();
+  const userId = useAppSelector((state) => state.auth.user?.id ?? "");
   const [jobSearch, setJobSearch] = useState("");
   const [jobPage, setJobPage] = useState(1);
   const [jobPageSize, setJobPageSize] = useState(10);
@@ -383,8 +475,8 @@ export default function PaymentCollectionPage() {
 
   return (
     <DashboardLayout
-      userRole="receptionist"
-      userName="Reception Desk"
+      userRole={userRole ?? "receptionist"}
+      userName={userName ?? "Reception Desk"}
       notificationCount={0}
     >
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
@@ -535,11 +627,18 @@ export default function PaymentCollectionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {job.paidAt ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                            <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
-                            Paid
-                          </span>
+                        {job.paymentStatus === "paid" ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                              <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
+                              Paid
+                            </span>
+                            {job.payments?.map((p) => (
+                              <span key={p.id} className="text-xs text-custom-700">
+                                {p.paymentMethod.replace(/_/g, " ")} ({p.paymentState === "PARTIAL" ? "Partial" : "Full"})
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">
                             Unpaid
@@ -549,11 +648,11 @@ export default function PaymentCollectionPage() {
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => setSelectedJob(job)}
-                          disabled={!!job.paidAt}
+                          disabled={job.paymentStatus === "paid"}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <HiOutlineBadgeCheck className="w-4 h-4" />
-                          {job.paidAt ? "Paid" : "Collect Payment"}
+                          {job.paymentStatus === "paid" ? "Paid" : "Collect Payment"}
                         </button>
                       </td>
                     </tr>
@@ -581,6 +680,7 @@ export default function PaymentCollectionPage() {
       {selectedJob && (
         <PaymentModal
           job={selectedJob}
+          receivedById={userId}
           onClose={() => setSelectedJob(null)}
           onSuccess={handlePaymentSuccess}
         />

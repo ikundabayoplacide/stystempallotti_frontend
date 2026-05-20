@@ -159,13 +159,6 @@ export default function ReceptionDashboardV2() {
             Here's what's happening at the front desk today
           </p>
         </div>
-        <button
-          onClick={() => navigate("/reception")}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors self-start sm:self-auto"
-        >
-          <HiOutlineClipboardList className="w-4 h-4" />
-          New Job
-        </button>
       </div>
 
       {/* ── Pipeline strip ────────────────────────────────────────────────── */}

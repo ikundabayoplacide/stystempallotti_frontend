@@ -62,6 +62,7 @@ import WorkerReportsPage from "../pages/worker/WorkerReportsPage";
 import NotificationsPage from "../pages/NotificationsPage";
 import {
     DeliveriesPage,
+    BoutiquePage,
     PaymentCollectionPage,
     ReceptionPage,
     // TaskAssignmentPage,
@@ -97,9 +98,9 @@ export default function AppRoutes() {
       {/* Reception Routes */}
       <Route path="/reception" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionPage /></ProtectedRoute>} />
       <Route path="/reception/visitor" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="visitor"><VisitorPage /></ProtectedRoute>} />
-      {/* <Route path="/reception/tasks" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="tasks"><TaskAssignmentPage /></ProtectedRoute>} /> */}
       <Route path="/reception/deliveries" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="deliveries"><DeliveriesPage /></ProtectedRoute>} />
       <Route path="/reception/payments" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="payments"><PaymentCollectionPage /></ProtectedRoute>} />
+      <Route path="/reception/boutique" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="boutique"><BoutiquePage /></ProtectedRoute>} />
       <Route path="/reception/notifications" element={<ProtectedRoute allowedRoles={["receptionist"]}><NotificationsPage userRole="receptionist" userName="Receptionist" /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}

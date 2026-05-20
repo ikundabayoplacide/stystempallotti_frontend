@@ -1,12 +1,12 @@
 import { type ReactNode, useState } from "react";
 import { HiOutlineBell, HiOutlineMenu } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
-import type { UserRole } from "../context/AuthContext";
+import { useAuth, type UserRole } from "../context/AuthContext";
 import DashboardSidebar from "./DashboardSidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  userRole: UserRole;
+  userRole?: UserRole;
   userName?: string;
   showNotifications?: boolean;
   notificationCount?: number;
@@ -14,13 +14,18 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({
   children,
-  userRole,
-  userName = "User",
+  userRole: userRoleProp,
+  userName: userNameProp,
   showNotifications = true,
   notificationCount = 0,
 }: DashboardLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
+  const { userRole: authRole, userName: authName } = useAuth();
+
+  // Always use the authenticated user's role and name — never trust hardcoded props
+  const userRole = (authRole ?? userRoleProp ?? "receptionist") as UserRole;
+  const userName = authName ?? userNameProp ?? "User";
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);

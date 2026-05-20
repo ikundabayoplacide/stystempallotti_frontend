@@ -22,6 +22,16 @@ export type PaymentMethod = "CASH" | "MOBILE_MONEY" | "BANK_TRANSFER" | "CARD";
 
 export type PaymentStatus = "unpaid" | "paid";
 
+export interface JobPayment {
+  id: string;
+  paymentMethod: PaymentMethod;
+  paymentState: "FULL" | "PARTIAL";
+  amountPaid: string;
+  balance: string;
+  receiptNo: string;
+  paidAt: string;
+}
+
 export interface Job {
   department: any;
   customer: any;
@@ -41,11 +51,13 @@ export interface Job {
   paymentMethod?: PaymentMethod;
   paymentReference?: string;
   paidAt?: string;
+  receiptNo?: string;
   dueDate?: string;
   notes?: string;
   customerId: string;
   createdById: string;
   departmentAssignedToId?: string;
+  payments?: JobPayment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -88,6 +100,12 @@ export interface RecordJobPaymentPayload {
   id: string;
   paymentMethod: PaymentMethod;
   paymentNote?: string;
+}
+
+// PATCH /api/jobs/:id/payment — response includes receiptNo
+export interface RecordJobPaymentResponse {
+  job: Job;
+  receiptNo: string;
 }
 
 // PATCH /api/jobs/:id/status
@@ -177,7 +195,7 @@ export const jobsApi = createApi({
 
     // GET /jobs
     getJobs: builder.query<PaginatedJobs, GetJobsParams | void>({
-      query: (params) => ({ url: "/jobs", params: params ?? {} }),
+      query: (params) => ({ url: "/jobs", params: (params ?? {}) as Record<string, any> }),
       transformResponse: (res: ApiResponse<unknown>) => normalizePaginatedJobs(res.data),
       providesTags: (result) =>
         result?.jobs?.length
@@ -241,13 +259,21 @@ export const jobsApi = createApi({
     }),
 
     // PATCH /jobs/:id/payment — record payment method at reception
-    recordJobPayment: builder.mutation<Job, RecordJobPaymentPayload>({
+    recordJobPayment: builder.mutation<RecordJobPaymentResponse, RecordJobPaymentPayload>({
       query: ({ id, ...body }) => ({
         url: `/jobs/${id}/payment`,
         method: "PATCH",
         body,
       }),
-      transformResponse: (res: ApiResponse<Job>) => res.data,
+      transformResponse: (res: ApiResponse<any>) => {
+        // Backend may return { job, receiptNo } or just the job directly
+        const data = res.data;
+        if (data && typeof data === "object" && "receiptNo" in data) {
+          return { job: data.job ?? data, receiptNo: data.receiptNo };
+        }
+        // Fallback: no receiptNo in response
+        return { job: data, receiptNo: data?.receiptNo ?? "" };
+      },
       invalidatesTags: (_r, _e, { id }) => [
         { type: "Job", id },
         { type: "Job", id: "LIST" },
@@ -281,7 +307,7 @@ export const jobsApi = createApi({
 
     // GET /jobs/completed-and-paid — any authenticated user
     getCompletedAndPaidJobs: builder.query<PaginatedJobs, GetCompletedPaidJobsParams | void>({
-      query: (params) => ({ url: "/jobs/completed-and-paid", params: params ?? {} }),
+      query: (params) => ({ url: "/jobs/completed-and-paid", params: (params ?? {}) as Record<string, any> }),
       transformResponse: (res: ApiResponse<unknown>) => normalizePaginatedJobs(res.data),
       providesTags: (result) =>
         result?.jobs?.length

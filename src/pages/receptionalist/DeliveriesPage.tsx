@@ -2,17 +2,10 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import {
   HiOutlineBadgeCheck,
-  HiOutlineBriefcase,
-  HiOutlineCalendar,
-  HiOutlineChevronDoubleLeft,
-  HiOutlineChevronDoubleRight,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
   HiOutlineClock,
   HiOutlineCurrencyDollar,
   HiOutlineRefresh,
   HiOutlineSearch,
-  HiOutlineTag,
   HiOutlineTruck,
   HiOutlineUser,
   HiOutlineX,
@@ -21,15 +14,11 @@ import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
 import {
   useGetJobsQuery,
-  useGetCompletedAndPaidJobsQuery,
   useDeliverJobMutation,
-  useCompleteJobMutation,
   type Job,
 } from "../../store/services/jobsService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const PAGE_SIZE_OPTIONS = [5, 10, 20];
 
 const priorityColors: Record<string, string> = {
   low: "bg-gray-100 text-gray-600",
@@ -37,64 +26,6 @@ const priorityColors: Record<string, string> = {
   high: "bg-orange-100 text-orange-600",
   urgent: "bg-red-100 text-red-600",
 };
-
-// ─── Pagination ───────────────────────────────────────────────────────────────
-
-interface PaginationProps {
-  page: number;
-  totalPages: number;
-  total: number;
-  pageSize: number;
-  onPageChange: (p: number) => void;
-  onPageSizeChange: (s: number) => void;
-}
-
-function Pagination({ page, totalPages, total, pageSize, onPageChange, onPageSizeChange }: PaginationProps) {
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-  const pages: (number | "...")[] = [];
-  const addPage = (n: number) => { if (!pages.includes(n)) pages.push(n); };
-  addPage(1);
-  if (page - 2 > 2) pages.push("...");
-  for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) addPage(i);
-  if (page + 2 < totalPages - 1) pages.push("...");
-  if (totalPages > 1) addPage(totalPages);
-
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-custom-200">
-      <div className="flex items-center gap-3 text-xs text-custom-700">
-        <span>{total === 0 ? "No records" : `${from}–${to} of ${total}`}</span>
-        <span className="hidden sm:inline">|</span>
-        <label className="hidden sm:flex items-center gap-1.5">
-          Rows:
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-2 py-1 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400 transition-colors"
-          >
-            {PAGE_SIZE_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </label>
-      </div>
-      <div className="flex items-center gap-1">
-        <button onClick={() => onPageChange(1)} disabled={page <= 1} className="p-1.5 rounded-lg border border-custom-300 text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors" title="First"><HiOutlineChevronDoubleLeft className="w-4 h-4" /></button>
-        <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} className="p-1.5 rounded-lg border border-custom-300 text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors" title="Previous"><HiOutlineChevronLeft className="w-4 h-4" /></button>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`e-${i}`} className="px-2 text-custom-700 text-sm select-none">...</span>
-          ) : (
-            <button key={p} onClick={() => onPageChange(p as number)}
-              className={`min-w-[32px] h-8 px-2 rounded-lg border text-sm font-semibold transition-colors ${p === page ? "bg-primary-500 border-primary-500 text-white" : "border-custom-300 text-secondary-100 hover:bg-custom-100"}`}>
-              {p}
-            </button>
-          )
-        )}
-        <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} className="p-1.5 rounded-lg border border-custom-300 text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors" title="Next"><HiOutlineChevronRight className="w-4 h-4" /></button>
-        <button onClick={() => onPageChange(totalPages)} disabled={page >= totalPages} className="p-1.5 rounded-lg border border-custom-300 text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors" title="Last"><HiOutlineChevronDoubleRight className="w-4 h-4" /></button>
-      </div>
-    </div>
-  );
-}
 
 // ─── Mark Delivered Confirm Modal ─────────────────────────────────────────────
 
@@ -160,205 +91,25 @@ function MarkDeliveredModal({ job, onClose, onSuccess }: MarkDeliveredModalProps
   );
 }
 
-// ─── Job Detail Modal ─────────────────────────────────────────────────────────
-
-interface JobDetailModalProps {
-  job: Job;
-  onClose: () => void;
-  onComplete: () => void;
-}
-
-function JobDetailModal({ job, onClose, onComplete }: JobDetailModalProps) {
-  const [completeJob, { isLoading }] = useCompleteJobMutation();
-
-  const handleComplete = async () => {
-    try {
-      await completeJob(job.id).unwrap();
-      toast.success(`Job #${job.jobNumber} marked as completed`);
-      onComplete();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to complete job. Please try again.");
-    }
-  };
-
-  const fmt = (d?: string) =>
-    d ? new Date(d).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }) : "—";
-
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-lg w-full my-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-xl font-bold text-secondary-100">Job Details</h3>
-            <p className="text-sm text-custom-700 mt-0.5 font-mono">#{job.jobNumber}</p>
-          </div>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100 transition-colors">
-            <HiOutlineX className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Details grid */}
-        <div className="space-y-3 mb-6">
-          {/* Title & type */}
-          <div className="flex items-start gap-3 p-3 rounded-xl bg-custom-100 border border-custom-200">
-            <HiOutlineBriefcase className="w-4 h-4 text-custom-700 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-secondary-100">{job.title}</p>
-              {job.jobType && <p className="text-xs text-custom-700 mt-0.5">{job.jobType}</p>}
-              {job.description && <p className="text-xs text-custom-700 mt-1">{job.description}</p>}
-            </div>
-          </div>
-
-          {/* Customer */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-100 border border-custom-200">
-            <HiOutlineUser className="w-4 h-4 text-custom-700 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-secondary-100">{job.customer?.name ?? "—"}</p>
-              {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
-              {job.customer?.email && <p className="text-xs text-custom-700">{job.customer.email}</p>}
-            </div>
-          </div>
-
-          {/* Amount & payment */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-100 border border-custom-200">
-            <HiOutlineCurrencyDollar className="w-4 h-4 text-custom-700 flex-shrink-0" />
-            <div className="flex flex-wrap gap-3">
-              <div>
-                <p className="text-xs text-custom-700">Amount</p>
-                <p className="text-sm font-bold text-secondary-100">
-                  {job.amount != null ? `${job.amount.toLocaleString()} RWF` : "Not set"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-custom-700">Payment</p>
-                {job.paidAt ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                    <HiOutlineBadgeCheck className="w-3 h-3" /> Paid
-                  </span>
-                ) : (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Unpaid</span>
-                )}
-              </div>
-              {job.paymentMethod && (
-                <div>
-                  <p className="text-xs text-custom-700">Method</p>
-                  <p className="text-xs font-semibold text-secondary-100">{job.paymentMethod.replace(/_/g, " ")}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Priority & dates */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-100 border border-custom-200">
-            <HiOutlineCalendar className="w-4 h-4 text-custom-700 flex-shrink-0" />
-            <div className="flex flex-wrap gap-4">
-              <div>
-                <p className="text-xs text-custom-700">Priority</p>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${priorityColors[job.priority] ?? "bg-gray-100 text-gray-600"}`}>
-                  {job.priority}
-                </span>
-              </div>
-              <div>
-                <p className="text-xs text-custom-700">Due Date</p>
-                <p className="text-xs font-semibold text-secondary-100">{fmt(job.dueDate)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-custom-700">Created</p>
-                <p className="text-xs font-semibold text-secondary-100">{fmt(job.createdAt)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Specs */}
-          {(job.quantity || job.size || job.colorMode || job.bindingType) && (
-            <div className="flex items-start gap-3 p-3 rounded-xl bg-custom-100 border border-custom-200">
-              <HiOutlineTag className="w-4 h-4 text-custom-700 mt-0.5 flex-shrink-0" />
-              <div className="flex flex-wrap gap-4">
-                {job.quantity && <div><p className="text-xs text-custom-700">Qty</p><p className="text-xs font-semibold text-secondary-100">{job.quantity}</p></div>}
-                {job.size && <div><p className="text-xs text-custom-700">Size</p><p className="text-xs font-semibold text-secondary-100">{job.size}</p></div>}
-                {job.colorMode && <div><p className="text-xs text-custom-700">Color</p><p className="text-xs font-semibold text-secondary-100">{job.colorMode}</p></div>}
-                {job.bindingType && <div><p className="text-xs text-custom-700">Binding</p><p className="text-xs font-semibold text-secondary-100">{job.bindingType}</p></div>}
-              </div>
-            </div>
-          )}
-
-          {/* Notes */}
-          {job.notes && (
-            <div className="p-3 rounded-xl bg-custom-100 border border-custom-200">
-              <p className="text-xs text-custom-700 mb-1">Notes</p>
-              <p className="text-sm text-secondary-100">{job.notes}</p>
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-          <Button type="button" variant="outline" onClick={onClose}>Close</Button>
-          <Button type="button" onClick={handleComplete} disabled={isLoading}>
-            {isLoading ? "Completing..." : "Mark as Completed"}
-          </Button>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DeliveriesPage() {
-  // ── Ready for delivery (completed + paid) ────────────────────────────────
-  const [readyPage, setReadyPage] = useState(1);
-  const [readyPageSize, setReadyPageSize] = useState(10);
-  const [readySearch, setReadySearch] = useState("");
+  const [search, setSearch] = useState("");
+  const [deliverJob, setDeliverJob] = useState<Job | null>(null);
 
-  // ── Already delivered (status = delivered) ────────────────────────────────
-  const [delivPage, setDelivPage] = useState(1);
-  const [delivPageSize, setDelivPageSize] = useState(10);
-  const [delivSearch, setDelivSearch] = useState("");
+  const { data, isLoading, isFetching, refetch } = useGetJobsQuery(
+    search.trim() ? { search: search.trim() } : undefined
+  );
 
-  const [deliverJob, setDeliverJob] = useState<Job | null>(null);   // for mark-delivered modal
-  const [detailJob, setDetailJob] = useState<Job | null>(null);     // for job detail modal
-
-  const {
-    data: readyData,
-    isLoading: readyLoading,
-    isFetching: readyFetching,
-    refetch: refetchReady,
-  } = useGetCompletedAndPaidJobsQuery({
-    page: readyPage,
-    limit: readyPageSize,
-    ...(readySearch.trim() && { search: readySearch.trim() }),
-  });
-
-  const {
-    data: delivData,
-    isLoading: delivLoading,
-    isFetching: delivFetching,
-    refetch: refetchDeliv,
-  } = useGetJobsQuery({
-    page: delivPage,
-    limit: delivPageSize,
-    status: "delivered",
-    ...(delivSearch.trim() && { search: delivSearch.trim() }),
-  });
-
-  const readyJobs = readyData?.jobs ?? [];
-  const readyTotal = readyData?.total ?? 0;
-  const readyTotalPages = readyData?.totalPages ?? 1;
-
-  const delivJobs = delivData?.jobs ?? [];
-  const delivTotal = delivData?.total ?? 0;
-  const delivTotalPages = delivData?.totalPages ?? 1;
+  const allJobs = data?.jobs ?? [];
+  const readyJobs = allJobs.filter(
+    (j) => j.status === "completed" && j.paymentStatus === "paid"
+  );
+  const delivJobs = allJobs.filter((j) => j.status === "delivered");
 
   const handleDeliveredSuccess = () => {
     setDeliverJob(null);
-    refetchReady();
-    refetchDeliv();
-  };
-
-  const handleCompleteSuccess = () => {
-    setDetailJob(null);
-    refetchDeliv();
+    refetch();
   };
 
   return (
@@ -382,7 +133,7 @@ export default function DeliveriesPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Ready for Delivery</p>
-                <p className="text-2xl font-bold text-secondary-100">{readyTotal}</p>
+                <p className="text-2xl font-bold text-secondary-100">{readyJobs.length}</p>
               </div>
             </div>
           </Card>
@@ -393,7 +144,7 @@ export default function DeliveriesPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Already Delivered</p>
-                <p className="text-2xl font-bold text-secondary-100">{delivTotal}</p>
+                <p className="text-2xl font-bold text-secondary-100">{delivJobs.length}</p>
               </div>
             </div>
           </Card>
@@ -404,7 +155,7 @@ export default function DeliveriesPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Total in Pipeline</p>
-                <p className="text-2xl font-bold text-secondary-100">{readyTotal + delivTotal}</p>
+                <p className="text-2xl font-bold text-secondary-100">{readyJobs.length + delivJobs.length}</p>
               </div>
             </div>
           </Card>
@@ -426,13 +177,13 @@ export default function DeliveriesPage() {
                 <input
                   type="text"
                   placeholder="Search job # or title..."
-                  value={readySearch}
-                  onChange={(e) => { setReadySearch(e.target.value); setReadyPage(1); }}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
-              <button onClick={() => refetchReady()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
-                <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${readyFetching ? "animate-spin" : ""}`} />
+              <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
+                <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isFetching ? "animate-spin" : ""}`} />
               </button>
             </div>
           </div>
@@ -451,7 +202,7 @@ export default function DeliveriesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-custom-200">
-                {readyLoading ? (
+                {isLoading ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700">Loading...</td></tr>
                 ) : readyJobs.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700">No jobs ready for delivery</td></tr>
@@ -484,10 +235,17 @@ export default function DeliveriesPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {job.paidAt ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                            <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
-                          </span>
+                        {job.paymentStatus === "paid" ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                              <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
+                            </span>
+                            {job.payments?.map((p) => (
+                              <span key={p.id} className="text-xs text-custom-700">
+                                {p.paymentMethod.replace(/_/g, " ")} ( {p.paymentState === "PARTIAL" ? "Partial" : "Full"})
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">Unpaid</span>
                         )}
@@ -515,14 +273,10 @@ export default function DeliveriesPage() {
             </table>
           </div>
 
-          <Pagination
-            page={readyPage} totalPages={readyTotalPages} total={readyTotal} pageSize={readyPageSize}
-            onPageChange={setReadyPage}
-            onPageSizeChange={(s) => { setReadyPageSize(s); setReadyPage(1); }}
-          />
+
         </Card>
 
-        {/* ── Awaiting Completion (delivered) ─────────────────────────────── */}
+        {/* ── Already Delivered ────────────────────────────────────────────── */}
         <Card className="!p-0 overflow-hidden">
           <div className="px-4 py-3 border-b border-custom-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -531,21 +285,6 @@ export default function DeliveriesPage() {
               <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">
                 delivered
               </span>
-            </div>
-            <div className="flex gap-2">
-              <div className="relative flex-1 sm:w-64">
-                <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
-                <input
-                  type="text"
-                  placeholder="Search job # or title..."
-                  value={delivSearch}
-                  onChange={(e) => { setDelivSearch(e.target.value); setDelivPage(1); }}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
-                />
-              </div>
-              <button onClick={() => refetchDeliv()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
-                <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${delivFetching ? "animate-spin" : ""}`} />
-              </button>
             </div>
           </div>
 
@@ -562,18 +301,13 @@ export default function DeliveriesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-custom-200">
-                {delivLoading ? (
+                {isLoading ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading...</td></tr>
                 ) : delivJobs.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No delivered jobs awaiting completion</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No delivered jobs yet</td></tr>
                 ) : (
                   delivJobs.map((job) => (
-                    <tr
-                      key={job.id}
-                      onClick={() => setDetailJob(job)}
-                      className="hover:bg-custom-50 transition-colors cursor-pointer"
-                      title="Click to view details"
-                    >
+                    <tr key={job.id} className="hover:bg-custom-50 transition-colors">
                       <td className="px-4 py-3">
                         <span className="text-sm font-mono font-semibold text-primary-500">#{job.jobNumber}</span>
                       </td>
@@ -585,25 +319,32 @@ export default function DeliveriesPage() {
                         <p className="text-sm text-secondary-100">{job.customer?.name ?? "—"}</p>
                         {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
                       </td>
-                      <td className="px-4 py-3">
-                        {job.amount != null ? (
+                     <td className="px-4 py-3">
+                        {job.paymentStatus === "paid" ? (
                           <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-bold text-secondary-100">
-                              {job.amount.toLocaleString()} <span className="text-xs font-normal text-custom-700">RWF</span>
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                              <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
                             </span>
-                            {job.paymentMethod && (
-                              <span className="text-xs text-custom-700">({job.paymentMethod.replace(/_/g, " ")})</span>
-                            )}
+                            {job.payments?.map((p) => (
+                              <span key={p.id} className="text-xs text-custom-700">
+                                {p.paymentMethod.replace(/_/g, " ")} ( {p.paymentState === "PARTIAL" ? "Partial" : "Full"})
+                              </span>
+                            ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-custom-400">Not set</span>
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">Unpaid</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {job.paidAt ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                            <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
-                          </span>
+                        {job.paymentStatus === "paid" ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                              <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
+                            </span>
+                            {job.paymentMethod && (
+                              <span className="text-xs text-custom-700">{job.paymentMethod.replace(/_/g, " ")}</span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">Unpaid</span>
                         )}
@@ -620,11 +361,7 @@ export default function DeliveriesPage() {
             </table>
           </div>
 
-          <Pagination
-            page={delivPage} totalPages={delivTotalPages} total={delivTotal} pageSize={delivPageSize}
-            onPageChange={setDelivPage}
-            onPageSizeChange={(s) => { setDelivPageSize(s); setDelivPage(1); }}
-          />
+
         </Card>
       </div>
 
@@ -634,13 +371,6 @@ export default function DeliveriesPage() {
           job={deliverJob}
           onClose={() => setDeliverJob(null)}
           onSuccess={handleDeliveredSuccess}
-        />
-      )}
-      {detailJob && (
-        <JobDetailModal
-          job={detailJob}
-          onClose={() => setDetailJob(null)}
-          onComplete={handleCompleteSuccess}
         />
       )}
     </DashboardLayout>

@@ -3,7 +3,7 @@ import type { RootState } from "../index";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CustomerType = "BUSINESS" | "VISITOR";
+export type CustomerType = "BUSINESS" | "VISITOR" | "BOUTIQUE";
 
 export interface Customer {
   id: string;
