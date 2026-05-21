@@ -7,6 +7,11 @@ export interface Department {
   id: string;
   name: string;
   description?: string;
+  // capacity/worker stats — may be returned by the backend or computed from jobs
+  capacity?: number;
+  activeJobs?: number;
+  workers?: number;
+  avgDuration?: string;
 }
 
 export interface DepartmentJob {

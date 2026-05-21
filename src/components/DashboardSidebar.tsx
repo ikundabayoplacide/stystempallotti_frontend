@@ -17,14 +17,18 @@ import {
   HiOutlineViewGrid,
   HiOutlineX
 } from "react-icons/hi";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
+import { useGetMyPermissionsQuery } from "../store/services/permissionsService";
 import { useUIPermissions } from "../context/UIPermissionsContext";
 
 interface MenuItem {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** permission name required to see this item, e.g. "customers.view". Omit = always visible */
+  permissionKey?: string;
 }
 
 interface DashboardSidebarProps {
@@ -36,158 +40,79 @@ interface DashboardSidebarProps {
 
 const menuItems: Record<UserRole, MenuItem[]> = {
   admin: [
-    { label: "Dashboard", path: "/admin", icon: HiOutlineHome },
-    { label: "Users", path: "/admin/users", icon: HiOutlineUsers },
-    { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers },
-    { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList },
-    { label: "Production", path: "/admin/production", icon: HiOutlineCube },
-    { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase },
-    { label: "Finance", path: "/admin/finance", icon: HiOutlineCurrencyDollar },
-    { label: "Stock", path: "/admin/stock", icon: HiOutlineArchive },
-    { label: "Reports", path: "/admin/reports", icon: HiOutlineChartBar },
-    {
-      label: "View Reports",
-      path: "/admin/reports/view",
-      icon: HiOutlineDocumentText,
-    },
-    { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments },
-    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid },
-    { label: "Settings", path: "/admin/settings", icon: HiOutlineCog },
+    { label: "Dashboard",      path: "/admin",               icon: HiOutlineHome },
+    { label: "Users",          path: "/admin/users",          icon: HiOutlineUsers,          permissionKey: "users.view" },
+    { label: "Customers",      path: "/admin/customers",      icon: HiOutlineUsers,          permissionKey: "customers.view" },
+    { label: "Jobs",           path: "/admin/jobs",           icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },
+    { label: "Departments",    path: "/admin/departments",    icon: HiOutlineUsers,          permissionKey: "departments.view" },
+    { label: "Production",     path: "/admin/production",     icon: HiOutlineCube,           permissionKey: "production.view" },
+    { label: "Sales",          path: "/admin/sales",          icon: HiOutlineBriefcase,      permissionKey: "quotations.view" },
+    { label: "Finance",        path: "/admin/finance",        icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
+    { label: "Stock",          path: "/admin/stock",          icon: HiOutlineArchive,        permissionKey: "stock.view" },
+    { label: "Reports",        path: "/admin/reports",        icon: HiOutlineChartBar,       permissionKey: "reports.view" },
+    { label: "View Reports",   path: "/admin/reports/view",   icon: HiOutlineDocumentText,   permissionKey: "reports.view" },
+    { label: "Workflow Config",path: "/admin/workflow",       icon: HiOutlineAdjustments,    permissionKey: "workflow_config.view" },
+    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid,       permissionKey: "ui_permissions.view" },
+    { label: "Settings",       path: "/admin/settings",       icon: HiOutlineCog,            permissionKey: "settings.view" },
   ],
   receptionist: [
-    { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
-    { label: "Visitor", path: "/reception/visitor", icon: HiOutlineClipboardList },
-    { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar },
-    {
-      label: "Deliveries",
-      path: "/reception/deliveries",
-      icon: HiOutlineArchive,
-    },
-    {
-      label: "Boutique",
-      path: "/reception/boutique",
-      icon: HiOutlineViewGrid,
-    },
+    { label: "Dashboard",  path: "/reception",           icon: HiOutlineHome },
+    { label: "Visitor",    path: "/reception/visitor",   icon: HiOutlineClipboardList,  permissionKey: "visitors.view" },
+    { label: "Payments",   path: "/reception/payments",  icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
+    { label: "Deliveries", path: "/reception/deliveries",icon: HiOutlineArchive,        permissionKey: "deliveries.view" },
+    { label: "Boutique",   path: "/reception/boutique",  icon: HiOutlineViewGrid,       permissionKey: "boutique.view" },
   ],
   sales: [
-    { label: "Dashboard",  path: "/sales",           icon: HiOutlineHome },
-    { label: "Jobs",       path: "/sales/jobs",       icon: HiOutlineBriefcase },
-    { label: "Stock",      path: "/sales/stocks",     icon: HiOutlineArchive },
-    { label: "Quotations", path: "/sales/quotations", icon: HiOutlineDocumentText },
-    { label: "Invoices",   path: "/sales/invoices",   icon: HiOutlineCurrencyDollar },
-    { label: "Dossiers",   path: "/sales/dossiers",   icon: HiOutlineArchive },
+    { label: "Dashboard",  path: "/sales",            icon: HiOutlineHome },
+    { label: "Jobs",       path: "/sales/jobs",        icon: HiOutlineBriefcase,      permissionKey: "jobs.view" },
+    { label: "Stock",      path: "/sales/stocks",      icon: HiOutlineArchive,        permissionKey: "stock.view" },
+    { label: "Quotations", path: "/sales/quotations",  icon: HiOutlineDocumentText,   permissionKey: "quotations.view" },
+    { label: "Invoices",   path: "/sales/invoices",    icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
+    { label: "Dossiers",   path: "/sales/dossiers",    icon: HiOutlineArchive,        permissionKey: "dossiers.view" },
   ],
   daf: [
-    { label: "Dashboard", path: "/finance/daf", icon: HiOutlineHome },
-    {
-      label: "Job Approvals",
-      path: "/finance/daf/approvals",
-      icon: HiOutlineClipboardList,
-    },
-    {
-      label: "Finance Control",
-      path: "/finance/daf/control",
-      icon: HiOutlineCurrencyDollar,
-    },
-    { label: "HR Management", path: "/finance/daf/hr", icon: HiOutlineUsers },
-    { label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
+    { label: "Dashboard",       path: "/finance/daf",          icon: HiOutlineHome },
+    { label: "Job Approvals",   path: "/finance/daf/approvals", icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },
+    { label: "Finance Control", path: "/finance/daf/control",   icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
+    { label: "HR Management",   path: "/finance/daf/hr",        icon: HiOutlineUsers,          permissionKey: "hr.view" },
+    { label: "Reports",         path: "/finance/daf/reports",   icon: HiOutlineChartBar,       permissionKey: "reports.view" },
   ],
   accountant: [
-    { label: "Dashboard", path: "/finance/accountant1", icon: HiOutlineHome },
-    {
-      label: "Invoices",
-      path: "/finance/accountant1/invoices",
-      icon: HiOutlineDocumentText,
-    },
-    {
-      label: "Payments",
-      path: "/finance/accountant1/payments",
-      icon: HiOutlineCurrencyDollar,
-    },
-    {
-      label: "Documents",
-      path: "/finance/accountant1/documents",
-      icon: HiOutlineClipboardList,
-    },
-    {
-      label: "E-Procurement",
-      path: "/finance/accountant2/procurement",
-      icon: HiOutlineCube,
-    },
-    {
-      label: "Taxes",
-      path: "/finance/accountant2/taxes",
-      icon: HiOutlineDocumentText,
-    },
-    {
-      label: "Recovery",
-      path: "/finance/accountant2/recovery",
-      icon: HiOutlineCurrencyDollar,
-    },
+    { label: "Dashboard",    path: "/finance/accountant1",           icon: HiOutlineHome },
+    { label: "Invoices",     path: "/finance/accountant1/invoices",   icon: HiOutlineDocumentText,   permissionKey: "invoices.view" },
+    { label: "Payments",     path: "/finance/accountant1/payments",   icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
+    { label: "Documents",    path: "/finance/accountant1/documents",  icon: HiOutlineClipboardList,  permissionKey: "dossiers.view" },
+    { label: "E-Procurement",path: "/finance/accountant2/procurement",icon: HiOutlineCube,           permissionKey: "procurement.view" },
+    { label: "Taxes",        path: "/finance/accountant2/taxes",      icon: HiOutlineDocumentText,   permissionKey: "taxes.view" },
+    { label: "Recovery",     path: "/finance/accountant2/recovery",   icon: HiOutlineCurrencyDollar, permissionKey: "recovery.view" },
   ],
   "production-manager": [
-    { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
-    {
-      label: "Job Planning",
-      path: "/production-manager/planning",
-      icon: HiOutlineClipboardList,
-    },
-    {
-      label: "Departments",
-      path: "/production-manager/departments",
-      icon: HiOutlineUsers,
-    },
-    {
-      label: "Progress",
-      path: "/production-manager/progress",
-      icon: HiOutlineChartBar,
-    },
+    { label: "Dashboard",   path: "/production-manager",             icon: HiOutlineHome },
+    { label: "Job Planning",path: "/production-manager/planning",    icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers,         permissionKey: "departments.view" },
+    { label: "Progress",    path: "/production-manager/progress",    icon: HiOutlineChartBar,      permissionKey: "production.view" },
   ],
   stock: [
-    { label: "Dashboard", path: "/stock", icon: HiOutlineHome },
-    { label: "Inventory", path: "/stock/inventory", icon: HiOutlineArchive },
-    {
-      label: "Material Requests",
-      path: "/stock/requests",
-      icon: HiOutlineClipboardList,
-    },
-    { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers },
+    { label: "Dashboard",        path: "/stock",           icon: HiOutlineHome },
+    { label: "Inventory",        path: "/stock/inventory", icon: HiOutlineArchive,       permissionKey: "stock.view" },
+    { label: "Material Requests",path: "/stock/requests",  icon: HiOutlineClipboardList, permissionKey: "stock.view" },
+    { label: "Suppliers",        path: "/stock/suppliers", icon: HiOutlineUsers,         permissionKey: "suppliers.view" },
   ],
   supervisor: [
-    { label: "Dashboard", path: "/supervisor", icon: HiOutlineHome },
-    {
-      label: "Production",
-      path: "/supervisor/production",
-      icon: HiOutlineClipboardList,
-    },
-    { label: "Teams", path: "/supervisor/teams", icon: HiOutlineUsers },
-    { label: "Workers", path: "/supervisor/workers", icon: HiOutlineUsers },
-    { label: "Reports", path: "/supervisor/reports", icon: HiOutlineChartBar },
-    {
-      label: "Review Reports",
-      path: "/supervisor/reports/review",
-      icon: HiOutlineDocumentText,
-    },
+    { label: "Dashboard",     path: "/supervisor",               icon: HiOutlineHome },
+    { label: "Production",    path: "/supervisor/production",    icon: HiOutlineClipboardList, permissionKey: "production.view" },
+    { label: "Teams",         path: "/supervisor/teams",         icon: HiOutlineUsers,         permissionKey: "teams.view" },
+    { label: "Workers",       path: "/supervisor/workers",       icon: HiOutlineUsers,         permissionKey: "workers.view" },
+    { label: "Reports",       path: "/supervisor/reports",       icon: HiOutlineChartBar,      permissionKey: "reports.view" },
+    { label: "Review Reports",path: "/supervisor/reports/review",icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
   ],
   worker: [
-    { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
-    {
-      label: "Task Board",
-      path: "/worker/tasks",
-      icon: HiOutlineClipboardList,
-    },
-    { label: "Time Logs", path: "/worker/time-logs", icon: HiOutlineClock },
-    { label: "My Stats", path: "/worker/stats", icon: HiOutlineChartBar },
-    {
-      label: "My Reports",
-      path: "/worker/reports",
-      icon: HiOutlineDocumentText,
-    },
-    {
-      label: "Material Requests",
-      path: "/worker/materials",
-      icon: HiOutlineArchive,
-    },
+    { label: "My Jobs",          path: "/worker",           icon: HiOutlineHome },
+    { label: "Task Board",       path: "/worker/tasks",     icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
+    { label: "Time Logs",        path: "/worker/time-logs", icon: HiOutlineClock,         permissionKey: "timelogs.view" },
+    { label: "My Stats",         path: "/worker/stats",     icon: HiOutlineChartBar,      permissionKey: "reports.view" },
+    { label: "My Reports",       path: "/worker/reports",   icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
+    { label: "Material Requests",path: "/worker/materials", icon: HiOutlineArchive,       permissionKey: "stock.view" },
   ],
 };
 
@@ -200,18 +125,54 @@ export default function DashboardSidebar({
   const { currentRoleConfig } = useUIPermissions();
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { data: myPermissions = [], isSuccess } = useGetMyPermissionsQuery();
 
-  // Use configured menu items if available and non-empty, fallback to hardcoded
-  const configuredItems = currentRoleConfig?.sidebarMenu
-    .filter(item => item.enabled)
-    .sort((a, b) => a.order - b.order)
-    .map(item => ({
-      label: item.label,
-      path: item.path,
-      icon: (HeroIcons as any)[item.icon] || HiOutlineHome,
-    })) ?? [];
+  const grantedSet = useMemo(() => {
+    const s = new Set(myPermissions.map((p) => p.name));
+    if (isSuccess) {
+      console.log(`[sidebar] role=${userRole} | granted permissions (${s.size}):`, [...s].sort());
+    }
+    return s;
+  }, [myPermissions, isSuccess, userRole]);
 
-  const items = configuredItems.length > 0 ? configuredItems : (menuItems[userRole] ?? []);
+  // Build a path → permissionKey lookup from the hardcoded menuItems so configuredItems
+  // (which come from localStorage and have no permissionKey) still get filtered correctly.
+  const pathToPermKey = useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.values(menuItems).flat().forEach((item) => {
+      if (item.permissionKey) map[item.path] = item.permissionKey;
+    });
+    return map;
+  }, []);
+
+  const baseItems = useMemo(() => {
+    const configuredItems = currentRoleConfig?.sidebarMenu
+      .filter(item => item.enabled)
+      .sort((a, b) => a.order - b.order)
+      .map(item => ({
+        label: item.label,
+        path: item.path,
+        icon: (HeroIcons as any)[item.icon] || HiOutlineHome,
+        permissionKey: pathToPermKey[item.path],   // ← inject the key
+      })) ?? [];
+    return configuredItems.length > 0 ? configuredItems : (menuItems[userRole] ?? []);
+  }, [currentRoleConfig, userRole, pathToPermKey]);
+
+  // Filter by backend permissions — items without a permissionKey are always shown
+  const items = useMemo(() => {
+    const filtered = baseItems.filter(
+      (item) => !(item as MenuItem).permissionKey || grantedSet.has((item as MenuItem).permissionKey!)
+    );
+    console.log(
+      `[sidebar] visible items (${filtered.length}/${baseItems.length}):`,
+      filtered.map((i) => i.label),
+      "| blocked:",
+      baseItems
+        .filter((i) => (i as MenuItem).permissionKey && !grantedSet.has((i as MenuItem).permissionKey!))
+        .map((i) => `${i.label}(${(i as MenuItem).permissionKey})`)
+    );
+    return filtered;
+  }, [baseItems, grantedSet]);
 
   const handleLogout = () => {
     logout();

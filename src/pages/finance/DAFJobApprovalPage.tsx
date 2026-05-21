@@ -1,18 +1,22 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     HiOutlineCheckCircle,
     HiOutlineClipboardList,
     HiOutlineCurrencyDollar,
+    HiOutlineDotsVertical,
     HiOutlineExclamationCircle,
+    HiOutlinePencil,
     HiOutlineSearch,
     HiOutlineTable,
     HiOutlineViewBoards,
     HiOutlineX,
     HiOutlineXCircle
 } from "react-icons/hi";
+import { HiOutlineArrowRight } from "react-icons/hi";
 import { DashboardLayout, WorkflowRulesEngine, WorkflowValidator } from "../../components";
 import { Card } from "../../components/ui";
 import { useWorkflowValidation } from "../../hooks/useWorkflowValidation";
+import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import type { JobStatus } from "../../types/JobStatus";
 import { jobStatusConfig } from "../../types/JobStatus";
 
@@ -29,6 +33,7 @@ interface Job {
   paymentReceived: number;
   paymentDate?: string;
   notes?: string;
+  departmentId?: string;
 }
 
 const initialJobs: Job[] = [
@@ -107,14 +112,54 @@ const priorityColor: Record<string, string> = {
   Low: "bg-green-500 text-white",
 };
 
+type ModalMode = "approve" | "reject" | "assign" | "edit";
+
 export default function DAFJobApprovalPage() {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [search, setSearch] = useState("");
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>("approve");
+  const [showModal, setShowModal] = useState(false);
   const [approvalNotes, setApprovalNotes] = useState("");
   const [adjustments, setAdjustments] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [assignDeptId, setAssignDeptId] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"cards" | "table">("table");
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const { data: departments = [] } = useGetDepartmentsQuery();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const openModal = (job: Job, mode: ModalMode) => {
+    setSelectedJob(job);
+    setModalMode(mode);
+    setApprovalNotes("");
+    setAdjustments("");
+    setRejectReason("");
+    setAssignDeptId(job.departmentId ?? "");
+    setEditTitle(job.title);
+    setEditDeadline(job.deadline);
+    setOpenMenuId(null);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedJob(null);
+  };
 
   const { getStepByType } = useWorkflowValidation();
   const dafStep = getStepByType("daf");
@@ -141,65 +186,54 @@ export default function DAFJobApprovalPage() {
 
   const handleApprove = () => {
     if (!selectedJob) return;
-
-    setJobs(
-      jobs.map((job) =>
-        job.id === selectedJob.id
-          ? {
-              ...job,
-              status: "approved" as JobStatus,
-              notes: approvalNotes || `Approved by DAF on ${new Date().toISOString().split("T")[0]}`,
-            }
-          : job
-      )
-    );
-
-    setShowApprovalModal(false);
-    setSelectedJob(null);
-    setApprovalNotes("");
-    setAdjustments("");
+    setJobs(jobs.map((j) =>
+      j.id === selectedJob.id
+        ? { ...j, status: "approved" as JobStatus, notes: approvalNotes || `Approved by DAF on ${new Date().toISOString().split("T")[0]}` }
+        : j
+    ));
+    closeModal();
   };
 
   const handleReject = () => {
     if (!selectedJob) return;
-    if (!approvalNotes) {
-      alert("Please provide a reason for rejection");
-      return;
-    }
-
-    setJobs(
-      jobs.map((job) =>
-        job.id === selectedJob.id
-          ? {
-              ...job,
-              status: "quotation-completed" as JobStatus,
-              notes: `Rejected by DAF: ${approvalNotes}`,
-            }
-          : job
-      )
-    );
-
-    setShowApprovalModal(false);
-    setSelectedJob(null);
-    setApprovalNotes("");
-    setAdjustments("");
+    if (!rejectReason.trim()) { alert("Please provide a reason for rejection"); return; }
+    setJobs(jobs.map((j) =>
+      j.id === selectedJob.id
+        ? { ...j, status: "quotation-completed" as JobStatus, notes: `Rejected by DAF: ${rejectReason}` }
+        : j
+    ));
+    closeModal();
   };
 
-  // Prepare workflow data
+  const handleAssign = () => {
+    if (!selectedJob || !assignDeptId) { alert("Please select a department"); return; }
+    setJobs(jobs.map((j) =>
+      j.id === selectedJob.id ? { ...j, departmentId: assignDeptId } : j
+    ));
+    closeModal();
+  };
+
+  const handleEdit = () => {
+    if (!selectedJob) return;
+    setJobs(jobs.map((j) =>
+      j.id === selectedJob.id ? { ...j, title: editTitle, deadline: editDeadline } : j
+    ));
+    closeModal();
+  };
+
   const workflowData = selectedJob
     ? {
         financialApproval: false,
         jobValue: selectedJob.jobValue,
         quotationAmount: selectedJob.quotationAmount,
         paymentReceived: selectedJob.paymentReceived,
-        adjustments: adjustments,
+        adjustments,
         notes: approvalNotes,
       }
     : {};
 
   return (
     <DashboardLayout userRole="daf" userName="DAF" notificationCount={pendingApproval.length}>
-      {/* Workflow Rules Engine */}
       {dafStep && selectedJob && (
         <WorkflowRulesEngine
           stepId={dafStep.id}
@@ -364,13 +398,16 @@ export default function DAFJobApprovalPage() {
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => {
-                          setSelectedJob(job);
-                          setShowApprovalModal(true);
-                        }}
-                        className="flex-1 px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
+                        onClick={() => openModal(job, "approve")}
+                        className="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold"
                       >
-                        Review & Approve
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => openModal(job, "reject")}
+                        className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-semibold"
+                      >
+                        Reject
                       </button>
                     </div>
                   </Card>
@@ -440,7 +477,7 @@ export default function DAFJobApprovalPage() {
                     return (
                       <tr
                         key={job.id}
-                        className={`hover:bg-custom-50 transition-colors ${
+                        className={`hover:bg-custom-50 transition-colors relative ${
                           requiresApproval ? "bg-yellow-50" : ""
                         }`}
                       >
@@ -483,17 +520,33 @@ export default function DAFJobApprovalPage() {
                           <span className="text-sm text-custom-700">{job.deadline}</span>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {requiresApproval && (
-                              <button
-                                onClick={() => {
-                                  setSelectedJob(job);
-                                  setShowApprovalModal(true);
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-xs font-semibold"
-                              >
-                                Review
-                              </button>
+                          <div className="flex items-center justify-end" ref={openMenuId === job.id ? menuRef : undefined}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === job.id ? null : job.id); }}
+                              className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
+                              title="Actions"
+                            >
+                              <HiOutlineDotsVertical className="w-5 h-5 text-custom-700" />
+                            </button>
+                            {openMenuId === job.id && (
+                              <div className="absolute right-4 mt-1 w-44 bg-white rounded-xl shadow-lg border border-custom-200 z-50 overflow-hidden" style={{ top: "auto" }}>
+                                {requiresApproval && (
+                                  <button onClick={() => openModal(job, "approve")} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors">
+                                    <HiOutlineCheckCircle className="w-4 h-4" /> Approve
+                                  </button>
+                                )}
+                                {job.status === "approved" && (
+                                  <button onClick={() => openModal(job, "assign")} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-blue-700 hover:bg-blue-50 transition-colors">
+                                    <HiOutlineArrowRight className="w-4 h-4" /> Assign
+                                  </button>
+                                )}
+                                <button onClick={() => openModal(job, "edit")} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-secondary-100 hover:bg-custom-50 transition-colors">
+                                  <HiOutlinePencil className="w-4 h-4" /> Edit
+                                </button>
+                                <button onClick={() => openModal(job, "reject")} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                                  <HiOutlineXCircle className="w-4 h-4" /> Reject
+                                </button>
+                              </div>
                             )}
                           </div>
                         </td>
@@ -507,128 +560,96 @@ export default function DAFJobApprovalPage() {
         </Card>
         )}
 
-        {/* Approval Modal */}
-        {showApprovalModal && selectedJob && (
+        {/* Action Modal */}
+        {showModal && selectedJob && (
           <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-            <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <Card className="!p-6 max-w-lg w-full">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-secondary-100">Financial Approval</h3>
-                  <p className="text-sm text-custom-700 mt-1">
-                    {selectedJob.id} - {selectedJob.title}
-                  </p>
+                  <h3 className="text-xl font-bold text-secondary-100 capitalize">
+                    {modalMode === "approve" && "Approve Job"}
+                    {modalMode === "reject" && "Reject Job"}
+                    {modalMode === "assign" && "Assign to Department"}
+                    {modalMode === "edit" && "Edit Job"}
+                  </h3>
+                  <p className="text-sm text-custom-700 mt-1">{selectedJob.id} — {selectedJob.title}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowApprovalModal(false);
-                    setSelectedJob(null);
-                    setApprovalNotes("");
-                    setAdjustments("");
-                  }}
-                  className="text-custom-700 hover:text-secondary-100 text-2xl"
-                >
+                <button onClick={closeModal} className="text-custom-700 hover:text-secondary-100">
                   <HiOutlineX className="w-6 h-6" />
                 </button>
               </div>
 
-              {/* Job Details */}
-              <div className="p-4 rounded-xl bg-custom-50 border border-custom-200 mb-4">
-                <h4 className="text-sm font-bold text-secondary-100 mb-3">Job Details</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-custom-700">Client:</span>
-                    <span className="font-semibold text-secondary-100 ml-2">
-                      {selectedJob.client}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-custom-700">Service:</span>
-                    <span className="font-semibold text-secondary-100 ml-2">
-                      {selectedJob.service}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-custom-700">Quotation:</span>
-                    <span className="font-semibold text-secondary-100 ml-2">
-                      {selectedJob.quotationAmount.toLocaleString()} RWF
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-custom-700">Payment Received:</span>
-                    <span className="font-bold text-green-600 ml-2">
-                      {selectedJob.paymentReceived.toLocaleString()} RWF
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-custom-700">Payment Date:</span>
-                    <span className="font-semibold text-secondary-100 ml-2">
-                      {selectedJob.paymentDate}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-custom-700">Deadline:</span>
-                    <span className="font-semibold text-secondary-100 ml-2">
-                      {selectedJob.deadline}
-                    </span>
-                  </div>
-                </div>
+              {/* Job summary */}
+              <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 mb-4 grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-custom-700">Client:</span> <span className="font-semibold text-secondary-100">{selectedJob.client}</span></div>
+                <div><span className="text-custom-700">Value:</span> <span className="font-semibold text-secondary-100">{selectedJob.jobValue.toLocaleString()} RWF</span></div>
+                <div><span className="text-custom-700">Status:</span> <span className="font-semibold text-secondary-100">{selectedJob.status}</span></div>
+                <div><span className="text-custom-700">Deadline:</span> <span className="font-semibold text-secondary-100">{selectedJob.deadline}</span></div>
               </div>
 
-              {/* Workflow Validation */}
-              {dafStep && (
-                <WorkflowValidator
-                  stepId={dafStep.id}
-                  data={workflowData}
-                  showErrors={false}
-                />
+              {/* Approve form */}
+              {modalMode === "approve" && (
+                <div className="space-y-3">
+                  {dafStep && <WorkflowValidator stepId={dafStep.id} data={workflowData} showErrors={false} />}
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Adjustments (optional)</label>
+                    <input type="text" value={adjustments} onChange={(e) => setAdjustments(e.target.value)} placeholder="e.g., 5% discount" className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Notes (optional)</label>
+                    <textarea value={approvalNotes} onChange={(e) => setApprovalNotes(e.target.value)} rows={3} placeholder="Approval notes..." className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none" />
+                  </div>
+                  <button onClick={handleApprove} className="w-full px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2">
+                    <HiOutlineCheckCircle className="w-4 h-4" /> Confirm Approval
+                  </button>
+                </div>
               )}
 
-              {/* Approval Form */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-custom-700 mb-2">
-                    Adjustments (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={adjustments}
-                    onChange={(e) => setAdjustments(e.target.value)}
-                    placeholder="e.g., Approved with 5% discount"
-                    className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
-                  />
+              {/* Reject form */}
+              {modalMode === "reject" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Reason for rejection <span className="text-red-500">*</span></label>
+                    <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4} placeholder="Explain why this job is being rejected..." className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none" />
+                  </div>
+                  <button onClick={handleReject} className="w-full px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2">
+                    <HiOutlineXCircle className="w-4 h-4" /> Confirm Rejection
+                  </button>
                 </div>
+              )}
 
-                <div>
-                  <label className="block text-sm font-semibold text-custom-700 mb-2">
-                    Notes
-                  </label>
-                  <textarea
-                    value={approvalNotes}
-                    onChange={(e) => setApprovalNotes(e.target.value)}
-                    placeholder="Add approval notes or rejection reason..."
-                    rows={3}
-                    className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none"
-                  />
+              {/* Assign form */}
+              {modalMode === "assign" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Department <span className="text-red-500">*</span></label>
+                    <select value={assignDeptId} onChange={(e) => setAssignDeptId(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500">
+                      <option value="">Select department...</option>
+                      {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <button onClick={handleAssign} className="w-full px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2">
+                    <HiOutlineArrowRight className="w-4 h-4" /> Assign Department
+                  </button>
                 </div>
-              </div>
+              )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={handleReject}
-                  className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-                >
-                  <HiOutlineXCircle className="w-4 h-4" />
-                  Reject
-                </button>
-                <button
-                  onClick={handleApprove}
-                  className="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-                >
-                  <HiOutlineCheckCircle className="w-4 h-4" />
-                  Approve
-                </button>
-              </div>
+              {/* Edit form */}
+              {modalMode === "edit" && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Title</label>
+                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Deadline</label>
+                    <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500" />
+                  </div>
+                  <button onClick={handleEdit} className="w-full px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2">
+                    <HiOutlinePencil className="w-4 h-4" /> Save Changes
+                  </button>
+                </div>
+              )}
             </Card>
           </div>
         )}

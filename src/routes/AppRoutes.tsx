@@ -10,6 +10,7 @@ import {
     SalesPage as AdminSalesPage,
     StockPage as AdminStockPage,
     AdminViewReportsPage,
+    DepartmentsPage as AdminDepartmentsPage,
     FinancePage,
     ProductionOverviewPage,
     SystemSettingsPage,
@@ -84,6 +85,7 @@ export default function AppRoutes() {
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]} pageId="users"><UserManagementPage /></ProtectedRoute>} />
       <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={["admin"]}><CustomerPage/></ProtectedRoute>} />
       <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartmentsPage /></ProtectedRoute>} />
       <Route path="/admin/production" element={<ProtectedRoute allowedRoles={["admin"]}><ProductionOverviewPage /></ProtectedRoute>} />
       <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><FinancePage /></ProtectedRoute>} />
       <Route path="/admin/sales" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSalesPage /></ProtectedRoute>} />

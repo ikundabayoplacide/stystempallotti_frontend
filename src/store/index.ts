@@ -5,7 +5,9 @@ import { customersApi } from "./services/customersService";
 import { departmentsApi } from "./services/departmentsService";
 import { jobsApi } from "./services/jobsService";
 import { paymentsApi } from "./services/paymentsService";
+import { permissionsApi } from "./services/permissionsService";
 import { quotationsApi } from "./services/quotationsService";
+import { rolesApi } from "./services/rolesService";
 import { stockApi } from "./services/stockService";
 import { usersApi } from "./services/usersService";
 import { visitsApi } from "./services/visitsService";
@@ -24,6 +26,8 @@ export const store = configureStore({
     [stockApi.reducerPath]: stockApi.reducer,
     [quotationsApi.reducerPath]: quotationsApi.reducer,
     [visitsApi.reducerPath]: visitsApi.reducer,
+    [permissionsApi.reducerPath]: permissionsApi.reducer,
+    [rolesApi.reducerPath]: rolesApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -36,7 +40,9 @@ export const store = configureStore({
       .concat(boutiqueApi.middleware)
       .concat(stockApi.middleware)
       .concat(quotationsApi.middleware)
-      .concat(visitsApi.middleware),
+      .concat(visitsApi.middleware)
+      .concat(permissionsApi.middleware)
+      .concat(rolesApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

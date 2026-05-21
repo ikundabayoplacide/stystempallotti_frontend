@@ -1,403 +1,365 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    HiOutlineCheckCircle,
-    HiOutlineClipboardList,
-    HiOutlineClock,
-    HiOutlineExclamationCircle,
-    HiOutlineSearch,
-    HiOutlineX,
+  HiOutlineCheckCircle,
+  HiOutlineClipboardList,
+  HiOutlineClock,
+  HiOutlineDotsVertical,
+  HiOutlineExclamationCircle,
+  HiOutlinePencil,
+  HiOutlineRefresh,
+  HiOutlineSearch,
+  HiOutlineThumbDown,
+  HiOutlineThumbUp,
+  HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
-import type { JobStatus } from "../../types/JobStatus";
+import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
+import type { Job } from "../../store/services/jobsService";
+import {
+  useApproveJobMutation,
+  useAssignJobMutation,
+  useCompleteJobMutation,
+  useGetJobsQuery,
+  useReassignJobMutation,
+  useRejectJobMutation,
+  useUpdateJobMutation,
+} from "../../store/services/jobsService";
 import { jobStatusConfig } from "../../types/JobStatus";
 
-interface Job {
-  id: string;
-  title: string;
-  client: string;
-  service: string;
-  deadline: string;
-  priority: "High" | "Medium" | "Low";
-  status: JobStatus;
-  assignedDepartment?: string;
-  estimatedDuration?: string;
-}
-
-const initialJobs: Job[] = [
-  {
-    id: "JOB-001",
-    title: "Print 500 brochures",
-    client: "ABC Corp",
-    service: "Offset Printing",
-    deadline: "2026-05-02",
-    priority: "High",
-    status: "approved", // DAF approved (high value job)
-  },
-  {
-    id: "JOB-002",
-    title: "Bind 200 booklets",
-    client: "XYZ Ltd",
-    service: "Binding",
-    deadline: "2026-05-01",
-    priority: "Medium",
-    status: "paid", // Low value, skips DAF approval
-  },
-  {
-    id: "JOB-003",
-    title: "Design 50-page report",
-    client: "NGO B",
-    service: "Composition",
-    deadline: "2026-05-03",
-    priority: "Low",
-    status: "paid", // Low value, skips DAF approval
-  },
-  {
-    id: "JOB-005",
-    title: "Print 300 flyers",
-    client: "Bank D",
-    service: "Digital Printing",
-    deadline: "2026-05-04",
-    priority: "High",
-    status: "in-printing",
-    assignedDepartment: "Printing",
-    estimatedDuration: "2 days",
-  },
-  {
-    id: "JOB-006",
-    title: "Package 1000 items",
-    client: "Hotel C",
-    service: "Packaging",
-    deadline: "2026-05-05",
-    priority: "Medium",
-    status: "in-packaging",
-    assignedDepartment: "Packaging",
-    estimatedDuration: "1 day",
-  },
-];
-
-const departments = [
-  { name: "Composition", capacity: 8, activeJobs: 5, workers: 3, avgDuration: "3 days" },
-  { name: "Montage", capacity: 5, activeJobs: 3, workers: 2, avgDuration: "2 days" },
-  { name: "Printing", capacity: 8, activeJobs: 7, workers: 5, avgDuration: "2 days" },
-  { name: "Binding", capacity: 5, activeJobs: 3, workers: 3, avgDuration: "1 day" },
-  { name: "Packaging", capacity: 4, activeJobs: 3, workers: 2, avgDuration: "1 day" },
-];
-
 const priorityColor: Record<string, string> = {
-  High: "bg-red-500 text-white",
-  Medium: "bg-yellow-500 text-white",
-  Low: "bg-green-500 text-white",
+  low:    "bg-green-100 text-green-700",
+  normal: "bg-blue-100 text-blue-700",
+  high:   "bg-orange-100 text-orange-700",
+  urgent: "bg-red-500 text-white",
 };
 
-export default function JobAssignmentPage() {
-  const [jobs, setJobs] = useState<Job[]>(initialJobs);
-  const [search, setSearch] = useState("");
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [estimatedDuration, setEstimatedDuration] = useState("");
+const IN_PRODUCTION_STATUSES = new Set([
+  "in-composition", "in-montage", "in-printing",
+  "in-binding", "in-packaging", "quality-check", "ready-for-delivery",
+]);
 
-  const paidJobs = jobs.filter((job) => job.status === "paid" || job.status === "approved");
-  const inProductionJobs = jobs.filter(
-    (job) =>
-      job.status === "in-production" ||
-      job.status === "in-composition" ||
-      job.status === "in-printing" ||
-      job.status === "in-binding" ||
-      job.status === "in-packaging"
-  );
+const ASSIGNABLE_STATUSES  = new Set(["confirmed", "in-composition", "in-montage", "in-printing", "in-binding", "in-packaging"]);
+const APPROVABLE_STATUSES  = new Set(["pending"]);
+const REJECTABLE_STATUSES  = new Set(["pending", "confirmed"]);
+const EDITABLE_STATUSES    = new Set(["pending", "confirmed"]);
+const COMPLETABLE_STATUSES = new Set(["confirmed"]);
 
-  const filtered = jobs.filter(
-    (job) =>
-      job.id.toLowerCase().includes(search.toLowerCase()) ||
-      job.client.toLowerCase().includes(search.toLowerCase()) ||
-      job.title.toLowerCase().includes(search.toLowerCase())
-  );
+const PAGE_SIZE = 5;
 
-  const handleAssignJob = (jobId: string, department: string) => {
-    if (!estimatedDuration) {
-      alert("Please enter estimated duration");
-      return;
+type ModalType = "assign" | "approve" | "reject" | "edit" | "complete" | null;
+
+// ─── Three-dot Action Menu ────────────────────────────────────────────────────
+
+function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, job: Job) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-    // Determine the status based on department
-    let newStatus: JobStatus = "in-production";
-    if (department.toLowerCase().includes("composition")) {
-      newStatus = "in-composition";
-    } else if (department.toLowerCase().includes("printing")) {
-      newStatus = "in-printing";
-    } else if (department.toLowerCase().includes("binding")) {
-      newStatus = "in-binding";
-    } else if (department.toLowerCase().includes("packaging")) {
-      newStatus = "in-packaging";
-    }
+  const canApprove   = APPROVABLE_STATUSES.has(job.status);
+  const canAssign    = ASSIGNABLE_STATUSES.has(job.status);
+  const canReject    = REJECTABLE_STATUSES.has(job.status);
+  const canEdit      = EDITABLE_STATUSES.has(job.status);
+  const canComplete  = COMPLETABLE_STATUSES.has(job.status);
 
-    setJobs(
-      jobs.map((job) =>
-        job.id === jobId
-          ? {
-              ...job,
-              status: newStatus,
-              assignedDepartment: department,
-              estimatedDuration: estimatedDuration,
-            }
-          : job
-      )
-    );
+  type ActionDef = { label: string; type: ModalType; icon: React.ReactNode; cls: string };
+  const actions: ActionDef[] = [
+    ...(canApprove  ? [{ label: "Approve",  type: "approve"  as ModalType, icon: <HiOutlineThumbUp className="h-4 w-4" />,    cls: "text-green-700 hover:bg-green-50" }] : []),
+    ...(canAssign   ? [{ label: job.departmentAssignedToId ? "Reassign" : "Assign", type: "assign" as ModalType, icon: <HiOutlineClipboardList className="h-4 w-4" />, cls: "text-primary-700 hover:bg-primary-50" }] : []),
+    ...(canComplete ? [{ label: "Complete", type: "complete" as ModalType, icon: <HiOutlineCheckCircle className="h-4 w-4" />, cls: "text-blue-700 hover:bg-blue-50" }] : []),
+    ...(canEdit     ? [{ label: "Edit",     type: "edit"     as ModalType, icon: <HiOutlinePencil className="h-4 w-4" />,     cls: "text-secondary-100 hover:bg-custom-50" }] : []),
+    ...(canReject   ? [{ label: "Reject",   type: "reject"   as ModalType, icon: <HiOutlineThumbDown className="h-4 w-4" />, cls: "text-red-600 hover:bg-red-50" }] : []),
+  ];
 
-    setShowAssignModal(false);
-    setSelectedJob(null);
-    setEstimatedDuration("");
-  };
+  if (actions.length === 0) return null;
 
   return (
-    <DashboardLayout
-      userRole="production-manager"
-      userName="Production Manager"
-      notificationCount={paidJobs.length}
-    >
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-500 hover:text-secondary-100 transition-colors"
+        title="Actions"
+      >
+        <HiOutlineDotsVertical className="h-5 w-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-30 w-44 bg-white rounded-xl shadow-lg border border-custom-200 py-1 overflow-hidden">
+          {actions.map((a) => (
+            <button
+              key={a.type}
+              onClick={() => { setOpen(false); onAction(a.type, job); }}
+              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${a.cls}`}
+            >
+              {a.icon}{a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function JobAssignmentPage() {
+  const [search, setSearch]             = useState("");
+  const [page, setPage]                 = useState(1);
+  const [modalType, setModalType]       = useState<ModalType>(null);
+  const [activeJob, setActiveJob]       = useState<Job | null>(null);
+  const [deptId, setDeptId]             = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [editTitle, setEditTitle]       = useState("");
+  const [editDueDate, setEditDueDate]   = useState("");
+  const [error, setError]               = useState("");
+
+  const { data: allData, isLoading, isFetching, refetch } = useGetJobsQuery({ limit: 1000, search: search || undefined });
+  const { data: departments = [] }               = useGetDepartmentsQuery();
+  const [approveJob,  { isLoading: isApproving }]   = useApproveJobMutation();
+  const [rejectJob,   { isLoading: isRejecting }]   = useRejectJobMutation();
+  const [assignJob,   { isLoading: isAssigning }]   = useAssignJobMutation();
+  const [reassignJob, { isLoading: isReassigning }] = useReassignJobMutation();
+  const [updateJob,   { isLoading: isUpdatingJob }] = useUpdateJobMutation();
+  const [completeJob, { isLoading: isCompleting }]  = useCompleteJobMutation();
+
+  const allJobs    = allData?.jobs ?? [];
+  const total      = allJobs.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const jobs       = allJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => {
+    console.log(`[JobAssignmentPage] total jobs=${total} | page=${page}/${totalPages} | showing ${jobs.length}`);
+  }, [total, page, totalPages, jobs.length]);
+  const pendingCount      = useMemo(() => allJobs.filter((j) => j.status === "pending").length, [allJobs]);
+  const inProductionCount = useMemo(() => allJobs.filter((j) => IN_PRODUCTION_STATUSES.has(j.status)).length, [allJobs]);
+  const assignedCount     = useMemo(() => allJobs.filter((j) => !!j.departmentAssignedToId).length, [allJobs]);
+  const deptMap           = useMemo(() => Object.fromEntries(departments.map((d) => [d.id, d.name])), [departments]);
+
+  const openModal = (type: ModalType, job: Job) => {
+    setActiveJob(job);
+    setModalType(type);
+    setDeptId(job.departmentAssignedToId ?? "");
+    setRejectReason("");
+    setEditTitle(job.title);
+    setEditDueDate(job.dueDate?.split("T")[0] ?? "");
+    setError("");
+  };
+
+  const closeAndRefetch = () => {
+    setModalType(null);
+    setActiveJob(null);
+    setError("");
+    refetch();
+  };
+
+  const closeModal = () => { setModalType(null); setActiveJob(null); setError(""); };
+
+  const handleAssign = async () => {
+    if (!activeJob || !deptId) return;
+    try {
+      if (activeJob.departmentAssignedToId) {
+        // PATCH /reassign — backend handles status transition
+        await reassignJob({ id: activeJob.id, departmentAssignedToId: deptId }).unwrap();
+      } else {
+        // POST /assign — first-time assignment
+        await assignJob({ id: activeJob.id, departmentAssignedToId: deptId }).unwrap();
+      }
+      closeAndRefetch();
+    } catch (err: any) {
+      setError(err?.data?.message ?? "Failed to assign job");
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!activeJob) return;
+    try {
+      await approveJob(activeJob.id).unwrap();
+      closeAndRefetch();
+    } catch (err: any) {
+      setError(err?.data?.message ?? "Failed to approve job");
+    }
+  };
+
+  const handleReject = async () => {
+    if (!activeJob) return;
+    try {
+      await rejectJob({ id: activeJob.id, rejectReason: rejectReason.trim() || undefined }).unwrap();
+      closeAndRefetch();
+    } catch (err: any) {
+      setError(err?.data?.message ?? "Failed to reject job");
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!activeJob) return;
+    try {
+      await updateJob({ id: activeJob.id, title: editTitle, dueDate: editDueDate || undefined }).unwrap();
+      closeAndRefetch();
+    } catch (err: any) {
+      setError(err?.data?.message ?? "Failed to update job");
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!activeJob) return;
+    try {
+      await completeJob(activeJob.id).unwrap();
+      closeAndRefetch();
+    } catch (err: any) {
+      setError(err?.data?.message ?? "Failed to complete job");
+    }
+  };
+
+  const isSaving = isApproving || isRejecting || isAssigning || isReassigning || isUpdatingJob || isCompleting;
+
+  return (
+    <DashboardLayout userRole="production-manager" userName="Production Manager" notificationCount={pendingCount}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
+
         {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-            Job Assignment & Planning
-          </h1>
-          <p className="text-sm text-custom-700 mt-1">
-            Assign approved jobs to production departments (requires DAF approval for jobs &gt; 500,000 RWF)
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Job Planning</h1>
+            <p className="text-sm text-custom-700 mt-1">Assign and manage jobs across departments</p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="self-start sm:self-auto p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors"
+            title="Refresh"
+          >
+            <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${isFetching ? "animate-spin" : ""}`} />
+          </button>
         </div>
 
-        {/* Summary Cards */}
+        {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="!p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
+              <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center">
+                <HiOutlineExclamationCircle className="w-5 h-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-xs text-custom-700">Approved & Ready</p>
-                <p className="text-2xl font-bold text-secondary-100">{paidJobs.length}</p>
+                <p className="text-xs text-custom-700">Pending</p>
+                <p className="text-2xl font-bold text-secondary-100">{pendingCount}</p>
               </div>
             </div>
           </Card>
           <Card className="!p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
-                <HiOutlineClock className="w-5 h-5 text-yellow-600" />
+              <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center">
+                <HiOutlineClock className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-xs text-custom-700">In Production</p>
-                <p className="text-2xl font-bold text-secondary-100">{inProductionJobs.length}</p>
+                <p className="text-2xl font-bold text-secondary-100">{inProductionCount}</p>
               </div>
             </div>
           </Card>
           <Card className="!p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center">
+                <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-custom-700">Assigned</p>
+                <p className="text-2xl font-bold text-secondary-100">{assignedCount}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center">
                 <HiOutlineClipboardList className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <p className="text-xs text-custom-700">Total Jobs</p>
-                <p className="text-2xl font-bold text-secondary-100">{jobs.length}</p>
-              </div>
-            </div>
-          </Card>
-          <Card className="!p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                <HiOutlineExclamationCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-custom-700">High Priority</p>
-                <p className="text-2xl font-bold text-secondary-100">
-                  {jobs.filter((j) => j.priority === "High").length}
-                </p>
+                <p className="text-xs text-custom-700">Total</p>
+                <p className="text-2xl font-bold text-secondary-100">{total}</p>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Department Capacity */}
-        <Card className="!p-6">
-          <h2 className="text-lg font-bold text-secondary-100 mb-4">Department Capacity</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {departments.map((dept) => {
-              const utilization = (dept.activeJobs / dept.capacity) * 100;
-              return (
-                <div
-                  key={dept.name}
-                  className="p-4 rounded-xl bg-custom-50 border border-custom-200"
-                >
-                  <h3 className="font-bold text-secondary-100 mb-3">{dept.name}</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-custom-700">Active:</span>
-                      <span className="font-bold text-primary-500">
-                        {dept.activeJobs}/{dept.capacity}
-                      </span>
-                    </div>
-                    <div className="w-full bg-custom-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${
-                          utilization >= 80
-                            ? "bg-red-500"
-                            : utilization >= 60
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
-                        }`}
-                        style={{ width: `${utilization}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-custom-700">Workers:</span>
-                      <span className="font-semibold text-secondary-100">{dept.workers}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-custom-700">Avg Duration:</span>
-                      <span className="font-semibold text-secondary-100">{dept.avgDuration}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+        {/* Search */}
+        <div className="relative">
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-custom-700" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by job number, title or client..."
+            className="w-full pl-10 pr-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
+          />
+        </div>
 
-        {/* Jobs List */}
+        {/* Table */}
         <Card className="!p-0 overflow-hidden">
-          <div className="p-4 bg-custom-100 border-b border-custom-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h2 className="text-lg font-bold text-secondary-100">All Jobs</h2>
-              <div className="relative w-full sm:w-64">
-                <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
-                <input
-                  type="text"
-                  placeholder="Search jobs..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200"
-                />
-              </div>
-            </div>
-          </div>
-
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-custom-50 border-b border-custom-300">
+              <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Job ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Title & Client
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Service
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Priority
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Department
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Deadline
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-secondary-100 uppercase">
-                    Actions
-                  </th>
+                  {["Job", "Client", "Status", "Priority", "Department", "Due Date", "Actions"].map((h) => (
+                    <th key={h} className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-custom-200">
-                {filtered.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-custom-700">
+                    <td colSpan={7} className="px-4 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-custom-700">
+                        <HiOutlineRefresh className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Loading jobs…</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : jobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-custom-700 text-sm">
                       No jobs found
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((job) => {
-                    const statusCfg = jobStatusConfig[job.status];
+                  jobs.map((job) => {
+                    const statusCfg = jobStatusConfig[job.status] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
                     return (
                       <tr key={job.id} className="hover:bg-custom-50 transition-colors">
                         <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-primary-600">{job.id}</span>
+                          <span className="text-sm font-bold text-primary-600">{job.jobNumber}</span>
+                          <p className="text-xs text-custom-700 mt-0.5 max-w-[160px] truncate">{job.title}</p>
                         </td>
                         <td className="px-4 py-4">
-                          <div>
-                            <span className="text-sm font-semibold text-secondary-100 block">
-                              {job.title}
-                            </span>
-                            <span className="text-xs text-custom-700">{job.client}</span>
-                          </div>
+                          <span className="text-sm text-secondary-100">{job.customer?.name ?? "—"}</span>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="text-sm text-secondary-100">{job.service}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`text-xs font-bold px-3 py-1 rounded-full ${priorityColor[job.priority]}`}
-                          >
-                            {job.priority}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`text-xs font-bold px-3 py-1 rounded-full ${statusCfg.bgColor} ${statusCfg.color}`}
-                          >
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.bgColor} ${statusCfg.color}`}>
                             {statusCfg.label}
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          {job.assignedDepartment ? (
-                            <div>
-                              <span className="text-sm font-semibold text-primary-600 block">
-                                {job.assignedDepartment}
-                              </span>
-                              {job.estimatedDuration && (
-                                <span className="text-xs text-custom-700">
-                                  Est: {job.estimatedDuration}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-sm text-custom-700">-</span>
-                          )}
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                            {job.priority}
+                          </span>
                         </td>
                         <td className="px-4 py-4">
-                          <span className="text-sm text-custom-700">{job.deadline}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {(job.status === "paid" || job.status === "approved") && (
-                              <button
-                                onClick={() => {
-                                  setSelectedJob(job);
-                                  setShowAssignModal(true);
-                                }}
-                                className="px-3 py-1.5 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-colors text-xs font-semibold"
-                              >
-                                Assign
-                              </button>
+                          <span className="text-sm text-secondary-100">
+                            {job.departmentAssignedToId ? (deptMap[job.departmentAssignedToId] ?? "—") : (
+                              <span className="text-xs text-custom-500 italic">Unassigned</span>
                             )}
-                            {job.status !== "paid" &&
-                              job.status !== "approved" &&
-                              job.status !== "completed" &&
-                              job.status !== "delivered" && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedJob(job);
-                                    setShowAssignModal(true);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-custom-100 text-custom-700 hover:bg-custom-200 transition-colors text-xs font-semibold"
-                                >
-                                  Reassign
-                                </button>
-                              )}
-                          </div>
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-sm text-custom-700">{job.dueDate ? job.dueDate.split("T")[0] : "—"}</span>
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <ActionMenu job={job} onAction={openModal} />
                         </td>
                       </tr>
                     );
@@ -406,102 +368,176 @@ export default function JobAssignmentPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {!isLoading && total > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-custom-300">
+              <p className="text-xs text-custom-700">
+                {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, total)} of {total} jobs
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm font-semibold disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-custom-700 font-semibold">{page} / {totalPages}</span>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm font-semibold disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
 
-        {/* Assignment Modal */}
-        {showAssignModal && selectedJob && (
+        {/* ── Modals ── */}
+        {modalType && activeJob && (
           <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-            <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <Card className="!p-6 max-w-md w-full">
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-secondary-100">
-                    Assign Job to Department
+                    {modalType === "assign"  && (activeJob.departmentAssignedToId ? "Reassign Job" : "Assign Job")}
+                    {modalType === "approve" && "Approve Job"}
+                    {modalType === "reject"  && "Reject Job"}
+                    {modalType === "edit"    && "Edit Job"}
+                    {modalType === "complete" && "Complete Job"}
                   </h3>
-                  <p className="text-sm text-custom-700 mt-1">
-                    {selectedJob.id} - {selectedJob.title}
-                  </p>
+                  <p className="text-sm text-custom-700 mt-1">{activeJob.jobNumber} — {activeJob.title}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    setSelectedJob(null);
-                    setEstimatedDuration("");
-                  }}
-                  className="text-custom-700 hover:text-secondary-100 text-2xl"
-                >
+                <button onClick={closeModal} className="text-custom-700 hover:text-secondary-100">
                   <HiOutlineX className="w-6 h-6" />
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-custom-700 mb-2">
-                    Estimated Duration *
-                  </label>
-                  <input
-                    type="text"
-                    value={estimatedDuration}
-                    onChange={(e) => setEstimatedDuration(e.target.value)}
-                    placeholder="e.g., 2 days, 3 hours"
-                    className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
-                  />
-                </div>
+              {error && (
+                <p className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              )}
 
-                <div>
-                  <label className="block text-sm font-semibold text-custom-700 mb-3">
-                    Select Department *
-                  </label>
-                  <div className="space-y-2">
-                    {departments.map((dept) => {
-                      const utilization = (dept.activeJobs / dept.capacity) * 100;
-                      return (
-                        <button
-                          key={dept.name}
-                          onClick={() => handleAssignJob(selectedJob.id, dept.name)}
-                          className="w-full p-4 rounded-xl border-2 border-custom-300 hover:border-primary-400 hover:bg-primary-50 transition-colors text-left"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-bold text-secondary-100">{dept.name}</span>
-                            <span
-                              className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                                utilization >= 80
-                                  ? "bg-red-100 text-red-700"
-                                  : utilization >= 60
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-green-100 text-green-700"
-                              }`}
-                            >
-                              {Math.round(utilization)}% Load
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs text-custom-700">
-                            <span>
-                              {dept.activeJobs}/{dept.capacity} jobs
-                            </span>
-                            <span>•</span>
-                            <span>{dept.workers} workers</span>
-                            <span>•</span>
-                            <span>Avg: {dept.avgDuration}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
+              {modalType === "assign" && (
+                <div className="space-y-4">
+                  {activeJob.departmentAssignedToId && (
+                    <p className="text-xs text-custom-700 bg-custom-50 px-3 py-2 rounded-lg">
+                      Currently: <span className="font-semibold">{deptMap[activeJob.departmentAssignedToId] ?? "—"}</span>
+                    </p>
+                  )}
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">
+                      {activeJob.departmentAssignedToId ? "New Department" : "Department"} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={deptId}
+                      onChange={(e) => setDeptId(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
+                    >
+                      <option value="">Select department…</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
                   </div>
+                  <button
+                    onClick={handleAssign}
+                    disabled={!deptId || isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : activeJob.departmentAssignedToId ? "Reassign" : "Assign"}
+                  </button>
                 </div>
-              </div>
+              )}
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    setSelectedJob(null);
-                    setEstimatedDuration("");
-                  }}
-                  className="flex-1 px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-sm font-semibold text-custom-700"
-                >
-                  Cancel
-                </button>
-              </div>
+              {modalType === "complete" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-custom-700">
+                    Mark <span className="font-semibold text-secondary-100">{activeJob.jobNumber}</span> as{" "}
+                    <span className="font-semibold text-green-600">completed</span>? This cannot be undone.
+                  </p>
+                  <button
+                    onClick={handleComplete}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : "Confirm Complete"}
+                  </button>
+                </div>
+              )}
+
+              {modalType === "approve" && (
+                <div className="space-y-4">
+                  <p className="text-sm text-custom-700">
+                    Current status: <span className="font-semibold text-secondary-100">{activeJob.status}</span>.<br />
+                    Approving will move this job to <span className="font-semibold text-green-600">confirmed</span>.
+                  </p>
+                  <button
+                    onClick={handleApprove}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : "Confirm Approval"}
+                  </button>
+                </div>
+              )}
+
+              {modalType === "reject" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">
+                      Reason <span className="text-custom-500 font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      maxLength={1000}
+                      rows={4}
+                      placeholder="Explain why this job is being rejected…"
+                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none"
+                    />
+                  </div>
+                  <button
+                    onClick={handleReject}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-semibold disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : "Confirm Rejection"}
+                  </button>
+                </div>
+              )}
+
+              {modalType === "edit" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Title</label>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Due Date</label>
+                    <input
+                      type="date"
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleEdit}
+                    disabled={isSaving}
+                    className="w-full px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : "Save Changes"}
+                  </button>
+                </div>
+              )}
             </Card>
           </div>
         )}
