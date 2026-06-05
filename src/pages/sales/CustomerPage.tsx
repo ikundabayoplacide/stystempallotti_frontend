@@ -326,7 +326,9 @@ export default function SalesCustomerPage() {
       await createCustomer(payload as CreateCustomerPayload).unwrap();
       toast.success("Customer created successfully");
       closeModal();
-    } catch { toast.error("Failed to create customer."); }
+    } catch (e: unknown) {
+      toast.error(typeof e === "string" ? e : "Failed to create customer.");
+    }
   };
 
   const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -347,7 +349,9 @@ export default function SalesCustomerPage() {
       }).unwrap();
       toast.success("Customer updated successfully");
       closeModal();
-    } catch { toast.error("Failed to update customer."); }
+    } catch (e: unknown) {
+      toast.error(typeof e === "string" ? e : "Failed to update customer.");
+    }
   };
 
   const openEditModal = (customer: Customer) => {

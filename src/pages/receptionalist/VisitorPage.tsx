@@ -275,6 +275,7 @@ export default function VisitorPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [visitCustomer, setVisitCustomer] = useState<Customer | null>(null);
+  const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null);
 
   // ── Data ────────────────────────────────────────────────────────────────────
   const { data, isLoading, isError } = useGetCustomersQuery({
@@ -282,6 +283,13 @@ export default function VisitorPage() {
     search: search || undefined,
     type: filterType || undefined,
   });
+
+  // Search for existing customer when duplicate email detected
+  const { data: dupData } = useGetCustomersQuery(
+    { search: duplicateEmail ?? "", limit: 1 },
+    { skip: !duplicateEmail }
+  );
+  const duplicateCustomer = dupData?.customers?.[0] ?? null;
 
   // Fetch all currently checked-in visits — used to determine button state per customer
   const { data: activeVisitsList = [], refetch: refetchVisits } = useGetVisitsQuery({
@@ -326,7 +334,14 @@ export default function VisitorPage() {
       await createCustomer(payload as CreateCustomerPayload).unwrap();
       toast.success("Customer created successfully");
       closeModal();
-    } catch { toast.error("Failed to create customer."); }
+    } catch (e: unknown) {
+      const msg = typeof e === "string" ? e : "Failed to create customer.";
+      if (msg.toLowerCase().includes("email already exists") && formData.email.trim()) {
+        setDuplicateEmail(formData.email.toLowerCase());
+      } else {
+        toast.error(msg);
+      }
+    }
   };
 
   const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -347,7 +362,9 @@ export default function VisitorPage() {
       }).unwrap();
       toast.success("Customer updated successfully");
       closeModal();
-    } catch { toast.error("Failed to update customer."); }
+    } catch (e: unknown) {
+      toast.error(typeof e === "string" ? e : "Failed to update customer.");
+    }
   };
 
   const openEditModal = (customer: Customer) => {
@@ -363,7 +380,7 @@ export default function VisitorPage() {
 
   const closeModal = () => {
     setShowAddModal(false); setShowEditModal(false);
-    setSelectedCustomer(null); setFormData(emptyForm);
+    setSelectedCustomer(null); setFormData(emptyForm); setDuplicateEmail(null);
   };
 
   const set = (field: keyof FormData, value: string) =>
@@ -630,6 +647,20 @@ export default function VisitorPage() {
                     className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors resize-none" />
                 </div>
               </div>
+              {duplicateEmail && (
+                <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-300 text-sm">
+                  <span className="text-amber-800">
+                    A customer with this email already exists.
+                  </span>
+                  {duplicateCustomer && (
+                    <button type="button"
+                      onClick={() => { closeModal(); setVisitCustomer(duplicateCustomer); }}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors flex items-center gap-1">
+                      <HiOutlineLogin className="w-3.5 h-3.5" /> Check In
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-3 justify-end pt-4 border-t border-custom-300">
                 <Button type="button" variant="outline" onClick={closeModal}>Cancel</Button>
                 <Button type="submit" disabled={isCreating || isUpdating}>

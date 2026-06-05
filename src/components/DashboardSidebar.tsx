@@ -1,4 +1,3 @@
-import * as HeroIcons from "react-icons/hi";
 import {
   HiOutlineAdjustments,
   HiOutlineArchive,
@@ -18,10 +17,10 @@ import {
   HiOutlineX
 } from "react-icons/hi";
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
+import { useAppSelector } from "../store/hooks";
 import { useGetMyPermissionsQuery } from "../store/services/permissionsService";
-import { useUIPermissions } from "../context/UIPermissionsContext";
 
 interface MenuItem {
   label: string;
@@ -70,6 +69,10 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Invoices",   path: "/sales/invoices",    icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
     { label: "Dossiers",   path: "/sales/dossiers",    icon: HiOutlineArchive,        permissionKey: "dossiers.view" },
   ],
+    hr: [
+    { label: "Dashboard",  path: "/hr",            icon: HiOutlineHome },
+    { label: "Employees",  path: "/hr/employees",   icon: HiOutlineUsers },
+  ],
   daf: [
     { label: "Dashboard",       path: "/finance/daf",          icon: HiOutlineHome },
     { label: "Job Approvals",   path: "/finance/daf/approvals", icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },
@@ -79,8 +82,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   ],
   accountant: [
     { label: "Dashboard",    path: "/finance/accountant1",           icon: HiOutlineHome },
-    { label: "Invoices",     path: "/finance/accountant1/invoices",   icon: HiOutlineDocumentText,   permissionKey: "invoices.view" },
     { label: "Payments",     path: "/finance/accountant1/payments",   icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
+    { label: "Invoices",     path: "/finance/accountant1/invoices",   icon: HiOutlineDocumentText,   permissionKey: "invoices.view" },
     { label: "Documents",    path: "/finance/accountant1/documents",  icon: HiOutlineClipboardList,  permissionKey: "dossiers.view" },
     { label: "E-Procurement",path: "/finance/accountant2/procurement",icon: HiOutlineCube,           permissionKey: "procurement.view" },
     { label: "Taxes",        path: "/finance/accountant2/taxes",      icon: HiOutlineDocumentText,   permissionKey: "taxes.view" },
@@ -90,7 +93,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard",   path: "/production-manager",             icon: HiOutlineHome },
     { label: "Job Planning",path: "/production-manager/planning",    icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers,         permissionKey: "departments.view" },
-    { label: "Progress",    path: "/production-manager/progress",    icon: HiOutlineChartBar,      permissionKey: "production.view" },
+    // { label: "Progress",    path: "/production-manager/progress",    icon: HiOutlineChartBar,      permissionKey: "production.view" },
   ],
   stock: [
     { label: "Dashboard",        path: "/stock",           icon: HiOutlineHome },
@@ -122,10 +125,14 @@ export default function DashboardSidebar({
   isCollapsed,
   onToggle,
 }: DashboardSidebarProps) {
-  const { currentRoleConfig } = useUIPermissions();
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
-  const { data: myPermissions = [], isSuccess } = useGetMyPermissionsQuery();
+  const { token } = useAppSelector((state) => state.auth);
+  const { data: myPermissions = [], isSuccess } = useGetMyPermissionsQuery(undefined, {
+    skip: !token,
+    refetchOnMountOrArgChange: true,
+  });
 
   const grantedSet = useMemo(() => {
     const s = new Set(myPermissions.map((p) => p.name));
@@ -135,44 +142,22 @@ export default function DashboardSidebar({
     return s;
   }, [myPermissions, isSuccess, userRole]);
 
-  // Build a path → permissionKey lookup from the hardcoded menuItems so configuredItems
-  // (which come from localStorage and have no permissionKey) still get filtered correctly.
-  const pathToPermKey = useMemo(() => {
-    const map: Record<string, string> = {};
-    Object.values(menuItems).flat().forEach((item) => {
-      if (item.permissionKey) map[item.path] = item.permissionKey;
-    });
-    return map;
-  }, []);
-
-  const baseItems = useMemo(() => {
-    const configuredItems = currentRoleConfig?.sidebarMenu
-      .filter(item => item.enabled)
-      .sort((a, b) => a.order - b.order)
-      .map(item => ({
-        label: item.label,
-        path: item.path,
-        icon: (HeroIcons as any)[item.icon] || HiOutlineHome,
-        permissionKey: pathToPermKey[item.path],   // ← inject the key
-      })) ?? [];
-    return configuredItems.length > 0 ? configuredItems : (menuItems[userRole] ?? []);
-  }, [currentRoleConfig, userRole, pathToPermKey]);
-
-  // Filter by backend permissions — items without a permissionKey are always shown
+  // Always use the hardcoded menuItems — no localStorage / UIPermissions config involved
   const items = useMemo(() => {
-    const filtered = baseItems.filter(
-      (item) => !(item as MenuItem).permissionKey || grantedSet.has((item as MenuItem).permissionKey!)
+    const base = menuItems[userRole] ?? [];
+    const filtered = base.filter(
+      (item) => !item.permissionKey || grantedSet.has(item.permissionKey)
     );
     console.log(
-      `[sidebar] visible items (${filtered.length}/${baseItems.length}):`,
+      `[sidebar] visible items (${filtered.length}/${base.length}):`,
       filtered.map((i) => i.label),
       "| blocked:",
-      baseItems
-        .filter((i) => (i as MenuItem).permissionKey && !grantedSet.has((i as MenuItem).permissionKey!))
-        .map((i) => `${i.label}(${(i as MenuItem).permissionKey})`)
+      base
+        .filter((i) => i.permissionKey && !grantedSet.has(i.permissionKey!))
+        .map((i) => `${i.label}(${i.permissionKey})`)
     );
     return filtered;
-  }, [baseItems, grantedSet]);
+  }, [userRole, grantedSet]);
 
   const handleLogout = () => {
     logout();
@@ -244,7 +229,7 @@ export default function DashboardSidebar({
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {items.map((item) => {
-            const isActive = window.location.pathname === item.path;
+            const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}

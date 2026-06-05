@@ -31,7 +31,8 @@ export type UserRole =
   | "PRODUCTION_MANAGER"
   | "STOCK"
   | "SUPERVISOR"
-  | "WORKER";
+  | "WORKER"
+  | "HR";
 
 // ─── API Service ──────────────────────────────────────────────────────────────
 

@@ -35,6 +35,7 @@ export default function ProtectedRoute({
       stock: "/stock",
       supervisor: "/supervisor",
       worker: "/worker",
+      hr: "/hr",
     };
     return <Navigate to={redirectMap[userRole]} replace />;
   }
@@ -55,6 +56,7 @@ export default function ProtectedRoute({
       stock: "/stock",
       supervisor: "/supervisor",
       worker: "/worker",
+      hr: "/hr",
     };
 
     if (!canAccessPage(pageId)) {

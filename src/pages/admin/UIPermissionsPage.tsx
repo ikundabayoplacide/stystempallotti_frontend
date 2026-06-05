@@ -18,6 +18,7 @@ import type {
   Permission,
 } from "../../store/services/permissionsService";
 import {
+  permissionsApi,
   useCreatePermissionMutation,
   useDeletePermissionMutation,
   useGetAllPermissionsQuery,
@@ -32,6 +33,7 @@ import {
   useGetAllRolesQuery,
   useUpdateRoleMutation,
 } from "../../store/services/rolesService";
+import { useAppDispatch } from "../../store/hooks";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -308,8 +310,12 @@ function ResourceGroup({
 
 function RolePermissionsPanel({ role }: { role: string }) {
   const { data: allPerms = [], isLoading: loadingAll } = useGetAllPermissionsQuery();
-  const { data: rolePerms = [], isLoading: loadingRole, isFetching } = useGetPermissionsForRoleQuery(role);
+  const { data: rolePerms = [], isLoading: loadingRole, isFetching, isError: rolePermsError } = useGetPermissionsForRoleQuery(role);
   const [replacePermissions, { isLoading: isSaving }] = useReplaceRolePermissionsMutation();
+  const dispatch = useAppDispatch();
+
+  // 400 means the role exists but has no permissions yet — treat as empty
+  const safeRolePerms = rolePermsError ? [] : rolePerms;
 
   const [draft, setDraft] = useState<Set<string> | null>(null);
 
@@ -319,9 +325,9 @@ function RolePermissionsPanel({ role }: { role: string }) {
   const [deletePerm, setDeletePerm] = useState<Permission | null>(null);
 
   const grantedNames = useMemo(() => {
-    const arr = Array.isArray(rolePerms) ? rolePerms : [];
+    const arr = Array.isArray(safeRolePerms) ? safeRolePerms : [];
     return new Set(arr.map((p) => p.name));
-  }, [rolePerms]);
+  }, [safeRolePerms]);
 
   const effectiveNames: Set<string> = useMemo(
     () => draft ?? grantedNames,
@@ -355,12 +361,23 @@ function RolePermissionsPanel({ role }: { role: string }) {
 
   async function handleSave() {
     if (!draft) return;
-    const permissionIds = allPerms.filter((p) => draft.has(p.name)).map((p) => p.id);
-    await replacePermissions({ role, permissionIds });
-    setDraft(null);
+    const savedPerms = allPerms.filter((p) => draft.has(p.name));
+    const permissionIds = savedPerms.map((p) => p.id);
+    console.log("[handleSave] role:", role, "| permissionIds:", permissionIds);
+    try {
+      const result = await replacePermissions({ role, permissionIds }).unwrap();
+      console.log("[handleSave] success:", result);
+      // Manually update the cache so no refetch is triggered (backend returns 400 on refetch for new roles)
+      dispatch(
+        permissionsApi.util.upsertQueryData("getPermissionsForRole", role, savedPerms)
+      );
+      setDraft(null);
+    } catch (err) {
+      console.error("[handleSave] error:", err);
+    }
   }
 
-  if (loadingAll || loadingRole) {
+  if (loadingAll || (loadingRole && !rolePermsError)) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3 text-custom-500">
         <HiOutlineRefresh className="h-8 w-8 animate-spin" />

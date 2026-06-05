@@ -117,7 +117,7 @@ export interface UIPermissionsConfiguration {
 // Default UI Permissions Configuration
 export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
   id: "default-ui-permissions",
-  version: "1.8.0",
+  version: "1.9.0",
   roles: [
     {
       roleId: "admin",
@@ -334,12 +334,12 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
         { id: "dashboard", label: "Dashboard", path: "/production-manager", icon: "HiOutlineHome", enabled: true, order: 1 },
         { id: "job-assignment", label: "Job Assignment", path: "/production-manager/planning", icon: "HiOutlineClipboardList", enabled: true, order: 2 },
         { id: "departments", label: "Departments", path: "/production-manager/departments", icon: "HiOutlineCube", enabled: true, order: 3 },
-        { id: "progress", label: "Progress", path: "/production-manager/progress", icon: "HiOutlineChartBar", enabled: true, order: 4 },
+        { id: "progress", label: "Progress", path: "/production-manager/progress", icon: "HiOutlineChartBar", enabled: false, order: 4 },
       ],
       pagePermissions: [
         { pageId: "job-assignment", pageName: "Job Assignment", enabled: true, allowedActions: ["view", "assign", "reassign"] },
         { pageId: "departments", pageName: "Departments", enabled: true, allowedActions: ["view", "edit"] },
-        { pageId: "progress", pageName: "Progress", enabled: true, allowedActions: ["view"] },
+        { pageId: "progress", pageName: "Progress", enabled: false, allowedActions: ["view"] },
       ],
       uiSettings: {
         showNotifications: true,

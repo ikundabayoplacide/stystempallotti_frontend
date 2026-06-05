@@ -3,6 +3,8 @@ import { authApi } from "./services/authService";
 import { boutiqueApi } from "./services/boutiqueService";
 import { customersApi } from "./services/customersService";
 import { departmentsApi } from "./services/departmentsService";
+import { employeesApi } from "./services/employeesService";
+import { invoicesApi } from "./services/invoicesService";
 import { jobsApi } from "./services/jobsService";
 import { paymentsApi } from "./services/paymentsService";
 import { permissionsApi } from "./services/permissionsService";
@@ -28,6 +30,8 @@ export const store = configureStore({
     [visitsApi.reducerPath]: visitsApi.reducer,
     [permissionsApi.reducerPath]: permissionsApi.reducer,
     [rolesApi.reducerPath]: rolesApi.reducer,
+    [invoicesApi.reducerPath]: invoicesApi.reducer,
+    [employeesApi.reducerPath]: employeesApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -42,7 +46,9 @@ export const store = configureStore({
       .concat(quotationsApi.middleware)
       .concat(visitsApi.middleware)
       .concat(permissionsApi.middleware)
-      .concat(rolesApi.middleware),
+      .concat(rolesApi.middleware)
+      .concat(invoicesApi.middleware)
+      .concat(employeesApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

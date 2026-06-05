@@ -28,7 +28,9 @@ export default function LoginPage() {
       // 2. Save token + user in Redux (and localStorage)
       dispatch(setCredentials(result));
 
-      // 3. Navigate based on the role the backend returned
+      // 3. Navigate after a tick so Redux state is committed before the
+      //    dashboard mounts and fires the permissions query
+      const role = result.data.user.role;
       const roleRoutes: Record<string, string> = {
         ADMIN: "/admin",
         RECEPTIONIST: "/reception",
@@ -39,8 +41,9 @@ export default function LoginPage() {
         STOCK: "/stock",
         SUPERVISOR: "/supervisor",
         WORKER: "/worker",
+        HR: "/hr",
       };
-      navigate(roleRoutes[result.data.user.role] ?? "/");
+      setTimeout(() => navigate(roleRoutes[role] ?? "/"), 0);
     } catch {
       toast.error("Invalid email or password.");
     }

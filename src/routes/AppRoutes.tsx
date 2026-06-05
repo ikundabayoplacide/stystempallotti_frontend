@@ -42,7 +42,7 @@ import {
 } from "../pages/finance";
 
 // Production Manager Pages
-import { DepartmentsPage, JobAssignmentPage, ProductionManagerPage, ProgressPage } from "../pages/production-manager";
+import { DepartmentsPage, JobAssignmentPage, ProductionManagerPage } from "../pages/production-manager";
 
 // Production Department Pages
 
@@ -73,6 +73,8 @@ import { MaterialRequestPage } from "../pages/worker";
 import CustomerPage from "../pages/admin/customaPage";
 import VisitorPage from "../pages/receptionalist/VisitorPage";
 import JobManagementPage from "../pages/sales/JobManagementPage";
+import HRPage from "../pages/HR/HRPage";
+import EmployeesPage from "../pages/HR/EmployeesPage";
 
 export default function AppRoutes() {
   return (
@@ -142,7 +144,7 @@ export default function AppRoutes() {
       <Route path="/production-manager" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerPage /></ProtectedRoute>} />
       <Route path="/production-manager/planning" element={<ProtectedRoute allowedRoles={["production-manager"]}><JobAssignmentPage /></ProtectedRoute>} />
       <Route path="/production-manager/departments" element={<ProtectedRoute allowedRoles={["production-manager"]}><DepartmentsPage /></ProtectedRoute>} />
-      <Route path="/production-manager/progress" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProgressPage /></ProtectedRoute>} />
+      {/* <Route path="/production-manager/progress" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProgressPage /></ProtectedRoute>} /> */}
       <Route path="/production-manager/notifications" element={<ProtectedRoute allowedRoles={["production-manager"]}><NotificationsPage userRole="production-manager" userName="Production Manager" /></ProtectedRoute>} />
 
       {/* Stock Department Routes */}
@@ -170,6 +172,9 @@ export default function AppRoutes() {
       <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]} pageId="material-requests"><MaterialRequestPage /></ProtectedRoute>} />
       <Route path="/worker/notifications" element={<ProtectedRoute allowedRoles={["worker"]}><NotificationsPage userRole="worker" userName="Worker" /></ProtectedRoute>} />
 
+{/* routes for HR */}
+      <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />
+      <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={["hr"]}><EmployeesPage /></ProtectedRoute>} />
       {/* Public Routes with Layout (if needed) */}
       <Route element={<Layout />}>
         {/* Add public page routes here if needed */}

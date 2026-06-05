@@ -148,6 +148,7 @@ export const customersApi = createApi({
         body,
       }),
       transformResponse: (res: ApiResponse<Customer>) => res.data,
+      transformErrorResponse: (res) => (res.data as { message?: string })?.message ?? "Failed to create customer.",
       invalidatesTags: [{ type: "Customer", id: "LIST" }],
     }),
 
@@ -159,6 +160,7 @@ export const customersApi = createApi({
         body,
       }),
       transformResponse: (res: ApiResponse<Customer>) => res.data,
+      transformErrorResponse: (res) => (res.data as { message?: string })?.message ?? "Failed to update customer.",
       invalidatesTags: (_result, _err, { id }) => [
         { type: "Customer", id },
         { type: "Customer", id: "LIST" },

@@ -5,7 +5,7 @@ import type { RootState } from "../index";
 
 /** A single permission as returned by the backend */
 export interface Permission {
-  id: number;
+  id: string | number;
   name: string;        // e.g. "jobs.create"
   resource: string;    // e.g. "jobs"
   action: string;      // e.g. "create"
@@ -44,19 +44,19 @@ export interface MyPermissionsResponse {
 /** Body for POST /permissions/role/:role  (grant one permission) */
 export interface GrantPermissionPayload {
   role: string;
-  permissionId: number;
+  permissionId: string | number;
 }
 
 /** Body for PUT /permissions/role/:role  (replace all permissions) */
 export interface ReplacePermissionsPayload {
   role: string;
-  permissionIds: number[];
+  permissionIds: (string | number)[];
 }
 
 /** Body for DELETE /permissions/role/:role/:permissionId */
 export interface RevokePermissionPayload {
   role: string;
-  permissionId: number;
+  permissionId: string | number;
 }
 
 /** Body for POST /permissions — create a new permission */
@@ -69,7 +69,7 @@ export interface CreatePermissionPayload {
 
 /** Body for PUT /permissions/:id — update description */
 export interface UpdatePermissionPayload {
-  id: number;
+  id: string | number;
   description?: string;
 }
 
@@ -137,7 +137,6 @@ export const permissionsApi = createApi({
       query: (role) => `/permissions/role/${role}`,
       transformResponse: (res: any, _meta, role) => {
         console.log(`[permissions] GET /permissions/role/${role} raw response:`, res);
-        // data may be an array, an object with .permissions, or an object with .data
         const raw = res?.data ?? res;
         const arr: unknown[] = Array.isArray(raw)
           ? raw
@@ -146,8 +145,6 @@ export const permissionsApi = createApi({
           : Array.isArray(raw?.data)
           ? raw.data
           : [];
-
-        // Normalise: strings → Permission objects, objects → pass through
         const result: Permission[] = arr.map((item, idx) => {
           if (typeof item === "string") {
             const [resource, action] = item.split(".");
@@ -155,9 +152,13 @@ export const permissionsApi = createApi({
           }
           return item as Permission;
         });
-
         console.log(`[permissions] GET /permissions/role/${role} parsed:`, result.length, "items", result.map(p => p.name));
         return result;
+      },
+      // If backend returns 400 (role exists but has no permissions), treat as empty
+      transformErrorResponse: (response, _meta, role) => {
+        console.warn(`[permissions] GET /permissions/role/${role} returned ${response.status} — treating as empty`);
+        return response;
       },
       providesTags: (_result, _err, role) => [{ type: "RolePermission", id: role }],
     }),
@@ -179,7 +180,10 @@ export const permissionsApi = createApi({
         method: "PUT",
         body: { permissionIds },
       }),
-      invalidatesTags: (_result, _err, { role }) => [{ type: "RolePermission", id: role }],
+      // Don't invalidate — backend returns 400 on refetch for new roles.
+      // We update the cache manually in handleSave instead.
+      invalidatesTags: (_result, err, { role }) =>
+        err ? [{ type: "RolePermission", id: role }] : [],
     }),
 
     // DELETE /permissions/role/:role/:permissionId — revoke one permission
@@ -214,7 +218,7 @@ export const permissionsApi = createApi({
     }),
 
     // DELETE /permissions/:id — delete permission from all roles (ADMIN only)
-    deletePermission: builder.mutation<void, number>({
+    deletePermission: builder.mutation<void, string | number>({
       query: (id) => ({
         url: `/permissions/${id}`,
         method: "DELETE",

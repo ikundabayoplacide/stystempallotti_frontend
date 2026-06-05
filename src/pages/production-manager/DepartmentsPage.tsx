@@ -10,16 +10,16 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
-import {
-  useGetDepartmentJobsQuery,
-  useGetDepartmentsQuery,
-} from "../../store/services/departmentsService";
+import { useGetDepartmentJobsQuery, useGetDepartmentByIdQuery, useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import type { Department } from "../../store/services/departmentsService";
 
 // ─── Jobs Drawer ──────────────────────────────────────────────────────────────
 
 function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => void }) {
-  const { data: jobs = [], isLoading } = useGetDepartmentJobsQuery(dept.id);
+  const { data: deptDetail, isLoading: loadingDetail } = useGetDepartmentByIdQuery(dept.id);
+  const { data: jobs = [], isLoading: loadingJobs } = useGetDepartmentJobsQuery(dept.id);
+  const workers = (deptDetail as any)?.employees ?? [];
+  const [tab, setTab] = useState<"workers" | "jobs">("workers");
 
   return (
     <>
@@ -46,48 +46,113 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
         <div className="grid grid-cols-2 gap-3 px-6 py-4 border-b border-custom-300">
           <div className="bg-blue-50 rounded-xl px-4 py-3">
             <p className="text-xs text-custom-700">Active Jobs</p>
-            <p className="text-xl font-bold text-blue-600">{dept.activeJobs ?? 0}</p>
+            <p className="text-xl font-bold text-blue-600">{loadingJobs ? "…" : jobs.length}</p>
           </div>
           <div className="bg-green-50 rounded-xl px-4 py-3">
             <p className="text-xs text-custom-700">Workers</p>
-            <p className="text-xl font-bold text-green-600">{dept.workers ?? 0}</p>
+            <p className="text-xl font-bold text-green-600">{loadingDetail ? "…" : workers.length}</p>
           </div>
         </div>
 
-        {/* Jobs list */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <h3 className="text-sm font-bold text-secondary-100 mb-3 flex items-center gap-2">
-            <HiOutlineBriefcase className="w-4 h-4" /> Jobs in this department
-          </h3>
+        {/* Tabs */}
+        <div className="flex border-b border-custom-200 px-6">
+          {(["workers", "jobs"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-3 text-sm font-semibold capitalize border-b-2 transition-colors ${
+                tab === t
+                  ? "border-primary-500 text-primary-600"
+                  : "border-transparent text-custom-500 hover:text-secondary-100"
+              }`}
+            >
+              {t === "workers" ? `Workers (${workers.length})` : `Jobs (${jobs.length})`}
+            </button>
+          ))}
+        </div>
 
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-custom-700 py-8 justify-center">
-              <HiOutlineRefresh className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Loading jobs…</span>
-            </div>
-          ) : jobs.length === 0 ? (
-            <div className="text-center py-12">
-              <HiOutlineBriefcase className="w-10 h-10 text-custom-300 mx-auto mb-2" />
-              <p className="text-sm text-custom-700">No jobs assigned to this department.</p>
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {jobs.map((job) => (
-                <li
-                  key={job.id}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                    <HiOutlineBriefcase className="w-4 h-4 text-primary-500" />
-                  </div>
-                  <span className="text-sm font-semibold text-secondary-100">{job.title}</span>
-                </li>
-              ))}
-            </ul>
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+
+          {/* Workers tab */}
+          {tab === "workers" && (
+            loadingDetail ? (
+              <div className="flex items-center gap-2 text-custom-700 py-8 justify-center">
+                <HiOutlineRefresh className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Loading workers…</span>
+              </div>
+            ) : workers.length === 0 ? (
+              <div className="text-center py-12">
+                <HiOutlineUsers className="w-10 h-10 text-custom-300 mx-auto mb-2" />
+                <p className="text-sm text-custom-700">No workers assigned to this department.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {workers.map((w) => (
+                  <li key={w.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-primary-600">{w.fullName.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-secondary-100">{w.fullName}</p>
+                        <p className="text-xs text-custom-500">{w.phoneNumber}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        w.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {w.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <span className="text-xs text-custom-400">{w.contractType?.replace("_", " ") ?? "—"}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {/* Jobs tab */}
+          {tab === "jobs" && (
+            loadingJobs ? (
+              <div className="flex items-center gap-2 text-custom-700 py-8 justify-center">
+                <HiOutlineRefresh className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Loading jobs…</span>
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="text-center py-12">
+                <HiOutlineBriefcase className="w-10 h-10 text-custom-300 mx-auto mb-2" />
+                <p className="text-sm text-custom-700">No jobs assigned to this department.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {jobs.map((job) => (
+                  <li key={job.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                    <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                      <HiOutlineBriefcase className="w-4 h-4 text-primary-500" />
+                    </div>
+                    <span className="text-sm font-semibold text-secondary-100">{job.title}</span>
+                  </li>
+                ))}
+              </ul>
+            )
           )}
         </div>
       </div>
     </>
+  );
+}
+
+// ─── Worker count cell — fetches per-department detail ───────────────────────
+
+function WorkerCountCell({ deptId }: { deptId: string }) {
+  const { data, isLoading } = useGetDepartmentByIdQuery(deptId);
+  const count = (data as any)?.employees?.length ?? 0;
+  return (
+    <span className="text-sm font-semibold text-green-600">
+      {isLoading ? <HiOutlineRefresh className="w-3.5 h-3.5 animate-spin inline" /> : count}
+    </span>
   );
 }
 
@@ -224,7 +289,7 @@ export default function DepartmentsPage() {
                         <span className="text-sm font-semibold text-yellow-600">{dept.activeJobs ?? 0}</span>
                       </td>
                       <td className="px-4 py-4">
-                        <span className="text-sm font-semibold text-green-600">{dept.workers ?? 0}</span>
+                        <WorkerCountCell deptId={dept.id} />
                       </td>
                       <td className="px-4 py-4 text-right">
                         <button
