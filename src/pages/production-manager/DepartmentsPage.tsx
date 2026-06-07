@@ -144,6 +144,17 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
   );
 }
 
+// ─── Active jobs count cell — fetches per-department jobs ───────────────────
+
+function ActiveJobsCell({ deptId }: { deptId: string }) {
+  const { data: jobs = [], isLoading } = useGetDepartmentJobsQuery(deptId);
+  return (
+    <span className="text-sm font-semibold text-yellow-600">
+      {isLoading ? <HiOutlineRefresh className="w-3.5 h-3.5 animate-spin inline" /> : jobs.length}
+    </span>
+  );
+}
+
 // ─── Worker count cell — fetches per-department detail ───────────────────────
 
 function WorkerCountCell({ deptId }: { deptId: string }) {
@@ -168,8 +179,7 @@ export default function DepartmentsPage() {
     (d.description ?? "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalWorkers    = departments.reduce((s, d) => s + (d.workers ?? 0), 0);
-  const totalActiveJobs = departments.reduce((s, d) => s + (d.activeJobs ?? 0), 0);
+  const totalWorkers = departments.reduce((s, d) => s + (d.workers ?? 0), 0);
 
   return (
     <DashboardLayout userRole="production-manager" userName="Production Manager" notificationCount={0}>
@@ -221,7 +231,9 @@ export default function DepartmentsPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Active Jobs</p>
-                <p className="text-xl font-bold text-yellow-600">{totalActiveJobs}</p>
+                <p className="text-xl font-bold text-yellow-600">
+                  {departments.length > 0 ? "—" : "0"}
+                </p>
               </div>
             </div>
           </Card>
@@ -286,7 +298,7 @@ export default function DepartmentsPage() {
                         <span className="text-sm text-custom-700">{dept.description ?? "—"}</span>
                       </td>
                       <td className="px-4 py-4">
-                        <span className="text-sm font-semibold text-yellow-600">{dept.activeJobs ?? 0}</span>
+                        <ActiveJobsCell deptId={dept.id} />
                       </td>
                       <td className="px-4 py-4">
                         <WorkerCountCell deptId={dept.id} />

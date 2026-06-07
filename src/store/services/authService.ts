@@ -18,6 +18,7 @@ export interface LoginResponse {
       name: string;
       email: string;
       role: UserRole;
+      departmentId?: string | null;
     };
   };
 }

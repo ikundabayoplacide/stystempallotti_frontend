@@ -15,6 +15,21 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   lastLogin?: string;
+  currentJobId?: string | null;
+  currentJob?: {
+    id: string;
+    jobNumber: string;
+    title: string;
+    state: string | null;
+    status: string;
+    priority: string;
+  } | null;
+}
+
+export interface GetUsersParams {
+  departmentId?: string;
+  role?: string;
+  isActive?: boolean;
 }
 
 export interface CreateUserPayload {
@@ -67,9 +82,9 @@ export const usersApi = createApi({
 
   endpoints: (builder) => ({
 
-    // GET /users
-    getUsers: builder.query<User[], void>({
-      query: () => "/users",
+    // GET /users  (supports ?departmentId=, ?role=, ?isActive=)
+    getUsers: builder.query<User[], GetUsersParams | void>({
+      query: (params) => ({ url: "/users", params: (params ?? {}) as Record<string, any> }),
       transformResponse: (res: ApiResponse<User[]>) => res.data,
       providesTags: (result) =>
         result

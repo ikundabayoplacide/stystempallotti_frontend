@@ -15,7 +15,7 @@ import {
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
-import type { Job } from "../../store/services/jobsService";
+import type { Job, JobState } from "../../store/services/jobsService";
 import {
   useApproveJobMutation,
   useAssignJobMutation,
@@ -26,6 +26,49 @@ import {
   useUpdateJobMutation,
 } from "../../store/services/jobsService";
 import { jobStatusConfig } from "../../types/JobStatus";
+
+// ─── State badge (same as supervisor page) ────────────────────────────────────
+
+const STATE_LABELS: Record<NonNullable<JobState>, string> = {
+  "in-composition":    "In Composition",
+  "in-montage":        "In Montage",
+  "in-printing":       "In Printing",
+  "in-binding":        "In Binding",
+  "in-packaging":      "In Packaging",
+  "quality-check":     "Quality Check",
+  "composition-done":  "Composition Done",
+  "montage-done":      "Montage Done",
+  "printing-done":     "Printing Done",
+  "binding-done":      "Binding Done",
+  "packaging-done":    "Packaging Done",
+  "qualitycheck-done": "Quality Check Done",
+};
+
+const STATE_COLORS: Record<NonNullable<JobState>, { bg: string; text: string }> = {
+  "in-composition":    { bg: "bg-orange-100",  text: "text-orange-700" },
+  "in-montage":        { bg: "bg-amber-100",   text: "text-amber-700" },
+  "in-printing":       { bg: "bg-pink-100",    text: "text-pink-700" },
+  "in-binding":        { bg: "bg-teal-100",    text: "text-teal-700" },
+  "in-packaging":      { bg: "bg-cyan-100",    text: "text-cyan-700" },
+  "quality-check":     { bg: "bg-purple-100",  text: "text-purple-700" },
+  "composition-done":  { bg: "bg-green-100",   text: "text-green-700" },
+  "montage-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "printing-done":     { bg: "bg-green-100",   text: "text-green-700" },
+  "binding-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "packaging-done":    { bg: "bg-green-100",   text: "text-green-700" },
+  "qualitycheck-done": { bg: "bg-green-100",   text: "text-green-700" },
+};
+
+function StateBadge({ state }: { state: JobState }) {
+  if (!state) return <span className="text-xs text-custom-500 italic">—</span>;
+  const label  = STATE_LABELS[state] ?? state;
+  const colors = STATE_COLORS[state] ?? { bg: "bg-gray-100", text: "text-gray-700" };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
+      {label}
+    </span>
+  );
+}
 
 const priorityColor: Record<string, string> = {
   low:    "bg-green-100 text-green-700",
@@ -133,9 +176,6 @@ export default function JobAssignmentPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const jobs       = allJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  useEffect(() => {
-    console.log(`[JobAssignmentPage] total jobs=${total} | page=${page}/${totalPages} | showing ${jobs.length}`);
-  }, [total, page, totalPages, jobs.length]);
   const pendingCount      = useMemo(() => allJobs.filter((j) => j.status === "pending").length, [allJobs]);
   const inProductionCount = useMemo(() => allJobs.filter((j) => IN_PRODUCTION_STATUSES.has(j.status)).length, [allJobs]);
   const assignedCount     = useMemo(() => allJobs.filter((j) => !!j.departmentAssignedToId).length, [allJobs]);
@@ -303,7 +343,7 @@ export default function JobAssignmentPage() {
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  {["Job", "Client", "Status", "Priority", "Department", "Due Date", "Actions"].map((h) => (
+                  {["Job", "Client", "Status", "Dept State", "Priority", "Department", "Due Date", "Actions"].map((h) => (
                     <th key={h} className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}>
                       {h}
                     </th>
@@ -313,7 +353,7 @@ export default function JobAssignmentPage() {
               <tbody className="bg-white divide-y divide-custom-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
+                    <td colSpan={8} className="px-4 py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-custom-700">
                         <HiOutlineRefresh className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Loading jobs…</span>
@@ -322,7 +362,7 @@ export default function JobAssignmentPage() {
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-custom-700 text-sm">
+                    <td colSpan={8} className="px-4 py-12 text-center text-custom-700 text-sm">
                       No jobs found
                     </td>
                   </tr>
@@ -342,6 +382,9 @@ export default function JobAssignmentPage() {
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.bgColor} ${statusCfg.color}`}>
                             {statusCfg.label}
                           </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <StateBadge state={job.state ?? null} />
                         </td>
                         <td className="px-4 py-4">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>

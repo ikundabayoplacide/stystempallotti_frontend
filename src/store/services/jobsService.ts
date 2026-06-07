@@ -17,6 +17,21 @@ export type JobStatus =
   | "completed"
   | "rejected";
 
+export type JobState =
+  | "in-composition"
+  | "in-montage"
+  | "in-printing"
+  | "in-binding"
+  | "in-packaging"
+  | "quality-check"
+  | "composition-done"
+  | "montage-done"
+  | "printing-done"
+  | "binding-done"
+  | "packaging-done"
+  | "qualitycheck-done"
+  | null;
+
 export type JobPriority = "low" | "normal" | "high" | "urgent";
 
 export type PaymentMethod = "CASH" | "MOBILE_MONEY" | "BANK_TRANSFER" | "CARD";
@@ -47,6 +62,7 @@ export interface Job {
   bindingType?: string;
   priority: JobPriority;
   status: JobStatus;
+  state?: JobState;
   rejectReason?: string;
   paymentStatus?: PaymentStatus;
   amount?: number;
@@ -403,6 +419,20 @@ export const jobsApi = createApi({
       ],
     }),
 
+    // PATCH /jobs/:id/state — Supervisor marks department work done
+    updateJobState: builder.mutation<Job, { id: string; state: string }>({
+      query: ({ id, state }) => ({
+        url: `/jobs/${id}/state`,
+        method: "PATCH",
+        body: { state },
+      }),
+      transformResponse: (res: ApiResponse<Job>) => res.data,
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "Job", id },
+        { type: "Job", id: "LIST" },
+      ],
+    }),
+
     // ── Job Items ─────────────────────────────────────────────────────────────
 
     getJobItems: builder.query<JobItem[], string>({
@@ -450,6 +480,7 @@ export const {
   useCreateJobMutation,
   useUpdateJobMutation,
   useUpdateJobStatusMutation,
+  useUpdateJobStateMutation,
   useApproveJobMutation,
   useRejectJobMutation,
   useRecordJobPaymentMutation,

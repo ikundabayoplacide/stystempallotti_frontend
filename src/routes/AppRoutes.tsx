@@ -68,7 +68,7 @@ import {
     ReceptionPage,
     // TaskAssignmentPage,
 } from "../pages/receptionalist";
-import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, TeamsPage, WorkerManagementPage } from "../pages/supervisor";
+import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, WorkerManagementPage, JobAssignmentPage as SupervisorJobAssignmentPage } from "../pages/supervisor";
 import { MaterialRequestPage } from "../pages/worker";
 import CustomerPage from "../pages/admin/customaPage";
 import VisitorPage from "../pages/receptionalist/VisitorPage";
@@ -156,8 +156,8 @@ export default function AppRoutes() {
 
       {/* Supervisor Routes */}
       <Route path="/supervisor" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorPage /></ProtectedRoute>} />
+      <Route path="/supervisor/jobs" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorJobAssignmentPage /></ProtectedRoute>} />
       <Route path="/supervisor/production" element={<ProtectedRoute allowedRoles={["supervisor"]}><ProductionPage /></ProtectedRoute>} />
-      <Route path="/supervisor/teams" element={<ProtectedRoute allowedRoles={["supervisor"]}><TeamsPage /></ProtectedRoute>} />
       <Route path="/supervisor/workers" element={<ProtectedRoute allowedRoles={["supervisor"]}><WorkerManagementPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />

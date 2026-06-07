@@ -8,6 +8,7 @@ interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
+  departmentId?: string | null;
 }
 
 interface AuthState {
@@ -34,7 +35,6 @@ const authSlice = createSlice({
   reducers: {
     // Called after a successful login API response
     setCredentials(state, action: PayloadAction<LoginResponse>) {
-      // Backend wraps everything inside "data"
       const { token, user } = action.payload.data;
 
       state.token = token;

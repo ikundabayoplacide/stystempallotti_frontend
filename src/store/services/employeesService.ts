@@ -16,6 +16,7 @@ export interface Employee {
   bankAccount?: string;
   hiredAt?: string;
   departmentId?: string;
+  jobId?: string | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -59,6 +60,11 @@ export interface GetEmployeesParams {
   search?: string;
 }
 
+export interface AssignJobPayload {
+  id: string;
+  jobId: string | null;
+}
+
 export const employeesApi = createApi({
   reducerPath: "employeesApi",
 
@@ -81,7 +87,6 @@ export const employeesApi = createApi({
         params,
       }),
       transformResponse: (res: any) => {
-        console.log("[employees] GET /employees raw response:", res);
         const data = res?.data ?? res?.employees ?? [];
         const result = {
           data: Array.isArray(data) ? data : [],
@@ -91,7 +96,6 @@ export const employeesApi = createApi({
           success: res?.success,
           message: res?.message,
         };
-        console.log("[employees] parsed:", result.data.length, "employees, total:", result.total);
         return result;
       },
       providesTags: ["Employee"],
