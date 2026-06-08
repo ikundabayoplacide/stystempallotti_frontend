@@ -7,11 +7,13 @@ import {
   HiOutlineFlag,
   HiOutlineRefresh,
   HiOutlineSearch,
+  HiOutlineUserAdd,
   HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
+import { useGetAllEmployeesQuery, useAssignJobToEmployeeMutation } from "../../store/services/employeesService";
 import type { Job, JobState } from "../../store/services/jobsService";
 import {
   useGetJobsQuery,
@@ -109,6 +111,11 @@ export default function SupervisorJobsPage() {
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [error, setError]         = useState("");
 
+  // ── Assign employee modal state ──
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignJob_,      setAssignJob_]      = useState<Job | null>(null);
+  const [assignError,     setAssignError]     = useState("");
+
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const myDeptId = currentUser?.departmentId;
 
@@ -118,6 +125,14 @@ export default function SupervisorJobsPage() {
   );
   const { data: departments = [] } = useGetDepartmentsQuery();
   const [updateJobState, { isLoading: isSaving }] = useUpdateJobStateMutation();
+
+  // Employees scoped to supervisor's department (backend auto-scopes)
+  const { data: employeesData, refetch: refetchEmployees } = useGetAllEmployeesQuery(
+    { limit: 200 },
+    { skip: !myDeptId }
+  );
+  const employees = employeesData?.data ?? [];
+  const [assignToEmployee, { isLoading: isAssigning }] = useAssignJobToEmployeeMutation();
 
   const allJobs    = allData?.jobs ?? [];
   const total      = allJobs.length;
@@ -139,6 +154,27 @@ export default function SupervisorJobsPage() {
 
   const closeModal      = () => { setShowModal(false); setActiveJob(null); setError(""); };
   const closeAndRefetch = () => { closeModal(); refetch(); };
+
+  // ── Assign employee handlers ──
+  const openAssignModal = (job: Job) => {
+    setAssignJob_(job);
+    setAssignError("");
+    setShowAssignModal(true);
+  };
+  const closeAssignModal = () => { setShowAssignModal(false); setAssignJob_(null); setAssignError(""); };
+
+  const handleAssignEmployee = async (employeeId: string) => {
+    if (!assignJob_) return;
+    try {
+      await assignToEmployee({ employeeId, jobId: assignJob_.id }).unwrap();
+      await Promise.all([refetchEmployees(), refetch()]);
+      closeAssignModal();
+    } catch (err: any) {
+      console.log("[assign-job] error response:", err);
+      const msg = err?.data?.message ?? err?.error ?? "Failed to assign employee";
+      setAssignError(msg);
+    }
+  };
 
   const handleMarkDone = async () => {
     if (!activeJob?.state) return;
@@ -254,10 +290,10 @@ export default function SupervisorJobsPage() {
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  {["Job", "Client", "Status", "Dept State", "Priority", "Due Date", "Action"].map((h) => (
+                  {["Job", "Client", "Status", "Dept State", "Priority", "Due Date", "Actions"].map((h) => (
                     <th
                       key={h}
-                      className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Action" ? "text-right" : "text-left"}`}
+                      className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}
                     >
                       {h}
                     </th>
@@ -314,7 +350,32 @@ export default function SupervisorJobsPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <MarkDoneButton job={job} onClick={openModal} />
+                          <div className="flex items-center justify-end gap-2">
+                            {/* Assign / Reassign employee to this job */}
+                            {(() => {
+                              const alreadyAssigned = employees.some(
+                                (e) =>
+                                  (e.assignedJobs?.some((j) => j.id === job.id) ?? false) ||
+                                  e.jobId === job.id
+                              );
+                              return (
+                                <button
+                                  onClick={() => openAssignModal(job)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold text-white ${
+                                    alreadyAssigned
+                                      ? "bg-amber-500 hover:bg-amber-600"
+                                      : "bg-primary-500 hover:bg-primary-600"
+                                  }`}
+                                  title={alreadyAssigned ? "Reassign employee" : "Assign employee"}
+                                >
+                                  <HiOutlineUserAdd className="w-3.5 h-3.5" />
+                                  {alreadyAssigned ? "Reassign" : "Assign"}
+                                </button>
+                              );
+                            })()}
+                            {/* Mark department done */}
+                            <MarkDoneButton job={job} onClick={openModal} />
+                          </div>
                         </td>
                       </tr>
                     );
@@ -344,7 +405,7 @@ export default function SupervisorJobsPage() {
           )}
         </Card>
 
-        {/* Confirm Modal */}
+        {/* ── Mark Done Confirm Modal ── */}
         {showModal && activeJob && (() => {
           const doneState = activeJob.state
             ? DONE_STATE_MAP[activeJob.state as NonNullable<JobState>]
@@ -423,6 +484,122 @@ export default function SupervisorJobsPage() {
             </div>
           );
         })()}
+
+        {/* ── Assign Employee Modal ── */}
+        {showAssignModal && assignJob_ && (
+          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+            <Card className="!p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-secondary-100">Assign Employee</h3>
+                  <p className="text-sm text-custom-700 mt-1">
+                    {assignJob_.jobNumber} — {assignJob_.title}
+                  </p>
+                </div>
+                <button onClick={closeAssignModal} className="text-custom-700 hover:text-secondary-100">
+                  <HiOutlineX className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Job summary */}
+              <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 mb-4 grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-custom-700">Client: </span>
+                  <span className="font-semibold text-secondary-100">{assignJob_.customer?.name ?? "—"}</span>
+                </div>
+                <div>
+                  <span className="text-custom-700">Priority: </span>
+                  <span className="font-semibold text-secondary-100 capitalize">{assignJob_.priority}</span>
+                </div>
+                <div>
+                  <span className="text-custom-700">Due: </span>
+                  <span className="font-semibold text-secondary-100">
+                    {assignJob_.dueDate ? assignJob_.dueDate.split("T")[0] : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-custom-700">Dept: </span>
+                  <span className="font-semibold text-primary-600">
+                    {departments.find((d) => d.id === myDeptId)?.name ?? "—"}
+                  </span>
+                </div>
+              </div>
+
+              {assignError && (
+                <p className="mb-3 text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{assignError}</p>
+              )}
+
+              <p className="text-sm font-semibold text-custom-700 mb-3">
+                Select an employee to assign:
+              </p>
+
+              <div className="space-y-2">
+                {employees.length === 0 ? (
+                  <p className="text-sm text-custom-700 text-center py-4">
+                    No employees in this department
+                  </p>
+                ) : (
+                  employees.map((emp) => {
+                    // Disable if this employee already has this exact job assigned
+                    const alreadyHasThisJob =
+                      (emp.assignedJobs?.some((j) => j.id === assignJob_.id) ?? false) ||
+                      emp.jobId === assignJob_.id;
+                    return (
+                      <button
+                        key={emp.id}
+                        onClick={() => !alreadyHasThisJob && handleAssignEmployee(emp.id)}
+                        disabled={isAssigning || alreadyHasThisJob}
+                        className={`w-full p-3 rounded-xl border-2 transition-colors text-left ${
+                          alreadyHasThisJob
+                            ? "border-green-300 bg-green-50 cursor-not-allowed opacity-70"
+                            : "border-custom-300 hover:border-primary-400 hover:bg-primary-50 disabled:opacity-60"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                              <span className="text-primary-600 font-bold text-xs">
+                                {emp.fullName.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-secondary-100 text-sm">{emp.fullName}</p>
+                              <p className="text-xs text-custom-700">
+                                {emp.contractType?.replace("_", " ").toLowerCase() ?? "—"}
+                              </p>
+                            </div>
+                          </div>
+                          {alreadyHasThisJob ? (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                              Already assigned ✓
+                            </span>
+                          ) : (emp.assignedJobs?.length ?? 0) > 0 || emp.jobId ? (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                              Has other job
+                            </span>
+                          ) : (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                              Available
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              <button
+                onClick={closeAssignModal}
+                className="mt-4 w-full px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 text-sm font-semibold text-custom-700"
+              >
+                Cancel
+              </button>
+
+            </Card>
+          </div>
+        )}
 
       </div>
     </DashboardLayout>

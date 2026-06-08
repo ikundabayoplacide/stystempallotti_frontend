@@ -102,12 +102,12 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Suppliers",        path: "/stock/suppliers", icon: HiOutlineUsers,         permissionKey: "suppliers.view" },
   ],
   supervisor: [
-    { label: "Dashboard",     path: "/supervisor",               icon: HiOutlineHome },
-    { label: "Jobs",          path: "/supervisor/jobs",           icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    { label: "Production",    path: "/supervisor/production",    icon: HiOutlineCube,          permissionKey: "production.view" },
-    { label: "Workers",       path: "/supervisor/workers",       icon: HiOutlineUsers,         permissionKey: "workers.view" },
-    { label: "Reports",       path: "/supervisor/reports",       icon: HiOutlineChartBar,      permissionKey: "reports.view" },
-    { label: "Review Reports",path: "/supervisor/reports/review",icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
+    { label: "Dashboard",     path: "/supervisor",                icon: HiOutlineHome },
+    { label: "Jobs",          path: "/supervisor/jobs",            icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    // { label: "Production",    path: "/supervisor/production",     icon: HiOutlineCube,          permissionKey: "production.view" },
+    { label: "Employees",     path: "/supervisor/employees",      icon: HiOutlineUsers },
+    { label: "Reports",       path: "/supervisor/reports",        icon: HiOutlineChartBar,      permissionKey: "reports.view" },
+    // { label: "Review Reports",path: "/supervisor/reports/review", icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
   ],
   worker: [
     { label: "My Jobs",          path: "/worker",           icon: HiOutlineHome },

@@ -1,9 +1,11 @@
+import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import {
   HiOutlineCheckCircle,
   HiOutlineClipboardList,
   HiOutlineClock,
   HiOutlineExclamationCircle,
+  HiOutlineFlag,
   HiOutlineRefresh,
   HiOutlineUsers,
 } from "react-icons/hi";
@@ -15,25 +17,68 @@ import { jobStatusConfig } from "../../types/JobStatus";
 import type { RootState } from "../../store";
 
 const priorityColor: Record<string, string> = {
-  high: "bg-orange-100 text-orange-700",
+  high:   "bg-orange-100 text-orange-700",
   urgent: "bg-red-500 text-white",
   normal: "bg-blue-100 text-blue-700",
-  low: "bg-green-100 text-green-700",
+  low:    "bg-green-100 text-green-700",
 };
 
-const PRODUCTION_STAGES = [
-  "in-composition",
-  "in-montage",
-  "in-printing",
-  "in-binding",
-  "in-packaging",
-  "quality-check",
-  "ready-for-delivery",
-] as const;
+const STATE_LABELS: Record<string, string> = {
+  "in-composition":    "In Composition",
+  "in-montage":        "In Montage",
+  "in-printing":       "In Printing",
+  "in-binding":        "In Binding",
+  "in-packaging":      "In Packaging",
+  "quality-check":     "Quality Check",
+  "composition-done":  "Composition Done",
+  "montage-done":      "Montage Done",
+  "printing-done":     "Printing Done",
+  "binding-done":      "Binding Done",
+  "packaging-done":    "Packaging Done",
+  "qualitycheck-done": "Quality Check Done",
+};
+
+const STATE_COLORS: Record<string, { bg: string; text: string }> = {
+  "in-composition":    { bg: "bg-orange-100",  text: "text-orange-700" },
+  "in-montage":        { bg: "bg-amber-100",   text: "text-amber-700" },
+  "in-printing":       { bg: "bg-pink-100",    text: "text-pink-700" },
+  "in-binding":        { bg: "bg-teal-100",    text: "text-teal-700" },
+  "in-packaging":      { bg: "bg-cyan-100",    text: "text-cyan-700" },
+  "quality-check":     { bg: "bg-purple-100",  text: "text-purple-700" },
+  "composition-done":  { bg: "bg-green-100",   text: "text-green-700" },
+  "montage-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "printing-done":     { bg: "bg-green-100",   text: "text-green-700" },
+  "binding-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "packaging-done":    { bg: "bg-green-100",   text: "text-green-700" },
+  "qualitycheck-done": { bg: "bg-green-100",   text: "text-green-700" },
+};
+
+const MAX_JOBS  = 5;
+const PAGE_SIZE = 5;
+
+function WorkloadBar({ jobCount }: { jobCount: number }) {
+  const pct       = Math.min(100, Math.round((jobCount / MAX_JOBS) * 100));
+  const color     = pct === 0 ? "bg-gray-300" : pct <= 40 ? "bg-green-500" : pct <= 75 ? "bg-yellow-500" : "bg-red-500";
+  const label     = pct === 0 ? "Free" : pct <= 40 ? "Light" : pct <= 75 ? "Busy" : "Overloaded";
+  const textColor = pct === 0 ? "text-gray-400" : pct <= 40 ? "text-green-600" : pct <= 75 ? "text-yellow-600" : "text-red-600";
+  return (
+    <div className="mt-2 space-y-0.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-custom-500">{jobCount} job{jobCount !== 1 ? "s" : ""}</span>
+        <span className={`text-[10px] font-bold ${textColor}`}>{label}</span>
+      </div>
+      <div className="w-full h-1.5 rounded-full bg-custom-200">
+        <div className={`h-1.5 rounded-full transition-all duration-300 ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
 
 export default function SupervisorDashboard() {
+  const [jobPage, setJobPage] = useState(1);
+
   const currentUser = useSelector((state: RootState) => state.auth.user);
-  const myDeptId = currentUser?.departmentId;
+  const myDeptId    = currentUser?.departmentId;
 
   const { data: activeData, isLoading, isFetching, refetch } = useGetJobsQuery(
     { limit: 200, departmentAssignedToId: myDeptId ?? undefined },
@@ -49,28 +94,37 @@ export default function SupervisorDashboard() {
   );
   const { data: departments = [] } = useGetDepartmentsQuery();
 
-  const myDept = departments.find((d) => d.id === myDeptId);
-  const jobs = activeData?.jobs ?? [];
+  const myDept        = departments.find((d) => d.id === myDeptId);
+  const jobs          = activeData?.jobs ?? [];
   const completedJobs = completedData?.jobs ?? [];
-  const workers = employeesRes?.data ?? [];
+  const workers       = employeesRes?.data ?? [];
 
-  const inProductionJobs = jobs.filter((j) =>
-    (PRODUCTION_STAGES as readonly string[]).includes(j.status)
-  );
-  const confirmedJobs = jobs.filter((j) => j.status === "confirmed");
   const urgentJobs = jobs.filter(
     (j) => j.priority === "urgent" && j.status !== "completed" && j.status !== "delivered"
   );
-  const completedToday = completedJobs.filter((j) => {
-    const updated = new Date(j.updatedAt);
-    return updated.toDateString() === new Date().toDateString();
-  });
+  const completedToday = completedJobs.filter(
+    (j) => new Date(j.updatedAt).toDateString() === new Date().toDateString()
+  );
+  const activeCount = jobs.filter((j) => j.status !== "completed" && j.status !== "rejected").length;
+  const doneCount   = jobs.filter((j) => j.state && (j.state as string).endsWith("-done")).length;
+
+  const busyWorkers = useMemo(
+    () => workers.filter((w) => (w.assignedJobs?.length ?? (w.jobId ? 1 : 0)) > 0).length,
+    [workers]
+  );
+  const busyPct = workers.length > 0 ? Math.round((busyWorkers / workers.length) * 100) : 0;
+
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const pagedJobs  = useMemo(
+    () => jobs.slice((jobPage - 1) * PAGE_SIZE, jobPage * PAGE_SIZE),
+    [jobs, jobPage]
+  );
 
   const kpis = [
-    { label: "Confirmed Jobs", value: confirmedJobs.length, icon: HiOutlineClipboardList, color: "text-primary-500", bg: "bg-primary-100" },
-    { label: "In Production", value: inProductionJobs.length, icon: HiOutlineClock, color: "text-yellow-600", bg: "bg-yellow-100" },
-    { label: "Completed Today", value: completedToday.length, icon: HiOutlineCheckCircle, color: "text-green-600", bg: "bg-green-100" },
-    { label: "Urgent", value: urgentJobs.length, icon: HiOutlineExclamationCircle, color: "text-red-500", bg: "bg-red-100" },
+    { label: "Active Jobs",     value: activeCount,           icon: HiOutlineClock,             color: "text-blue-600",    bg: "bg-blue-100"    },
+    { label: "Dept Done",       value: doneCount,             icon: HiOutlineFlag,              color: "text-green-600",   bg: "bg-green-100"   },
+    { label: "Completed Today", value: completedToday.length, icon: HiOutlineCheckCircle,       color: "text-primary-600", bg: "bg-primary-100" },
+    { label: "Urgent",          value: urgentJobs.length,     icon: HiOutlineExclamationCircle, color: "text-red-500",     bg: "bg-red-100"     },
   ];
 
   if (!myDeptId) {
@@ -86,12 +140,11 @@ export default function SupervisorDashboard() {
 
   return (
     <div className="space-y-8 font-[family-name:var(--font-family-primary)]">
+
       {/* Header */}
       <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-            Supervisor Dashboard
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Supervisor Dashboard</h1>
           <p className="text-sm text-custom-700 mt-1">
             Department: <span className="font-semibold text-primary-600">{myDept?.name ?? myDeptId}</span>
           </p>
@@ -120,92 +173,156 @@ export default function SupervisorDashboard() {
         ))}
       </div>
 
-      {/* Workers Summary */}
+      {/* Workers Summary + Workload */}
       <Card>
-        <div className="flex items-center gap-2 mb-4">
-          <HiOutlineUsers className="w-5 h-5 text-primary-500" />
-          <h2 className="font-bold text-secondary-100">
-            Workers in {myDept?.name ?? "Department"} ({workers.length})
-          </h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <HiOutlineUsers className="w-5 h-5 text-primary-500" />
+            <h2 className="font-bold text-secondary-100">
+              Workers — {myDept?.name ?? "Department"} ({workers.length})
+            </h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-custom-700 hidden sm:block">
+              {busyWorkers}/{workers.length} busy
+            </span>
+            <div className="w-28 space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-[10px] text-custom-500">Dept load</span>
+                <span className={`text-[10px] font-bold ${
+                  busyPct === 0 ? "text-gray-400" : busyPct <= 40 ? "text-green-600" : busyPct <= 75 ? "text-yellow-600" : "text-red-600"
+                }`}>{busyPct}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-custom-200">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    busyPct === 0 ? "bg-gray-300" : busyPct <= 40 ? "bg-green-500" : busyPct <= 75 ? "bg-yellow-500" : "bg-red-500"
+                  }`}
+                  style={{ width: `${busyPct}%` }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
+
         {workers.length === 0 ? (
           <p className="text-sm text-custom-700">No active workers assigned to this department.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {workers.map((w) => (
-              <div key={w.id} className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
-                    <span className="text-primary-600 font-bold text-xs">{w.fullName.charAt(0)}</span>
+            {workers.map((w) => {
+              const jobCount = w.assignedJobs?.length ?? (w.jobId ? 1 : 0);
+              return (
+                <div key={w.id} className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary-600 font-bold text-xs">{w.fullName.charAt(0)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-secondary-100 truncate">{w.fullName}</p>
+                      <p className="text-xs text-custom-700 capitalize">{w.contractType?.replace("_", " ").toLowerCase() ?? "—"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-secondary-100">{w.fullName}</p>
-                    <p className="text-xs text-custom-700">{w.contractType ?? "—"}</p>
-                  </div>
+                  <WorkloadBar jobCount={jobCount} />
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${w.isActive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                  {w.isActive ? "Active" : "Inactive"}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
 
-      {/* Active Jobs in this department */}
-      <Card>
-        <div className="flex items-center gap-2 mb-4">
+      {/* Jobs in Production */}
+      <Card className="!p-0 overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-custom-200">
           <HiOutlineClipboardList className="w-5 h-5 text-primary-500" />
           <h2 className="font-bold text-secondary-100">Jobs in Production</h2>
+          <span className="text-xs text-custom-500">({jobs.length})</span>
         </div>
+
         {isLoading ? (
           <div className="flex items-center gap-2 py-8 justify-center text-custom-700">
             <HiOutlineRefresh className="w-4 h-4 animate-spin" />
             <span className="text-sm">Loading…</span>
           </div>
         ) : jobs.length === 0 ? (
-          <p className="text-sm text-custom-700 py-4 text-center">No jobs assigned to your department</p>
+          <p className="text-sm text-custom-700 py-8 text-center">No jobs assigned to your department</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-custom-300">
-                  {["Job", "Client", "Status", "Priority", "Due Date"].map((h) => (
-                    <th key={h} className="text-left py-2 px-3 text-xs font-semibold text-custom-700 uppercase tracking-wide whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map((job) => {
-                  const statusCfg = jobStatusConfig[job.status] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
-                  return (
-                    <tr key={job.id} className="border-b border-custom-200 hover:bg-custom-50 transition-colors">
-                      <td className="py-3 px-3">
-                        <span className="font-semibold text-primary-500 whitespace-nowrap">{job.jobNumber}</span>
-                        <p className="text-xs text-custom-700 max-w-[140px] truncate">{job.title}</p>
-                      </td>
-                      <td className="py-3 px-3 text-secondary-100 whitespace-nowrap">{job.customer?.name ?? "—"}</td>
-                      <td className="py-3 px-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusCfg.bgColor} ${statusCfg.color}`}>
-                          {statusCfg.label}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>
-                          {job.priority}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-custom-700 whitespace-nowrap">
-                        {job.dueDate ? job.dueDate.split("T")[0] : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-custom-100 border-b border-custom-300">
+                  <tr>
+                    {["Job", "Client", "Status", "Dept State", "Priority", "Due Date"].map((h) => (
+                      <th key={h} className="text-left py-2 px-4 text-xs font-bold text-secondary-100 uppercase tracking-wide whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-custom-200">
+                  {pagedJobs.map((job) => {
+                    const statusCfg   = jobStatusConfig[job.status] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
+                    const stateColors = job.state ? (STATE_COLORS[job.state] ?? { bg: "bg-gray-100", text: "text-gray-700" }) : null;
+                    return (
+                      <tr key={job.id} className={`hover:bg-custom-50 transition-colors ${job.priority === "urgent" ? "bg-red-50" : ""}`}>
+                        <td className="py-3 px-4">
+                          <span className="font-bold text-primary-600 whitespace-nowrap">{job.jobNumber}</span>
+                          <p className="text-xs text-custom-700 max-w-[140px] truncate">{job.title}</p>
+                        </td>
+                        <td className="py-3 px-4 text-secondary-100 whitespace-nowrap">{job.customer?.name ?? "—"}</td>
+                        <td className="py-3 px-4">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusCfg.bgColor} ${statusCfg.color}`}>
+                            {statusCfg.label}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {stateColors ? (
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${stateColors.bg} ${stateColors.text}`}>
+                              {STATE_LABELS[job.state!] ?? job.state}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-custom-500 italic">—</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                            {job.priority}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-custom-700 whitespace-nowrap">
+                          {job.dueDate ? job.dueDate.split("T")[0] : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {jobs.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-custom-200 bg-custom-50">
+                <p className="text-xs text-custom-700">
+                  {(jobPage - 1) * PAGE_SIZE + 1}–{Math.min(jobPage * PAGE_SIZE, jobs.length)} of {jobs.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={jobPage <= 1}
+                    onClick={() => setJobPage((p) => p - 1)}
+                    className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs text-custom-700 font-semibold">{jobPage} / {totalPages}</span>
+                  <button
+                    disabled={jobPage >= totalPages}
+                    onClick={() => setJobPage((p) => p + 1)}
+                    className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
 

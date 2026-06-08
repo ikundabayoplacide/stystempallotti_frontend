@@ -50,6 +50,7 @@ interface AuthContextType {
   userRole: LegacyRole | null;
   userName: string | null;
   userDepartment: Department | null;
+  departmentId: string | null;
   logout: () => void;
 }
 
@@ -76,7 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated,
         userRole,
         userName: user?.name ?? null,
-        userDepartment: null, // backend doesn't return department yet
+        userDepartment: null,
+        departmentId: user?.departmentId ?? null,
         logout,
       }}
     >

@@ -1,6 +1,16 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../index";
 
+export interface EmployeeJob {
+  id: string;
+  jobNumber: string;
+  title: string;
+  status: string;
+  priority: string;
+  state?: string | null;
+  EmployeeJobAssignment?: { id: string; assignedAt: string; assignedById: string };
+}
+
 export interface Employee {
   id: string;
   fullName: string;
@@ -16,7 +26,12 @@ export interface Employee {
   bankAccount?: string;
   hiredAt?: string;
   departmentId?: string;
+  // Legacy single-job fields (kept for backward compat)
   jobId?: string | null;
+  job?: EmployeeJob | null;
+  jobs?: EmployeeJob[];
+  // New many-to-many field from backend
+  assignedJobs?: EmployeeJob[];
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -139,6 +154,34 @@ export const employeesApi = createApi({
       transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: ["Employee"],
     }),
+
+    // PATCH /employees/:employeeId/assign-job
+    assignJobToEmployee: builder.mutation<Employee, { employeeId: string; jobId: string }>({
+      query: ({ employeeId, jobId }) => ({
+        url: `/employees/${employeeId}/assign-job`,
+        method: "PATCH",
+        body: { jobId },
+      }),
+      transformResponse: (res: any) => {
+        console.log("[assignJobToEmployee] raw response:", JSON.stringify(res, null, 2));
+        return res?.data ?? res;
+      },
+      invalidatesTags: ["Employee"],
+    }),
+
+    // PATCH /employees/:employeeId/unassign-job
+    unassignJobFromEmployee: builder.mutation<Employee, { employeeId: string; jobId: string }>({
+      query: ({ employeeId, jobId }) => ({
+        url: `/employees/${employeeId}/unassign-job`,
+        method: "PATCH",
+        body: { jobId },
+      }),
+      transformResponse: (res: any) => {
+        console.log("[unassignJobFromEmployee] raw response:", JSON.stringify(res, null, 2));
+        return res?.data ?? res;
+      },
+      invalidatesTags: ["Employee"],
+    }),
   }),
 });
 
@@ -150,4 +193,6 @@ export const {
   useToggleEmployeeActiveMutation,
   useDeleteEmployeeMutation,
   useAssignDepartmentMutation,
+  useAssignJobToEmployeeMutation,
+  useUnassignJobFromEmployeeMutation,
 } = employeesApi;
