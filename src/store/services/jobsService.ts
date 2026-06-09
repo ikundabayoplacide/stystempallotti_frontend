@@ -433,6 +433,34 @@ export const jobsApi = createApi({
       ],
     }),
 
+    // PATCH /jobs/:id/done
+    markJobDone: builder.mutation<Job, string>({
+      query: (id) => ({ url: `/jobs/${id}/done`, method: "PATCH" }),
+      transformResponse: (res: ApiResponse<Job>) => res.data,
+      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+    }),
+
+    // PATCH /jobs/:id/start
+    startJob: builder.mutation<Job, string>({
+      query: (id) => ({ url: `/jobs/${id}/start`, method: "PATCH" }),
+      transformResponse: (res: ApiResponse<Job>) => res.data,
+      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+    }),
+
+    // PATCH /jobs/:id/pause
+    pauseJob: builder.mutation<Job, string>({
+      query: (id) => ({ url: `/jobs/${id}/pause`, method: "PATCH" }),
+      transformResponse: (res: ApiResponse<Job>) => res.data,
+      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+    }),
+
+    // PATCH /jobs/:id/resume
+    resumeJob: builder.mutation<Job, string>({
+      query: (id) => ({ url: `/jobs/${id}/resume`, method: "PATCH" }),
+      transformResponse: (res: ApiResponse<Job>) => res.data,
+      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+    }),
+
     // ── Job Items ─────────────────────────────────────────────────────────────
 
     getJobItems: builder.query<JobItem[], string>({
@@ -493,4 +521,8 @@ export const {
   useAddJobItemMutation,
   useUpdateJobItemMutation,
   useRemoveJobItemMutation,
+  useMarkJobDoneMutation,
+  useStartJobMutation,
+  usePauseJobMutation,
+  useResumeJobMutation,
 } = jobsApi;

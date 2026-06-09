@@ -4,7 +4,6 @@ import {
   HiOutlineBriefcase,
   HiOutlineChartBar,
   HiOutlineClipboardList,
-  HiOutlineClock,
   HiOutlineCog,
   HiOutlineCube,
   HiOutlineCurrencyDollar,
@@ -112,8 +111,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   worker: [
     { label: "My Jobs",          path: "/worker",           icon: HiOutlineHome },
     { label: "Task Board",       path: "/worker/tasks",     icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
-    { label: "Time Logs",        path: "/worker/time-logs", icon: HiOutlineClock,         permissionKey: "timelogs.view" },
-    { label: "My Stats",         path: "/worker/stats",     icon: HiOutlineChartBar,      permissionKey: "reports.view" },
+    // { label: "Time Logs",        path: "/worker/time-logs", icon: HiOutlineClock,         permissionKey: "timelogs.view" },
+    // { label: "My Stats",         path: "/worker/stats",     icon: HiOutlineChartBar,      permissionKey: "reports.view" },
     { label: "My Reports",       path: "/worker/reports",   icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
     { label: "Material Requests",path: "/worker/materials", icon: HiOutlineArchive,       permissionKey: "stock.view" },
   ],
