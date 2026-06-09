@@ -768,7 +768,7 @@ export default function PaymentCollectionPage() {
                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
                 <input
                   type="text"
-                  placeholder="Search by job #, title, or customer..."
+                  placeholder="Search by job title, or customer..."
                   value={jobSearch}
                   onChange={(e) => {
                     setJobSearch(e.target.value);

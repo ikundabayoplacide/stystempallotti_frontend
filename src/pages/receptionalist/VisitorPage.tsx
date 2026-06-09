@@ -5,6 +5,7 @@ import {
   HiOutlineChevronDoubleRight,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineHome,
   HiOutlineLocationMarker,
   HiOutlineLogin,
   HiOutlineLogout,
@@ -14,6 +15,8 @@ import {
   HiOutlinePhone,
   HiOutlinePlus,
   HiOutlineSearch,
+  HiOutlineShoppingBag,
+  HiOutlineUserGroup,
   HiOutlineUsers,
   HiOutlineX,
 } from "react-icons/hi";
@@ -63,11 +66,13 @@ const typeColor: Record<CustomerType, string> = {
   BUSINESS: "bg-blue-100 text-blue-700",
   VISITOR:  "bg-purple-100 text-purple-700",
   BOUTIQUE: "bg-pink-100 text-pink-700",
+  HOBE:     "bg-yellow-100 text-yellow-700",
 };
 const typeLabel: Record<CustomerType, string> = {
   BUSINESS: "Business",
   VISITOR:  "Visit",
   BOUTIQUE: "Boutique",
+  HOBE:     "Hobe",
 };
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 const DEFAULT_PAGE_SIZE = 10;
@@ -405,7 +410,7 @@ export default function VisitorPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-2">
               <HiOutlineUsers className="w-5 h-5 text-primary-600" />
@@ -419,6 +424,27 @@ export default function VisitorPage() {
             </div>
             <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "BUSINESS").length}</p>
             <p className="text-xs text-custom-700">Business</p>
+          </Card>
+          <Card className="!p-4">
+            <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center mb-2">
+              <HiOutlineShoppingBag className="w-5 h-5 text-pink-600" />
+            </div>
+            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "BOUTIQUE").length}</p>
+            <p className="text-xs text-custom-700">Boutique</p>
+          </Card>
+          <Card className="!p-4">
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2">
+              <HiOutlineUserGroup className="w-5 h-5 text-purple-600" />
+            </div>
+            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "VISITOR").length}</p>
+            <p className="text-xs text-custom-700">Visit</p>
+          </Card>
+          <Card className="!p-4">
+            <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center mb-2">
+              <HiOutlineHome className="w-5 h-5 text-yellow-600" />
+            </div>
+            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "HOBE").length}</p>
+            <p className="text-xs text-custom-700">Hobe</p>
           </Card>
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2">
@@ -444,6 +470,7 @@ export default function VisitorPage() {
               <option value="BUSINESS">Business</option>
               <option value="VISITOR">Visit</option>
               <option value="BOUTIQUE">Boutique</option>
+              <option value="HOBE">Hobe</option>
             </select>
           </div>
         </Card>
@@ -605,6 +632,7 @@ export default function VisitorPage() {
                     <option value="BUSINESS">Business</option>
                     <option value="VISITOR">Visit</option>
                     <option value="BOUTIQUE">Boutique</option>
+                    <option value="HOBE">Hobe</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">

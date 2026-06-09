@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   HiOutlineBadgeCheck,
   HiOutlineBriefcase,
-  HiOutlineCash,
+  HiOutlineCheckCircle,
   HiOutlineChevronRight,
   HiOutlineClipboardList,
   HiOutlineClock,
@@ -10,10 +11,7 @@ import {
   HiOutlineUsers,
 } from "react-icons/hi";
 import { Card } from "../../components/ui";
-import {
-  useGetJobsQuery,
-  useGetCompletedAndPaidJobsQuery,
-} from "../../store/services/jobsService";
+import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -43,6 +41,7 @@ const statusColors: Record<string, string> = {
   "ready-for-delivery": "bg-orange-100 text-orange-700",
   delivered: "bg-pink-100 text-pink-700",
   completed: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-red-100 text-red-700",
 };
 
 // ─── Pipeline step card ───────────────────────────────────────────────────────
@@ -128,23 +127,29 @@ function SectionHeader({ icon: Icon, title, linkLabel, onLink }: {
 
 export default function ReceptionDashboardV2() {
   const navigate = useNavigate();
+  const [jobPage, setJobPage] = useState(1);
+  const JOB_LIMIT = 6;
 
-  const { data: allJobsData } = useGetJobsQuery({ limit: 6, page: 1 });
-  const { data: pendingData } = useGetJobsQuery({ status: "pending", limit: 5 });
-  const { data: readyForDelivData } = useGetJobsQuery({ status: "ready-for-delivery", limit: 1 });
-  const { data: deliveredData } = useGetJobsQuery({ status: "delivered", limit: 5 });
-  const { data: completedPaidData } = useGetCompletedAndPaidJobsQuery({ limit: 1 });
-  const { data: customersData } = useGetCustomersQuery({ limit: 1 });
+  const { data: allJobsData }        = useGetJobsQuery({ limit: JOB_LIMIT, page: jobPage });
+  const { data: totalJobsData }       = useGetJobsQuery({ limit: 1000 });
+  const { data: pendingData }         = useGetJobsQuery({ status: "pending",            limit: 5 });
+  const { data: pendingCountData }    = useGetJobsQuery({ status: "pending",            limit: 1000 });
+  const { data: readyForDelivData }   = useGetJobsQuery({ status: "ready-for-delivery", limit: 1000 });
+  const { data: completedCountData }  = useGetJobsQuery({ status: "completed",          limit: 1000 });
+  const { data: deliveredData }       = useGetJobsQuery({ status: "delivered",          limit: 5 });
+  const { data: deliveredCountData }  = useGetJobsQuery({ status: "delivered",          limit: 1000 });
+  const { data: customersData }       = useGetCustomersQuery({ limit: 1000 });
 
-  const recentJobs = allJobsData?.jobs ?? [];
-  const totalJobs = allJobsData?.total ?? 0;
-  const pendingJobs = pendingData?.jobs ?? [];
-  const pendingCount = pendingData?.total ?? 0;
-  const deliveredJobs = deliveredData?.jobs ?? [];
-  const deliveredCount = deliveredData?.total ?? 0;
-  const readyForDelivCount = readyForDelivData?.total ?? 0;
-  const readyToDeliverCount = completedPaidData?.total ?? 0;
-  const totalCustomers = customersData?.total ?? 0;
+  const recentJobs         = allJobsData?.jobs ?? [];
+  const totalJobs          = totalJobsData?.total ?? 0;
+  const recentTotalPages   = Math.max(1, Math.ceil(totalJobs / JOB_LIMIT));
+  const pendingJobs        = pendingData?.jobs ?? [];
+  const pendingCount       = pendingCountData?.total ?? 0;
+  const deliveredJobs      = deliveredData?.jobs ?? [];
+  const deliveredCount     = deliveredCountData?.total ?? 0;
+  const readyForDelivCount = (readyForDelivData?.total ?? 0) + (completedCountData?.total ?? 0);
+  const completedCount     = completedCountData?.total ?? 0;
+  const totalCustomers     = customersData?.total ?? 0;
 
   return (
     <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
@@ -171,11 +176,11 @@ export default function ReceptionDashboardV2() {
           <PipelineStep label="Pending" count={pendingCount} icon={HiOutlineClock}
             iconBg="bg-gray-100" iconColor="text-gray-500" accent="bg-gray-400"
             path="/reception" />
-          <PipelineStep label="Ready to Deliver" count={readyToDeliverCount} icon={HiOutlineCash}
-            iconBg="bg-emerald-100" iconColor="text-emerald-600" accent="bg-emerald-400"
-            path="/reception/payments" />
-          <PipelineStep label="For Delivery" count={readyForDelivCount} icon={HiOutlineTruck}
+          <PipelineStep label="Ready for Delivery" count={readyForDelivCount} icon={HiOutlineTruck}
             iconBg="bg-orange-100" iconColor="text-orange-500" accent="bg-orange-400"
+            path="/reception/deliveries" />
+          <PipelineStep label="Completed" count={completedCount} icon={HiOutlineCheckCircle}
+            iconBg="bg-emerald-100" iconColor="text-emerald-600" accent="bg-emerald-400"
             path="/reception/deliveries" />
           <PipelineStep label="Delivered" count={deliveredCount} icon={HiOutlineBadgeCheck}
             iconBg="bg-pink-100" iconColor="text-pink-500" accent="bg-pink-400"
@@ -196,16 +201,35 @@ export default function ReceptionDashboardV2() {
               <SectionHeader
                 icon={HiOutlineClipboardList}
                 title="Recent Jobs"
-                linkLabel="All jobs"
-                onLink={() => navigate("/reception")}
+                linkLabel={`Page ${jobPage}/${recentTotalPages}`}
+                onLink={() => {}}
               />
             </div>
             {recentJobs.length === 0 ? (
               <p className="px-4 pb-4 text-sm text-custom-700">No jobs yet.</p>
             ) : (
               recentJobs.map((job) => (
-                <JobCard key={job.id} job={job} onClick={() => navigate("/reception")} />
+                <JobCard key={job.id} job={job} onClick={() => {}} />
               ))
+            )}
+            {recentTotalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-2.5 border-t border-custom-100">
+                <button
+                  onClick={() => setJobPage((p) => Math.max(1, p - 1))}
+                  disabled={jobPage <= 1}
+                  className="px-3 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                >
+                  ← Prev
+                </button>
+                <span className="text-xs text-custom-700">{jobPage} / {recentTotalPages}</span>
+                <button
+                  onClick={() => setJobPage((p) => Math.min(recentTotalPages, p + 1))}
+                  disabled={jobPage >= recentTotalPages}
+                  className="px-3 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
             )}
           </Card>
         </div>
@@ -220,7 +244,7 @@ export default function ReceptionDashboardV2() {
                 icon={HiOutlineClock}
                 title="Pending Jobs"
                 linkLabel="View"
-                onLink={() => navigate("/reception")}
+                onLink={() => navigate("/reception/jobs")}
               />
             </div>
             {pendingJobs.length === 0 ? (
@@ -263,7 +287,7 @@ export default function ReceptionDashboardV2() {
                     <p className="text-sm font-semibold text-secondary-100 truncate">{job.title}</p>
                     <p className="text-xs text-custom-700 truncate">{job.customer?.name ?? "—"}</p>
                   </div>
-                  {job.paidAt ? (
+                  {job.paymentStatus === "paid" ? (
                     <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0">
                       <HiOutlineBadgeCheck className="w-3 h-3" /> Paid
                     </span>

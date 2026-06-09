@@ -71,6 +71,7 @@ const statusColors: Record<string, string> = {
   "ready-for-delivery": "bg-orange-100 text-orange-700",
   delivered: "bg-pink-100 text-pink-700",
   completed: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-red-100 text-red-700",
 };
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20];
@@ -502,7 +503,7 @@ export default function PaymentCollectionPage() {
                 <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
                 <input
                   type="text"
-                  placeholder="Search by job #, title, or customer..."
+                  placeholder="Search by job title, or customer..."
                   value={jobSearch}
                   onChange={(e) => {
                     setJobSearch(e.target.value);
@@ -646,6 +647,7 @@ export default function PaymentCollectionPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
+                        {job.status !== "rejected" && (
                         <button
                           onClick={() => setSelectedJob(job)}
                           disabled={job.paymentStatus === "paid"}
@@ -654,6 +656,7 @@ export default function PaymentCollectionPage() {
                           <HiOutlineBadgeCheck className="w-4 h-4" />
                           {job.paymentStatus === "paid" ? "Paid" : "Collect Payment"}
                         </button>
+                        )}
                       </td>
                     </tr>
                   ))

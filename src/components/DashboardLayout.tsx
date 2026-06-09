@@ -37,6 +37,7 @@ export default function DashboardLayout({
       admin: "/admin/notifications",
       receptionist: "/reception/notifications",
       sales: "/sales/notifications",
+      hr: "/hr/notifications",
       daf: "/finance/daf/notifications",
       accountant: "/finance/accountant1/notifications",
       "production-manager": "/production-manager/notifications",

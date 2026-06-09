@@ -150,19 +150,37 @@ export default function DeliveriesPage() {
   const [search, setSearch] = useState("");
   const [deliverJob, setDeliverJob] = useState<Job | null>(null);
 
-  const { data, isLoading, isFetching, refetch } = useGetJobsQuery(
-    search.trim() ? { search: search.trim() } : undefined
-  );
+  // ready-for-delivery = production done; filter paid ones for handoff
+  const { data: readyData, isLoading: readyLoading, isFetching, refetch: refetchReady } =
+    useGetJobsQuery({
+      status: "ready-for-delivery",
+      limit: 200,
+      ...(search.trim() && { search: search.trim() }),
+    });
 
-  const allJobs = data?.jobs ?? [];
-  const readyJobs = allJobs.filter(
-    (j) => j.status === "completed" && j.paymentStatus === "paid"
-  );
-  const delivJobs = allJobs.filter((j) => j.status === "delivered");
+  const { data: completedData, isLoading: completedLoading, refetch: refetchCompleted } =
+    useGetJobsQuery({
+      status: "completed",
+      limit: 200,
+      ...(search.trim() && { search: search.trim() }),
+    });
+
+  const { data: delivData, isLoading: delivLoading, refetch: refetchDeliv } =
+    useGetJobsQuery({ status: "delivered", limit: 200 });
+
+  const isLoading = readyLoading || delivLoading || completedLoading;
+  const readyForDelivery = (readyData?.jobs ?? []).filter((j) => j.paymentStatus === "paid");
+  const completedAndPaid = (completedData?.jobs ?? []).filter((j) => j.paymentStatus === "paid");
+  const readyJobs = [...readyForDelivery, ...completedAndPaid];
+  const delivJobs = delivData?.jobs ?? [];
+  const readyTotal = readyData?.total ?? 0;
+  const delivTotal = delivData?.total ?? 0;
 
   const handleDeliveredSuccess = () => {
     setDeliverJob(null);
-    refetch();
+    refetchReady();
+    refetchCompleted();
+    refetchDeliv();
   };
 
   return (
@@ -186,7 +204,7 @@ export default function DeliveriesPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Ready for Delivery</p>
-                <p className="text-2xl font-bold text-secondary-100">{readyJobs.length}</p>
+                <p className="text-2xl font-bold text-secondary-100">{readyJobs.length}<span className="text-sm font-normal text-custom-700">/{readyTotal}</span></p>
               </div>
             </div>
           </Card>
@@ -197,7 +215,7 @@ export default function DeliveriesPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Already Delivered</p>
-                <p className="text-2xl font-bold text-secondary-100">{delivJobs.length}</p>
+                <p className="text-2xl font-bold text-secondary-100">{delivTotal}</p>
               </div>
             </div>
           </Card>
@@ -208,7 +226,7 @@ export default function DeliveriesPage() {
               </div>
               <div>
                 <p className="text-xs text-custom-700">Total in Pipeline</p>
-                <p className="text-2xl font-bold text-secondary-100">{readyJobs.length + delivJobs.length}</p>
+                <p className="text-2xl font-bold text-secondary-100">{readyTotal + delivTotal}</p>
               </div>
             </div>
           </Card>
@@ -221,7 +239,7 @@ export default function DeliveriesPage() {
               <HiOutlineTruck className="w-5 h-5 text-emerald-500" />
               <h2 className="text-base font-bold text-secondary-100">Ready for Delivery</h2>
               <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
-                Completed & Paid
+                Ready-for-delivery & Paid
               </span>
             </div>
             <div className="flex gap-2">
@@ -235,7 +253,7 @@ export default function DeliveriesPage() {
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
-              <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
+              <button onClick={() => { refetchReady(); refetchCompleted(); refetchDeliv(); }} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
                 <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isFetching ? "animate-spin" : ""}`} />
               </button>
             </div>

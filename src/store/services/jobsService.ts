@@ -213,7 +213,7 @@ function normalizePaginatedJobs(raw: unknown): PaginatedJobs {
       jobs: raw as Job[],
       total: (raw as Job[]).length,
       page: 1,
-      limit: (raw as Job[]).length,
+      limit: (raw as Job[]).length || 10,
       totalPages: 1,
     };
   }

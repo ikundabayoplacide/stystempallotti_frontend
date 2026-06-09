@@ -63,11 +63,13 @@ const typeColor: Record<CustomerType, string> = {
   BUSINESS: "bg-blue-100 text-blue-700",
   VISITOR:  "bg-purple-100 text-purple-700",
   BOUTIQUE: "bg-pink-100 text-pink-700",
+  HOBE:     "bg-yellow-100 text-yellow-700",
 };
 const typeLabel: Record<CustomerType, string> = {
   BUSINESS: "Business",
   VISITOR:  "Visit",
   BOUTIQUE: "Boutique",
+  HOBE:     "Hobe",
 };
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 const DEFAULT_PAGE_SIZE = 10;
@@ -431,6 +433,7 @@ export default function SalesCustomerPage() {
               <option value="BUSINESS">Business</option>
               <option value="VISITOR">Visit</option>
               <option value="BOUTIQUE">Boutique</option>
+              <option value="HOBE">Hobe</option>
             </select>
           </div>
         </Card>
@@ -592,6 +595,7 @@ export default function SalesCustomerPage() {
                     <option value="BUSINESS">Business</option>
                     <option value="VISITOR">Visit</option>
                     <option value="BOUTIQUE">Boutique</option>
+                    <option value="HOBE">Hobe</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
