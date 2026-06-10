@@ -18,5 +18,5 @@ export { default as SystemSettingsPage } from './SystemSettingsPage';
 export { default as UIPermissionsPage } from './UIPermissionsPage';
 export { default as UserManagementPage } from './UserManagementPage';
 export { default as WorkflowConfigPage } from './WorkflowConfigPage';
-
+export { default as DepartmentsPage } from './DepartmentsPage';
 

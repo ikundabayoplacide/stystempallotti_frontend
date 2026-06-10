@@ -15,5 +15,5 @@ export { default as DAFJobApprovalPage } from "./DAFJobApprovalPage";
 export { default as DAFPage } from "./DAFPage";
 export { default as DAFReportsPage } from "./DAFReportsPage";
 export { default as FinanceControlPage } from "./FinanceControlPage";
-export { default as HRManagementPage } from "./HRManagementPage";
+export { default as HRManagementPage } from "../HR/HRManagementPage";
 

@@ -18,6 +18,7 @@ const UIPermissionsContext = createContext<UIPermissionsContextType | undefined>
 
 function normalizeLegacyUIPermissions(config: UIPermissionsConfiguration): UIPermissionsConfiguration {
   const legacyPathMap: Record<string, string> = {
+    "/reception/new": "/reception/visitor",
     "/accountant1": "/finance/accountant1",
     "/accountant1/invoices": "/finance/accountant1/invoices",
     "/accountant1/payments": "/finance/accountant1/payments",
@@ -90,9 +91,15 @@ export function UIPermissionsProvider({ children }: { children: ReactNode }) {
         const savedConfig = localStorage.getItem("jts-ui-permissions");
         if (savedConfig) {
           const parsedConfig = JSON.parse(savedConfig) as UIPermissionsConfiguration;
-          const normalizedConfig = normalizeLegacyUIPermissions(parsedConfig);
-          setUIPermissions(normalizedConfig);
-          localStorage.setItem("jts-ui-permissions", JSON.stringify(normalizedConfig));
+          // Reset if version is outdated
+          if (parsedConfig.version !== DEFAULT_UI_PERMISSIONS.version) {
+            setUIPermissions(DEFAULT_UI_PERMISSIONS);
+            localStorage.setItem("jts-ui-permissions", JSON.stringify(DEFAULT_UI_PERMISSIONS));
+          } else {
+            const normalizedConfig = normalizeLegacyUIPermissions(parsedConfig);
+            setUIPermissions(normalizedConfig);
+            localStorage.setItem("jts-ui-permissions", JSON.stringify(normalizedConfig));
+          }
         } else {
           setUIPermissions(DEFAULT_UI_PERMISSIONS);
         }

@@ -117,7 +117,7 @@ export interface UIPermissionsConfiguration {
 // Default UI Permissions Configuration
 export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
   id: "default-ui-permissions",
-  version: "1.0.0",
+  version: "1.9.0",
   roles: [
     {
       roleId: "admin",
@@ -145,16 +145,18 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
       sidebarMenu: [
         { id: "dashboard", label: "Dashboard", path: "/admin", icon: "HiOutlineHome", enabled: true, order: 1 },
         { id: "users", label: "Users", path: "/admin/users", icon: "HiOutlineUsers", enabled: true, order: 2 },
-        { id: "jobs", label: "Jobs", path: "/admin/jobs", icon: "HiOutlineClipboardList", enabled: true, order: 3 },
-        { id: "production", label: "Production", path: "/admin/production", icon: "HiOutlineCube", enabled: true, order: 4 },
-        { id: "sales", label: "Sales", path: "/admin/sales", icon: "HiOutlineBriefcase", enabled: true, order: 5 },
-        { id: "finance", label: "Finance", path: "/admin/finance", icon: "HiOutlineCurrencyDollar", enabled: true, order: 6 },
-        { id: "stock", label: "Stock", path: "/admin/stock", icon: "HiOutlineArchive", enabled: true, order: 7 },
-        { id: "reports", label: "Reports", path: "/admin/reports", icon: "HiOutlineChartBar", enabled: true, order: 8 },
-        { id: "view-reports", label: "View Reports", path: "/admin/reports/view", icon: "HiOutlineDocumentText", enabled: true, order: 9 },
-        { id: "workflow", label: "Workflow Config", path: "/admin/workflow", icon: "HiOutlineAdjustments", enabled: true, order: 10 },
-        { id: "ui-permissions", label: "UI Permissions", path: "/admin/ui-permissions", icon: "HiOutlineViewGrid", enabled: true, order: 11 },
-        { id: "settings", label: "Settings", path: "/admin/settings", icon: "HiOutlineCog", enabled: true, order: 12 },
+        { id: "customers", label: "Customers", path: "/admin/customers", icon: "HiOutlineUserGroup", enabled: true, order: 3 },
+        { id: "jobs", label: "Jobs", path: "/admin/jobs", icon: "HiOutlineClipboardList", enabled: true, order: 4 },
+        { id: "departments", label: "Departments", path: "/admin/departments", icon: "HiOutlineUsers", enabled: true, order: 5 },
+        { id: "production", label: "Production", path: "/admin/production", icon: "HiOutlineCube", enabled: true, order: 6 },
+        { id: "sales", label: "Sales", path: "/admin/sales", icon: "HiOutlineBriefcase", enabled: true, order: 7 },
+        { id: "finance", label: "Finance", path: "/admin/finance", icon: "HiOutlineCurrencyDollar", enabled: true, order: 8 },
+        { id: "stock", label: "Stock", path: "/admin/stock", icon: "HiOutlineArchive", enabled: true, order: 9 },
+        { id: "reports", label: "Reports", path: "/admin/reports", icon: "HiOutlineChartBar", enabled: true, order: 10 },
+        { id: "view-reports", label: "View Reports", path: "/admin/reports/view", icon: "HiOutlineDocumentText", enabled: true, order: 11 },
+        { id: "workflow", label: "Workflow Config", path: "/admin/workflow", icon: "HiOutlineAdjustments", enabled: true, order: 12 },
+        { id: "ui-permissions", label: "UI Permissions", path: "/admin/ui-permissions", icon: "HiOutlineViewGrid", enabled: true, order: 13 },
+        { id: "settings", label: "Settings", path: "/admin/settings", icon: "HiOutlineCog", enabled: true, order: 14 },
       ],
       pagePermissions: [
         { 
@@ -213,14 +215,18 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
       ],
       sidebarMenu: [
         { id: "dashboard", label: "Dashboard", path: "/reception", icon: "HiOutlineHome", enabled: true, order: 1 },
-        { id: "new-job", label: "New Job", path: "/reception/new", icon: "HiOutlineClipboardList", enabled: true, order: 2 },
-        { id: "tasks", label: "Task Assignment", path: "/reception/tasks", icon: "HiOutlineClipboardCheck", enabled: true, order: 3 },
-        { id: "deliveries", label: "Deliveries", path: "/reception/deliveries", icon: "HiOutlineTruck", enabled: true, order: 4 },
+        { id: "visitor", label: "Visitor", path: "/reception/visitor", icon: "HiOutlineClipboardList", enabled: true, order: 2 },
+        { id: "payments", label: "Payments", path: "/reception/payments", icon: "HiOutlineCurrencyDollar", enabled: true, order: 3 },
+        { id: "tasks", label: "Task Assignment", path: "/reception/tasks", icon: "HiOutlineClipboardCheck", enabled: false, order: 4 },
+        { id: "deliveries", label: "Deliveries", path: "/reception/deliveries", icon: "HiOutlineTruck", enabled: true, order: 5 },
+        { id: "boutique", label: "Boutique", path: "/reception/boutique", icon: "HiOutlineShoppingBag", enabled: true, order: 6 },
       ],
       pagePermissions: [
-        { pageId: "new-job", pageName: "New Job", enabled: true, allowedActions: ["view", "create"] },
+        { pageId: "visitor", pageName: "Visitor", enabled: true, allowedActions: ["view", "create"] },
+        { pageId: "payments", pageName: "Payments", enabled: true, allowedActions: ["view", "create"] },
         { pageId: "tasks", pageName: "Tasks", enabled: true, allowedActions: ["view", "assign"] },
         { pageId: "deliveries", pageName: "Deliveries", enabled: true, allowedActions: ["view", "edit"] },
+        { pageId: "boutique", pageName: "Boutique", enabled: true, allowedActions: ["view"] },
       ],
       uiSettings: {
         showNotifications: true,
@@ -328,12 +334,12 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
         { id: "dashboard", label: "Dashboard", path: "/production-manager", icon: "HiOutlineHome", enabled: true, order: 1 },
         { id: "job-assignment", label: "Job Assignment", path: "/production-manager/planning", icon: "HiOutlineClipboardList", enabled: true, order: 2 },
         { id: "departments", label: "Departments", path: "/production-manager/departments", icon: "HiOutlineCube", enabled: true, order: 3 },
-        { id: "progress", label: "Progress", path: "/production-manager/progress", icon: "HiOutlineChartBar", enabled: true, order: 4 },
+        { id: "progress", label: "Progress", path: "/production-manager/progress", icon: "HiOutlineChartBar", enabled: false, order: 4 },
       ],
       pagePermissions: [
         { pageId: "job-assignment", pageName: "Job Assignment", enabled: true, allowedActions: ["view", "assign", "reassign"] },
         { pageId: "departments", pageName: "Departments", enabled: true, allowedActions: ["view", "edit"] },
-        { pageId: "progress", pageName: "Progress", enabled: true, allowedActions: ["view"] },
+        { pageId: "progress", pageName: "Progress", enabled: false, allowedActions: ["view"] },
       ],
       uiSettings: {
         showNotifications: true,
@@ -353,18 +359,20 @@ export const DEFAULT_UI_PERMISSIONS: UIPermissionsConfiguration = {
         { widgetId: "upcoming-deadlines", widgetName: "Upcoming Deadlines", enabled: true, order: 5, size: "medium" },
       ],
       sidebarMenu: [
-        { id: "dashboard", label: "Dashboard", path: "/sales", icon: "HiOutlineHome", enabled: true, order: 1 },
-        { id: "clients", label: "Clients", path: "/sales/clients", icon: "HiOutlineUsers", enabled: true, order: 2 },
-        { id: "quotations", label: "Quotations", path: "/sales/quotations", icon: "HiOutlineDocumentText", enabled: true, order: 3 },
-        { id: "proforma", label: "Proforma Invoice", path: "/sales/invoices", icon: "HiOutlineClipboardList", enabled: true, order: 4 },
-        { id: "dossier", label: "Dossier", path: "/sales/dossiers", icon: "HiOutlineFolder", enabled: true, order: 5 },
-        { id: "confirmation", label: "Client Confirmation", path: "/sales/confirmation", icon: "HiOutlineCheckCircle", enabled: false, order: 6 },
+        { id: "dashboard",    label: "Dashboard",         path: "/sales",             icon: "HiOutlineHome",           enabled: true,  order: 1 },
+        { id: "jobs",         label: "Jobs",              path: "/sales/jobs",         icon: "HiOutlineBriefcase",      enabled: true,  order: 2 },
+        { id: "stocks",       label: "Stock",             path: "/sales/stocks",       icon: "HiOutlineArchive",        enabled: true,  order: 3 },
+        { id: "quotations",   label: "Quotations",        path: "/sales/quotations",   icon: "HiOutlineDocumentText",   enabled: true,  order: 4 },
+        { id: "proforma",     label: "Proforma Invoice",  path: "/sales/invoices",     icon: "HiOutlineClipboardList",  enabled: true,  order: 5 },
+        { id: "dossier",      label: "Dossier",           path: "/sales/dossiers",     icon: "HiOutlineFolder",         enabled: true,  order: 6 },
+        { id: "confirmation", label: "Client Confirmation", path: "/sales/confirmation", icon: "HiOutlineCheckCircle",  enabled: false, order: 7 },
       ],
       pagePermissions: [
-        { pageId: "clients", pageName: "Clients", enabled: true, allowedActions: ["view", "create", "edit"] },
+        { pageId: "jobs", pageName: "Jobs", enabled: true, allowedActions: ["view", "create", "edit"] },
         { pageId: "quotations", pageName: "Quotations", enabled: true, allowedActions: ["view", "create", "edit", "export"] },
         { pageId: "proforma", pageName: "Proforma Invoice", enabled: true, allowedActions: ["view", "create", "edit"] },
         { pageId: "dossier", pageName: "Dossier", enabled: true, allowedActions: ["view", "create", "edit"] },
+        { pageId: "stocks", pageName: "Stock", enabled: true, allowedActions: ["view"] },
       ],
       uiSettings: {
         showNotifications: true,

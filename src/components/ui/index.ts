@@ -4,3 +4,5 @@ export { default as Card } from "./Card";
 export { default as Input } from "./Input";
 export { default as Icon } from "./Icon";
 export { default as SectionTitle } from "./SectionTitle";
+export { default as PhoneInput } from "./PhoneInput";
+export { default as PasswordInput } from "./PasswordInput";

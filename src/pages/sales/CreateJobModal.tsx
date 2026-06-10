@@ -1,0 +1,817 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  HiOutlineBriefcase,
+  HiOutlineCheckCircle,
+  HiOutlineCube,
+  HiOutlineExclamationCircle,
+  HiOutlineMail,
+  HiOutlineOfficeBuilding,
+  HiOutlinePhone,
+  HiOutlineSearch,
+  HiOutlineTrash,
+  HiOutlineUser,
+  HiOutlineX,
+} from "react-icons/hi";
+import { Button, Card, Input } from "../../components/ui";
+import type { Customer } from "../../store/services/customersService";
+import { useGetCustomersQuery } from "../../store/services/customersService";
+import type { JobPriority } from "../../store/services/jobsService";
+import { useCreateJobMutation } from "../../store/services/jobsService";
+import type { StockItem } from "../../store/services/stockService";
+import { useGetStockItemsQuery } from "../../store/services/stockService";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Props {
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+interface SelectedItem {
+  stockItem: StockItem;
+  quantityNeeded: number;
+  notes: string;
+}
+
+const selectCls =
+  "w-full px-4 py-2.5 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 " +
+  "focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 " +
+  "transition-colors duration-200 font-[family-name:var(--font-family-primary)] text-sm";
+
+// ─── Step indicator ───────────────────────────────────────────────────────────
+
+function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
+  const labels = ["Customer & Details", "Stock Items", "Review & Amount"];
+  return (
+    <div className="flex items-center gap-2">
+      {[1, 2, 3].map((s) => (
+        <div key={s} className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+            step === s
+              ? "bg-primary-500 text-white"
+              : step > s
+              ? "bg-emerald-500 text-white"
+              : "bg-custom-200 text-custom-700"
+          }`}>
+            {step > s ? <HiOutlineCheckCircle className="w-4 h-4" /> : s}
+          </div>
+          <span className={`text-xs font-semibold hidden sm:inline ${
+            step === s ? "text-secondary-100" : "text-custom-700"
+          }`}>
+            {labels[s - 1]}
+          </span>
+          {s < 3 && <div className="w-8 h-px bg-custom-300 mx-1" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function CreateJobModal({ onClose, onCreated }: Props) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // ── Step 1 state ───────────────────────────────────────────────────────────
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [form, setForm] = useState({
+    title: "",
+    jobType: "",
+    quantity: "",
+    size: "",
+    colorMode: "",
+    bindingType: "",
+    priority: "normal" as JobPriority,
+    dueDate: "",
+    notes: "",
+    description: "",
+    amount: "",
+  });
+
+  // ── Step 2 state ───────────────────────────────────────────────────────────
+  const [itemSearch, setItemSearch] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // ── Queries ────────────────────────────────────────────────────────────────
+  const { data: customersData, isFetching: loadingCustomers } = useGetCustomersQuery(
+    customerSearch.trim()
+      ? { search: customerSearch, type: "BUSINESS", limit: 20 }
+      : { type: "BUSINESS", limit: 20 }
+  );
+
+  const { data: stockData, isFetching: loadingStock } = useGetStockItemsQuery();
+
+  const [createJob, { isLoading: submitting }] = useCreateJobMutation();
+
+  const customers = customersData?.customers ?? [];
+
+  // Filter client-side from all loaded items
+  const addedIds = new Set(selectedItems.map((si) => si.stockItem.id));
+  const filteredStockItems = (stockData?.data ?? []).filter((si) => {
+    if (addedIds.has(si.id)) return false;
+    if (!itemSearch.trim()) return true;
+    return si.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
+           si.category.toLowerCase().includes(itemSearch.toLowerCase());
+  });
+
+  // ── Calculated total from items ────────────────────────────────────────────
+  const itemsTotal = selectedItems.reduce((sum, si) => {
+    const cost = si.stockItem.unitCost ?? 0;
+    return sum + cost * si.quantityNeeded;
+  }, 0);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const addItem = (stockItem: StockItem) => {
+    setSelectedItems((prev) => [
+      ...prev,
+      { stockItem, quantityNeeded: 1, notes: "" },
+    ]);
+    setItemSearch("");
+  };
+
+  const updateItemQty = (id: string, qty: number) => {
+    setSelectedItems((prev) =>
+      prev.map((si) =>
+        si.stockItem.id === id ? { ...si, quantityNeeded: Math.max(1, qty) } : si
+      )
+    );
+  };
+
+  const updateItemNotes = (id: string, notes: string) => {
+    setSelectedItems((prev) =>
+      prev.map((si) => (si.stockItem.id === id ? { ...si, notes } : si))
+    );
+  };
+
+  const removeItem = (id: string) => {
+    setSelectedItems((prev) => prev.filter((si) => si.stockItem.id !== id));
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedCustomer || !form.title.trim()) return;
+    setSubmitError(null);
+
+    const payload = {
+      title: form.title,
+      customerId: selectedCustomer.id,
+      ...(form.description && { description: form.description }),
+      ...(form.jobType     && { jobType: form.jobType }),
+      ...(form.quantity    && { quantity: parseInt(form.quantity, 10) }),
+      ...(form.size        && { size: form.size }),
+      ...(form.colorMode   && { colorMode: form.colorMode }),
+      ...(form.bindingType && { bindingType: form.bindingType }),
+      priority: form.priority,
+      // use manually entered amount, or fall back to items total
+      amount: form.amount ? parseFloat(form.amount) : itemsTotal > 0 ? itemsTotal : undefined,
+      ...(form.dueDate     && { dueDate: new Date(form.dueDate).toISOString() }),
+      ...(form.notes       && { notes: form.notes }),
+      ...(selectedItems.length > 0 && {
+        items: selectedItems.map((si) => ({
+          stockItemId: si.stockItem.id,
+          quantityNeeded: si.quantityNeeded,
+          ...(si.notes.trim() && { notes: si.notes }),
+        })),
+      }),
+    };
+
+    try {
+      await createJob(payload).unwrap();
+      onCreated();
+    } catch (err: unknown) {
+      const e = err as { status?: number; data?: { message?: string } };
+      const msg = e?.data?.message ?? "Failed to create job. Please try again.";
+      setSubmitError(msg);
+    }
+  };
+
+  const step1Valid = !!selectedCustomer && form.title.trim() !== "";
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-5xl flex flex-col" style={{ height: "min(92vh, 820px)" }}>
+        <Card className="!p-0 overflow-hidden flex flex-col h-full">
+
+          {/* ── Header ──────────────────────────────────────────────────── */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-custom-300 shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <HiOutlineBriefcase className="w-5 h-5 text-primary-500" />
+                <h3 className="text-xl font-bold text-secondary-100">Create New Job</h3>
+              </div>
+              <StepIndicator step={step} />
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100"
+            >
+              <HiOutlineX className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* ── Step 1: Customer + Job Details ──────────────────────────── */}
+          {step === 1 && (
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+
+              {/* LEFT — Customer search */}
+              <div className="lg:w-2/5 border-b lg:border-b-0 lg:border-r border-custom-300 flex flex-col min-h-0">
+                <div className="px-6 py-4 border-b border-custom-200 shrink-0">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">
+                    Step 1 of 2 — Select Customer
+                  </p>
+                  <div className="relative">
+                    <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+                    <input
+                      type="text"
+                      value={customerSearch}
+                      onChange={(e) => { setCustomerSearch(e.target.value); setSelectedCustomer(null); }}
+                      placeholder="Search by name, email, company…"
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-3 py-2 min-h-0">
+                  {loadingCustomers ? (
+                    <div className="flex items-center justify-center py-8 text-custom-700 text-sm">Loading…</div>
+                  ) : customers.length === 0 ? (
+                    <div className="flex items-center justify-center py-8 text-custom-700 text-sm">No customers found</div>
+                  ) : (
+                    customers.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setSelectedCustomer(c)}
+                        className={`w-full text-left px-3 py-3 rounded-xl mb-1 transition-colors ${
+                          selectedCustomer?.id === c.id
+                            ? "bg-primary-100 border border-primary-400"
+                            : "hover:bg-custom-100 border border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-secondary-100 truncate">{c.name}</p>
+                            <p className="text-xs text-custom-700 truncate">{c.email}</p>
+                            {c.company && <p className="text-xs text-custom-600 truncate">{c.company}</p>}
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {selectedCustomer && (
+                  <div className="px-6 py-4 border-t border-custom-300 bg-primary-50 shrink-0">
+                    <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-2">Selected</p>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <HiOutlineUser className="w-4 h-4 text-primary-500 shrink-0" />
+                        <span className="text-sm font-semibold text-secondary-100 truncate">{selectedCustomer.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <HiOutlineMail className="w-4 h-4 text-custom-700 shrink-0" />
+                        <span className="text-xs text-custom-700 truncate">{selectedCustomer.email}</span>
+                      </div>
+                      {selectedCustomer.phone && (
+                        <div className="flex items-center gap-2">
+                          <HiOutlinePhone className="w-4 h-4 text-custom-700 shrink-0" />
+                          <span className="text-xs text-custom-700">{selectedCustomer.phone}</span>
+                        </div>
+                      )}
+                      {selectedCustomer.company && (
+                        <div className="flex items-center gap-2">
+                          <HiOutlineOfficeBuilding className="w-4 h-4 text-custom-700 shrink-0" />
+                          <span className="text-xs text-custom-700 truncate">{selectedCustomer.company}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT — Job details form */}
+              <div className="lg:w-3/5 flex flex-col min-h-0">
+                <div className="px-6 py-4 border-b border-custom-200 shrink-0">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Job Details</p>
+                  {!selectedCustomer && (
+                    <p className="text-xs text-custom-600 mt-1">Select a customer first</p>
+                  )}
+                </div>
+
+                <div className={`flex-1 overflow-y-auto px-6 py-5 space-y-4 min-h-0 transition-opacity ${
+                  selectedCustomer ? "opacity-100" : "opacity-40 pointer-events-none"
+                }`}>
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-100 mb-1.5">
+                      Job Title <span className="text-red-500">*</span>
+                    </label>
+                    <Input name="title" type="text" placeholder="e.g. Business Cards for Acme Corp"
+                      value={form.title} onChange={handleFieldChange} required fullWidth />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Job Type</label>
+                      <select name="jobType" value={form.jobType} onChange={handleFieldChange} className={selectCls}>
+                        <option value="">Select type</option>
+                        <option value="business-card">Business Card</option>
+                        <option value="brochure">Brochure</option>
+                        <option value="flyer">Flyer</option>
+                        <option value="banner">Banner</option>
+                        <option value="booklet">Booklet</option>
+                        <option value="poster">Poster</option>
+                        <option value="envelope">Envelope</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Quantity</label>
+                      <Input name="quantity" type="number" min="1" placeholder="e.g. 500"
+                        value={form.quantity} onChange={handleFieldChange} fullWidth />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Size</label>
+                      <select name="size" value={form.size} onChange={handleFieldChange} className={selectCls}>
+                        <option value="">Select size</option>
+                        <option value="A3">A3</option>
+                        <option value="A4">A4</option>
+                        <option value="A5">A5</option>
+                        <option value="A6">A6</option>
+                        <option value="Letter">Letter</option>
+                        <option value="Custom">Custom</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Color Mode</label>
+                      <select name="colorMode" value={form.colorMode} onChange={handleFieldChange} className={selectCls}>
+                        <option value="">Select color mode</option>
+                        <option value="full-color">Full Color</option>
+                        <option value="black-and-white">Black & White</option>
+                        <option value="spot-color">Spot Color</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Binding Type</label>
+                      <select name="bindingType" value={form.bindingType} onChange={handleFieldChange} className={selectCls}>
+                        <option value="">Select binding</option>
+                        <option value="none">None</option>
+                        <option value="staple">Staple</option>
+                        <option value="spiral">Spiral</option>
+                        <option value="perfect">Perfect Bind</option>
+                        <option value="hardcover">Hardcover</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Priority</label>
+                      <select name="priority" value={form.priority} onChange={handleFieldChange} className={selectCls}>
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Due Date</label>
+                    <Input name="dueDate" type="date" value={form.dueDate} onChange={handleFieldChange} fullWidth />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Description</label>
+                    <textarea name="description" value={form.description} onChange={handleFieldChange}
+                      rows={2} placeholder="Brief description…" className={`${selectCls} resize-none`} />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Notes</label>
+                    <textarea name="notes" value={form.notes} onChange={handleFieldChange}
+                      rows={2} placeholder="Special instructions…" className={`${selectCls} resize-none`} />
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-end gap-3 shrink-0">
+                  <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                  <Button
+                    type="button"
+                    disabled={!step1Valid}
+                    onClick={() => setStep(2)}
+                  >
+                    Next: Stock Items →
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 2: Stock Items ──────────────────────────────────────── */}
+          {step === 2 && (
+            <div className="flex flex-col lg:flex-row flex-1 min-h-0">
+
+              {/* LEFT — Search & add stock items */}
+              <div className="lg:w-2/5 border-b lg:border-b-0 lg:border-r border-custom-300 flex flex-col min-h-0">
+                <div className="px-6 py-4 border-b border-custom-200 shrink-0">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-1">
+                    Step 2 of 3 — Add Stock Items
+                  </p>
+                  <p className="text-xs text-custom-600 mb-3">
+                    Search raw materials needed for this job. Optional — can be added later.
+                  </p>
+                  <div className="relative" ref={dropdownRef}>
+                    <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700 z-10" />
+                    <input
+                      type="text"
+                      value={itemSearch}
+                      onChange={(e) => { setItemSearch(e.target.value); setShowDropdown(true); }}
+                      onFocus={() => setShowDropdown(true)}
+                      placeholder="Search by material name…"
+                      className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
+                    />
+                    {showDropdown && (
+                      <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-xl border border-custom-300 bg-style-500 shadow-lg max-h-56 overflow-y-auto">
+                        {loadingStock ? (
+                          <div className="px-4 py-3 text-sm text-custom-700">Loading…</div>
+                        ) : filteredStockItems.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-custom-700">No items found</div>
+                        ) : (
+                          filteredStockItems.map((item) => {
+                            const isOut = item.stockStatus === "out-of-stock" || (item.stockStatus as string) === "OUT_OF_STOCK";
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); if (!isOut) { addItem(item); setShowDropdown(false); } }}
+                                disabled={isOut}
+                                className={`w-full text-left px-4 py-2.5 transition-colors ${
+                                  isOut ? "opacity-50 cursor-not-allowed" : "hover:bg-custom-100"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-secondary-100 truncate">{item.name}</p>
+                                    <p className="text-xs text-custom-700">{item.category} · {item.unit}</p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <p className={`text-xs font-bold ${
+                                      isOut ? "text-red-500" :
+                                      item.stockStatus === "low" || (item.stockStatus as string) === "LOW"
+                                        ? "text-yellow-600" : "text-emerald-600"
+                                    }`}>
+                                      {isOut ? "Out of stock" : `${item.currentStock} ${item.unit}`}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Added items summary in left panel */}
+                <div className="flex-1 overflow-y-auto px-3 py-3 min-h-0">
+                  {selectedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-custom-700 gap-2 py-8">
+                      <HiOutlineCube className="w-8 h-8 text-custom-400" />
+                      <span className="text-sm">No items added yet</span>
+                      <span className="text-xs text-center">Click the search box above to browse</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide px-2 mb-2">
+                        Added ({selectedItems.length})
+                      </p>
+                      {selectedItems.map((si) => (
+                        <div key={si.stockItem.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-custom-100">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-secondary-100 truncate">{si.stockItem.name}</p>
+                            <p className="text-xs text-custom-700">{si.quantityNeeded} {si.stockItem.unit}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeItem(si.stockItem.id)}
+                            className="p-1 rounded hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0 ml-2"
+                          >
+                            <HiOutlineX className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* RIGHT — Selected items list */}
+              <div className="lg:w-3/5 flex flex-col min-h-0">
+                <div className="px-6 py-4 border-b border-custom-200 shrink-0">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                      Selected Items ({selectedItems.length})
+                    </p>
+                    {itemsTotal > 0 && (
+                      <p className="text-sm font-bold text-secondary-100">
+                        Est. cost:{" "}
+                        <span className="text-primary-500">{itemsTotal.toLocaleString()} RWF</span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+                  {selectedItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-custom-700 gap-3">
+                      <HiOutlineCube className="w-10 h-10 text-custom-400" />
+                      <p className="text-sm font-semibold">No items added yet</p>
+                      <p className="text-xs text-center">
+                        Search and add stock items on the left, or skip to create the job without items.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedItems.map((si) => {
+                        const isOverStock = si.quantityNeeded > si.stockItem.currentStock;
+                        const lineTotal = (si.stockItem.unitCost ?? 0) * si.quantityNeeded;
+
+                        return (
+                          <div
+                            key={si.stockItem.id}
+                            className={`rounded-xl border p-4 ${
+                              isOverStock ? "border-red-300 bg-red-50" : "border-custom-300 bg-custom-50"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-bold text-secondary-100 truncate">
+                                  {si.stockItem.name}
+                                </p>
+                                <p className="text-xs text-custom-700">
+                                  {si.stockItem.category} · Available: {si.stockItem.currentStock} {si.stockItem.unit}
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeItem(si.stockItem.id)}
+                                className="p-1 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0"
+                              >
+                                <HiOutlineTrash className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {/* Quantity input */}
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="flex-1">
+                                <label className="block text-xs font-semibold text-custom-700 mb-1">
+                                  Quantity Needed ({si.stockItem.unit})
+                                </label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={si.quantityNeeded}
+                                  onChange={(e) =>
+                                    updateItemQty(si.stockItem.id, parseInt(e.target.value, 10) || 1)
+                                  }
+                                  className={`w-full px-3 py-2 rounded-xl border text-sm font-semibold text-secondary-100 bg-style-500 focus:outline-none focus:ring-2 transition-colors ${
+                                    isOverStock
+                                      ? "border-red-400 focus:ring-red-200"
+                                      : "border-custom-400 focus:border-primary-400 focus:ring-primary-200"
+                                  }`}
+                                />
+                              </div>
+                              {si.stockItem.unitCost != null && (
+                                <div className="text-right shrink-0">
+                                  <p className="text-xs text-custom-700 mb-1">Line total</p>
+                                  <p className="text-sm font-bold text-secondary-100">
+                                    {lineTotal.toLocaleString()} RWF
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Over-stock warning */}
+                            {isOverStock && (
+                              <div className="flex items-center gap-2 text-red-600 text-xs mb-2">
+                                <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />
+                                <span>
+                                  Requested {si.quantityNeeded} but only {si.stockItem.currentStock}{" "}
+                                  {si.stockItem.unit} available. The stock team will be notified.
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Notes */}
+                            <input
+                              type="text"
+                              value={si.notes}
+                              onChange={(e) => updateItemNotes(si.stockItem.id, e.target.value)}
+                              placeholder="Notes (optional, e.g. 80gsm)"
+                              className="w-full px-3 py-1.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Error */}
+                {submitError && (
+                  <div className="mx-6 mb-2 flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <HiOutlineExclamationCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                    <span>{submitError}</span>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
+                  >
+                    ← Back
+                  </button>
+                  <div className="flex gap-3">
+                    <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button
+                      type="button"
+                      onClick={() => setStep(3)}
+                    >
+                      Next: Review & Amount →
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Review & Amount ──────────────────────────────────── */}
+          {step === 3 && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="px-6 py-4 border-b border-custom-200 shrink-0">
+                <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                  Step 3 of 3 — Review & Amount
+                </p>
+                <p className="text-xs text-custom-600 mt-1">
+                  Amount is calculated from your stock items. You can adjust it before submitting.
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
+                <div className="max-w-lg mx-auto space-y-6">
+
+                  {/* Job summary */}
+                  <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-2">
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Job Summary</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-custom-700">Customer</span>
+                      <span className="font-semibold text-secondary-100">{selectedCustomer?.name}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-custom-700">Title</span>
+                      <span className="font-semibold text-secondary-100 text-right max-w-[60%] truncate">{form.title}</span>
+                    </div>
+                    {form.jobType && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-custom-700">Type</span>
+                        <span className="font-semibold text-secondary-100 capitalize">{form.jobType.replace("-", " ")}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-custom-700">Priority</span>
+                      <span className="font-semibold text-secondary-100 capitalize">{form.priority}</span>
+                    </div>
+                    {form.dueDate && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-custom-700">Due Date</span>
+                        <span className="font-semibold text-secondary-100">{form.dueDate}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-custom-700">Stock Items</span>
+                      <span className="font-semibold text-secondary-100">{selectedItems.length} item{selectedItems.length !== 1 ? "s" : ""}</span>
+                    </div>
+                  </div>
+
+                  {/* Items breakdown */}
+                  {selectedItems.length > 0 && (
+                    <div className="rounded-xl border border-custom-300 bg-custom-50 p-4">
+                      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Items Breakdown</p>
+                      <div className="space-y-2">
+                        {selectedItems.map((si) => {
+                          const lineTotal = (si.stockItem.unitCost ?? 0) * si.quantityNeeded;
+                          return (
+                            <div key={si.stockItem.id} className="flex justify-between text-sm">
+                              <span className="text-custom-700 truncate max-w-[60%]">
+                                {si.stockItem.name} × {si.quantityNeeded} {si.stockItem.unit}
+                              </span>
+                              <span className="font-semibold text-secondary-100 shrink-0">
+                                {lineTotal > 0 ? `${lineTotal.toLocaleString()} RWF` : "—"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {itemsTotal > 0 && (
+                          <div className="flex justify-between text-sm pt-2 border-t border-custom-300 mt-2">
+                            <span className="font-bold text-secondary-100">Total from items</span>
+                            <span className="font-bold text-primary-500">{itemsTotal.toLocaleString()} RWF</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Amount field — pre-filled, editable */}
+                  <div>
+                    <label className="block text-sm font-bold text-secondary-100 mb-1.5">
+                      Job Amount (RWF) <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-custom-700 mb-2">
+                      {itemsTotal > 0
+                        ? "Pre-filled from items total. Adjust if needed."
+                        : "Enter the job amount manually."}
+                    </p>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      name="amount"
+                      value={form.amount || (itemsTotal > 0 ? String(itemsTotal) : "")}
+                      onChange={handleFieldChange}
+                      placeholder="e.g. 25000"
+                      className={selectCls}
+                    />
+                    {itemsTotal > 0 && form.amount && parseFloat(form.amount) !== itemsTotal && (
+                      <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
+                        <HiOutlineExclamationCircle className="w-3.5 h-3.5" />
+                        Differs from items total ({itemsTotal.toLocaleString()} RWF)
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Error */}
+                  {submitError && (
+                    <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+                      <HiOutlineExclamationCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                      <span>{submitError}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
+                >
+                  ← Back
+                </button>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                  <Button
+                    type="button"
+                    disabled={submitting}
+                    onClick={handleSubmit}
+                  >
+                    {submitting ? "Creating…" : "Create Job"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </Card>
+      </div>
+    </div>
+  );
+}

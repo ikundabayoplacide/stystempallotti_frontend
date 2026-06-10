@@ -1,14 +1,14 @@
 import { DashboardLayout } from "../../components";
-import ReceptionDashboard from "./ReceptionDashboard";
+import ReceptionDashboardV2 from "./ReceptionDashboardV2";
 
 export default function ReceptionPage() {
   return (
     <DashboardLayout
       userRole="receptionist"
       userName="Reception Desk"
-      notificationCount={6}
+      notificationCount={0}
     >
-      <ReceptionDashboard />
+      <ReceptionDashboardV2 />
     </DashboardLayout>
   );
 }
