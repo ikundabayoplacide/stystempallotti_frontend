@@ -19,6 +19,8 @@ export interface Payment {
   paymentState: PaymentState;
   paymentNote?: string;
   paidAt: string;
+  job?: { id: string; jobNumber: string; title: string; customer?: { id: string; name: string; phone?: string } };
+  receivedBy?: { id: string; name: string };
 }
 
 // POST /api/payments
@@ -89,9 +91,13 @@ export const paymentsApi = createApi({
     }),
 
     // GET /payments — all payments paginated
-    getPayments: builder.query<PaginatedPayments, { page?: number; limit?: number } | void>({
+    getPayments: builder.query<PaginatedPayments, { page?: number; limit?: number; from?: string; to?: string } | void>({
       query: (params) => ({ url: "/payments", params: (params ?? {}) as Record<string, any> }),
-      transformResponse: (res: ApiResponse<PaginatedPayments>) => res.data,
+      transformResponse: (res: any) => {
+        const payments = Array.isArray(res.data) ? res.data : (res.data?.payments ?? []);
+        const pagination = res.pagination ?? { total: payments.length, page: 1, limit: payments.length, totalPages: 1 };
+        return { payments, ...pagination };
+      },
       providesTags: [{ type: "Payment", id: "LIST" }],
     }),
 
