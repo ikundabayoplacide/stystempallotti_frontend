@@ -96,9 +96,11 @@ export interface CreateEntryPayload {
 
 export interface CreateSortiePayload {
   stockItemId: string;
-  quantity: number;
+  quantityOut: number;
+  reason: string;
+  notes?: string;
   jobId?: string;
-  reason?: string;
+  dossierNo?: string;
 }
 
 // ─── Paginated wrapper ────────────────────────────────────────────────────────

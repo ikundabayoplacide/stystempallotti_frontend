@@ -27,6 +27,8 @@ export interface GetVisitsParams {
   customerId?: string;
   type?: VisitType;
   date?: string;
+  from?: string;
+  to?: string;
   page?: number;
   limit?: number;
 }

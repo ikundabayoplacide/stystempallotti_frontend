@@ -7,15 +7,32 @@ import {
   HiOutlineFilter,
   HiOutlineX,
   HiOutlineRefresh,
+  HiOutlineShoppingCart,
+  HiOutlinePlus,
+  HiOutlineTrash,
+  HiOutlineClipboardList,
+  HiOutlineCash,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import {
   useGetCategoriesQuery,
   useGetProductsQuery,
+  useCreateBoutiqueRequestMutation,
+  useCreateProductMutation,
+  useRecordSaleMutation,
+  useUpdateSaleMutation,
+  useGetSalesQuery,
+  useGetMyBoutiqueRequestsQuery,
   type BoutiqueProduct,
+  type BoutiqueRequest,
+  type BoutiqueSale,
   type StockStatus,
+  type BoutiqueRequestStatus,
+  type PaymentMethod,
 } from "../../store/services/boutiqueService";
+import { useGetCustomersQuery } from "../../store/services/customersService";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
@@ -37,7 +54,775 @@ const CATEGORY_COLORS = [
   "bg-rose-100 text-rose-700",
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Add Product Modal ───────────────────────────────────────────────────────
+
+function AddProductModal({ categories, onClose, onSuccess }: {
+  categories: { id: string; name: string }[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState({
+    name: "", description: "", categoryId: "", unit: "",
+    price: "", stock: "", minStock: "",
+  });
+  const [createProduct, { isLoading }] = useCreateProductMutation();
+
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name || !form.categoryId || !form.unit || !form.price || !form.stock || !form.minStock) {
+      toast.error("Please fill in all required fields"); return;
+    }
+    const payload = {
+        name: form.name.trim(),
+        description: form.description.trim() || undefined,
+        categoryId: form.categoryId,
+        unit: form.unit.trim(),
+        price: Number(form.price),
+        stock: Number(form.stock),
+        minStock: Number(form.minStock),
+      };
+      console.log("[AddProduct] payload →", payload);
+    try {
+      await createProduct(payload).unwrap();
+      toast.success("Product added successfully");
+      onSuccess();
+    } catch (err: any) {
+      console.error("[AddProduct] full error →", JSON.stringify(err, null, 2));
+      console.error("[AddProduct] err.data →", err?.data);
+      console.error("[AddProduct] err.status →", err?.status);
+      toast.error(err?.data?.message ?? "Failed to add product");
+    }
+  };
+
+  const inputClass = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-lg w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Add Product</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Add a new product to the boutique</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Name *</label>
+              <input value={form.name} onChange={set("name")} placeholder="e.g. A4 Paper Ream" className={inputClass} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Description</label>
+              <textarea value={form.description} onChange={set("description")} rows={2} placeholder="Optional description..."
+                className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Category *</label>
+              <select value={form.categoryId} onChange={set("categoryId")} className={inputClass}>
+                <option value="">Select category...</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Unit *</label>
+              <input value={form.unit} onChange={set("unit")} placeholder="e.g. per item" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Price (RWF) *</label>
+              <input type="number" min={0} value={form.price} onChange={set("price")} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Initial Stock *</label>
+              <input type="number" min={0} value={form.stock} onChange={set("stock")} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Min Stock *</label>
+              <input type="number" min={0} value={form.minStock} onChange={set("minStock")} placeholder="0" className={inputClass} />
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+            >Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40"
+            >{isLoading ? "Saving..." : "Add Product"}</button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Product Detail / Sell Modal ─────────────────────────────────────────────
+
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "cash",   label: "Cash" },
+  { value: "mobile", label: "Mobile Money" },
+  { value: "card",   label: "Card" },
+  { value: "bank",   label: "Bank Transfer" },
+];
+
+function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
+  product: BoutiqueProduct;
+  categoryColor: string;
+  onClose: () => void;
+  onSold: () => void;
+}) {
+  const [qty, setQty]                     = useState("1");
+  const [amountPaid, setAmountPaid]       = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [customerId, setCustomerId]       = useState("");
+  const [note, setNote]                   = useState("");
+  const [receipt, setReceipt]             = useState<BoutiqueSale | null>(null);
+  const [recordSale, { isLoading }]       = useRecordSaleMutation();
+  const { data: customersData }           = useGetCustomersQuery({ limit: 200 });
+  const customers                         = customersData?.customers ?? [];
+
+  const totalExpected = (parseInt(qty) || 1) * product.price;
+  const isOutOfStock  = product.status === "out-of-stock";
+
+  const handleSell = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q    = parseInt(qty);
+    const paid = parseFloat(amountPaid);
+    if (!q || q <= 0)       { toast.error("Enter a valid quantity"); return; }
+    if (q > product.stock)  { toast.error(`Only ${product.stock} units available`); return; }
+    if (!paid || paid <= 0) { toast.error("Enter amount paid"); return; }
+    try {
+      const result = await recordSale({
+        id: product.id,
+        quantity: q,
+        amountPaid: paid,
+        paymentMethod,
+        customerId: customerId || undefined,
+        note: note.trim() || undefined,
+      }).unwrap();
+      setReceipt(result);
+      onSold();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Sale failed");
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  // Receipt screen
+  if (receipt) {
+    const sConf: Record<string, { label: string; color: string }> = {
+      paid:     { label: "Paid",     color: "bg-emerald-100 text-emerald-700" },
+      partial:  { label: "Partial",  color: "bg-orange-100 text-orange-700" },
+      overpaid: { label: "Overpaid", color: "bg-blue-100 text-blue-700" },
+    };
+    const sc = sConf[receipt.paymentStatus] ?? sConf.paid;
+    return (
+      <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+        <Card className="!p-6 max-w-sm w-full text-center">
+          <h3 className="text-xl font-bold text-secondary-100 mb-2">Sale Recorded</h3>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${sc.color}`}>{sc.label}</span>
+          <div className="mt-4 rounded-xl bg-custom-100 border border-custom-300 p-4 space-y-2.5 text-left">
+            <div className="flex justify-between text-sm">
+              <span className="text-custom-700">Product</span>
+              <span className="font-semibold text-secondary-100">{product.name}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-custom-700">Quantity</span>
+              <span className="font-semibold text-secondary-100">{receipt.quantity}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-custom-700">Total Price</span>
+              <span className="font-semibold text-secondary-100">{Number(receipt.totalPrice).toLocaleString()} RWF</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-custom-700">Amount Paid</span>
+              <span className="font-bold text-emerald-600">{Number(receipt.amountPaid).toLocaleString()} RWF</span>
+            </div>
+            {Number(receipt.balanceDue) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Balance Due</span>
+                <span className="font-bold text-red-600">{Number(receipt.balanceDue).toLocaleString()} RWF</span>
+              </div>
+            )}
+            {Number(receipt.changeGiven) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-custom-700">Change to Give</span>
+                <span className="font-bold text-blue-600">{Number(receipt.changeGiven).toLocaleString()} RWF</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm pt-2 border-t border-custom-200">
+              <span className="text-custom-700">Method</span>
+              <span className="font-semibold text-secondary-100 capitalize">{receipt.paymentMethod}</span>
+            </div>
+          </div>
+          {receipt.paymentStatus === "overpaid" && (
+            <div className="mt-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold">
+              Return {Number(receipt.changeGiven).toLocaleString()} RWF to customer
+            </div>
+          )}
+          {receipt.paymentStatus === "partial" && (
+            <div className="mt-3 px-4 py-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-sm font-semibold">
+              Customer owes {Number(receipt.balanceDue).toLocaleString()} RWF
+            </div>
+          )}
+          <button onClick={onClose}
+            className="mt-4 w-full px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
+          >Done</button>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-md w-full my-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-secondary-100">{product.name}</h3>
+            <p className="text-xs font-mono text-custom-700 mt-0.5">SKU: {product.sku}</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Badges */}
+        <div className="flex gap-2 mb-4">
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${categoryColor}`}>
+            {product.category?.name ?? "—"}
+          </span>
+          <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${statusConfig[product.status].color}`}>
+            {statusConfig[product.status].icon} {statusConfig[product.status].label}
+          </span>
+        </div>
+
+        {/* Stock info */}
+        <div className="rounded-xl bg-custom-100 border border-custom-300 p-4 space-y-2 mb-4">
+          <div className="flex justify-between text-sm">
+            <span className="text-custom-700">Price</span>
+            <span className="font-bold text-secondary-100">{product.price.toLocaleString()} RWF <span className="font-normal text-xs text-custom-700">/ {product.unit}</span></span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-custom-700">Current Stock</span>
+            <span className={`font-bold ${ isOutOfStock ? "text-red-600" : product.status === "low-stock" ? "text-yellow-600" : "text-emerald-600" }`}>
+              {product.stock} units
+            </span>
+          </div>
+        </div>
+
+        {isOutOfStock ? (
+          <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm mb-4">
+            <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <span>This product is currently out of stock.</span>
+          </div>
+        ) : (
+          <form onSubmit={handleSell} className="space-y-4">
+            {product.status === "low-stock" && (
+              <div className="flex items-start gap-2 px-4 py-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
+                <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span>Stock is running low.</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-secondary-100 mb-1">Quantity *</label>
+                <input type="number" min={1} max={product.stock} value={qty}
+                  onChange={(e) => { setQty(e.target.value); if (!amountPaid) setAmountPaid(String((parseInt(e.target.value) || 1) * product.price)); }}
+                  className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Paid (RWF) *</label>
+                <input type="number" min={1} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)}
+                  placeholder={totalExpected.toLocaleString()} className={inputCls} />
+              </div>
+            </div>
+
+            {/* Expected vs paid */}
+            <div className="flex justify-between text-xs px-1">
+              <span className="text-custom-700">Expected: <span className="font-bold text-secondary-100">{totalExpected.toLocaleString()} RWF</span></span>
+              {amountPaid && parseFloat(amountPaid) < totalExpected && (
+                <span className="text-orange-600 font-bold">Underpaid by {(totalExpected - parseFloat(amountPaid)).toLocaleString()} RWF</span>
+              )}
+              {amountPaid && parseFloat(amountPaid) > totalExpected && (
+                <span className="text-blue-600 font-bold">Change to give: {(parseFloat(amountPaid) - totalExpected).toLocaleString()} RWF</span>
+              )}
+            </div>
+
+            {/* Payment method */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-2">Payment Method *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map((m) => (
+                  <button key={m.value} type="button" onClick={() => setPaymentMethod(m.value)}
+                    className={`py-2 px-3 rounded-xl border-2 text-xs font-semibold transition-all ${
+                      paymentMethod === m.value
+                        ? "border-primary-500 bg-primary-50 text-primary-700"
+                        : "border-custom-300 text-custom-700 hover:border-primary-300"
+                    }`}
+                  >{m.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Customer (optional) */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">
+                Customer <span className="font-normal text-custom-700">(optional — leave blank for walk-in)</span>
+              </label>
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={inputCls}>
+                <option value="">Walk-in customer</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.phone ? ` — ${c.phone}` : ""}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Note */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Note <span className="font-normal text-custom-700">(optional)</span></label>
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. paid via MTN" className={inputCls} />
+            </div>
+
+            <div className="flex gap-3 pt-2 border-t border-custom-300">
+              <button type="button" onClick={onClose}
+                className="flex-1 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+              >Cancel</button>
+              <button type="submit" disabled={isLoading}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40"
+              >
+                <HiOutlineShoppingCart className="w-4 h-4" />
+                {isLoading ? "Processing..." : "Confirm Sale"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Pending Balances Modal ──────────────────────────────────────────────────
+
+function PendingBalancesModal({ onClose }: { onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<"partial" | "overpaid">("partial");
+  const [payingId, setPayingId]   = useState<string | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+
+  const { data: partialData, isLoading: pLoading, refetch: refetchPartial } =
+    useGetSalesQuery({ paymentStatus: "partial", limit: 100 });
+  const { data: overpaidData, isLoading: oLoading, refetch: refetchOverpaid } =
+    useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
+  const [updateSale, { isLoading: updating }] = useUpdateSaleMutation();
+
+  const partials  = partialData?.sales  ?? [];
+  const overpaid  = overpaidData?.sales ?? [];
+  const isLoading = pLoading || oLoading;
+
+  const handlePayBalance = async (sale: BoutiqueSale) => {
+    const amt = parseFloat(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    try {
+      await updateSale({ id: sale.id, amountPaid: Number(sale.amountPaid) + amt }).unwrap();
+      toast.success("Payment updated successfully");
+      setPayingId(null);
+      setPayAmount("");
+      refetchPartial();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to update payment");
+    }
+  };
+
+  const handleConfirmChange = async (sale: BoutiqueSale) => {
+    try {
+      await updateSale({ id: sale.id, amountPaid: Number(sale.totalPrice) }).unwrap();
+      toast.success("Change confirmed — sale marked as paid");
+      refetchOverpaid();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to confirm");
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Pending Balances</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Collect remaining dues or confirm change given</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-5">
+          <button onClick={() => setActiveTab("partial")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === "partial"
+                ? "bg-orange-500 text-white"
+                : "bg-custom-100 text-custom-700 hover:bg-custom-200"
+            }`}
+          >
+            Balance Due
+            {partials.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-white/30 text-xs flex items-center justify-center font-bold">
+                {partials.length}
+              </span>
+            )}
+          </button>
+          <button onClick={() => setActiveTab("overpaid")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === "overpaid"
+                ? "bg-blue-500 text-white"
+                : "bg-custom-100 text-custom-700 hover:bg-custom-200"
+            }`}
+          >
+            Change to Give
+            {overpaid.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-white/30 text-xs flex items-center justify-center font-bold">
+                {overpaid.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-12 text-center text-custom-700 text-sm">Loading...</div>
+        ) : activeTab === "partial" ? (
+          partials.length === 0 ? (
+            <div className="py-12 text-center">
+              <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+              <p className="text-sm text-custom-700">No pending balances</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {partials.map((sale) => (
+                <div key={sale.id} className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-secondary-100">{sale.product.name}</p>
+                        <span className="text-xs font-mono text-custom-700">{sale.product.sku}</span>
+                      </div>
+                      {sale.customer && (
+                        <p className="text-xs text-custom-700 mt-0.5">{sale.customer.name} {sale.customer.phone && `· ${sale.customer.phone}`}</p>
+                      )}
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <span className="text-custom-700">Total: <span className="font-bold text-secondary-100">{Number(sale.totalPrice).toLocaleString()} RWF</span></span>
+                        <span className="text-custom-700">Paid: <span className="font-bold text-emerald-600">{Number(sale.amountPaid).toLocaleString()} RWF</span></span>
+                        <span className="text-custom-700">Still owes: <span className="font-bold text-red-600">{Number(sale.balanceDue).toLocaleString()} RWF</span></span>
+                      </div>
+                      <p className="text-xs text-custom-400 mt-1">{new Date(sale.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                    </div>
+                    <button
+                      onClick={() => { setPayingId(payingId === sale.id ? null : sale.id); setPayAmount(String(Number(sale.balanceDue))); }}
+                      className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors flex-shrink-0"
+                    >
+                      Collect
+                    </button>
+                  </div>
+
+                  {payingId === sale.id && (
+                    <div className="mt-3 pt-3 border-t border-orange-200 flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Received (RWF)</label>
+                        <input
+                          type="number" min={1} max={Number(sale.balanceDue)}
+                          value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
+                          className={inputCls}
+                        />
+                      </div>
+                      <button
+                        onClick={() => handlePayBalance(sale)}
+                        disabled={updating}
+                        className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-40"
+                      >
+                        {updating ? "Saving..." : "Confirm"}
+                      </button>
+                      <button onClick={() => setPayingId(null)}
+                        className="px-3 py-2 rounded-xl border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 transition-colors"
+                      >Cancel</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          overpaid.length === 0 ? (
+            <div className="py-12 text-center">
+              <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+              <p className="text-sm text-custom-700">No change to give back</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {overpaid.map((sale) => (
+                <div key={sale.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-secondary-100">{sale.product.name}</p>
+                        <span className="text-xs font-mono text-custom-700">{sale.product.sku}</span>
+                      </div>
+                      {sale.customer && (
+                        <p className="text-xs text-custom-700 mt-0.5">{sale.customer.name} {sale.customer.phone && `· ${sale.customer.phone}`}</p>
+                      )}
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <span className="text-custom-700">Total: <span className="font-bold text-secondary-100">{Number(sale.totalPrice).toLocaleString()} RWF</span></span>
+                        <span className="text-custom-700">Paid: <span className="font-bold text-emerald-600">{Number(sale.amountPaid).toLocaleString()} RWF</span></span>
+                        <span className="font-bold text-blue-600">Return: {Number(sale.changeGiven).toLocaleString()} RWF</span>
+                      </div>
+                      <p className="text-xs text-custom-400 mt-1">{new Date(sale.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                    </div>
+                    <button
+                      onClick={() => handleConfirmChange(sale)}
+                      disabled={updating}
+                      className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-colors flex-shrink-0 disabled:opacity-40"
+                    >
+                      Mark Returned
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
+          >Close</button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Stock Request Modal ─────────────────────────────────────────────────────
+
+interface RequestItem { product: BoutiqueProduct; quantity: number; }
+
+function StockRequestModal({ products, onClose, onSuccess }: {
+  products: BoutiqueProduct[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [items, setItems] = useState<RequestItem[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [qty, setQty] = useState("1");
+  const [notes, setNotes] = useState("");
+  const [createRequest, { isLoading }] = useCreateBoutiqueRequestMutation();
+
+  const addItem = () => {
+    const product = products.find((p) => p.id === selectedId);
+    if (!product) return;
+    if (items.find((i) => i.product.id === selectedId)) {
+      toast.error("Product already added"); return;
+    }
+    const q = parseInt(qty);
+    if (!q || q <= 0) { toast.error("Enter a valid quantity"); return; }
+    setItems((prev) => [...prev, { product, quantity: q }]);
+    setSelectedId(""); setQty("1");
+  };
+
+  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.product.id !== id));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (items.length === 0) { toast.error("Add at least one product"); return; }
+    try {
+      await createRequest({
+        notes: notes.trim() || undefined,
+        items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+      }).unwrap();
+      toast.success("Stock request submitted successfully");
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to submit request");
+    }
+  };
+
+  const availableProducts = products.filter((p) => !items.find((i) => i.product.id === p.id));
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-lg w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Request Stock</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Select products and quantities to request from stock</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Add product row */}
+          <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-3">
+            <p className="text-sm font-semibold text-secondary-100">Add Product</p>
+            <div className="flex gap-2">
+              <select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              >
+                <option value="">Select a product...</option>
+                {availableProducts.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>
+                ))}
+              </select>
+              <input
+                type="number" min={1} value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                placeholder="Qty"
+                className="w-20 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              />
+              <button type="button" onClick={addItem}
+                disabled={!selectedId}
+                className="px-3 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors disabled:opacity-40"
+              >
+                <HiOutlinePlus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Selected items list */}
+          {items.length > 0 && (
+            <div className="rounded-xl border border-custom-300 overflow-hidden">
+              <div className="px-4 py-2 bg-custom-100 border-b border-custom-200">
+                <p className="text-xs font-bold text-secondary-100 uppercase tracking-wide">Items to Request ({items.length})</p>
+              </div>
+              {items.map((item) => (
+                <div key={item.product.id} className="flex items-center gap-3 px-4 py-3 border-b border-custom-100 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-secondary-100 truncate">{item.product.name}</p>
+                    <p className="text-xs text-custom-700">{item.product.unit} · SKU: {item.product.sku}</p>
+                  </div>
+                  <span className="text-sm font-bold text-primary-500 flex-shrink-0">× {item.quantity}</span>
+                  <button type="button" onClick={() => removeItem(item.product.id)}
+                    className="p-1 rounded-lg text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                  >
+                    <HiOutlineTrash className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-2">
+              Notes <span className="text-xs font-normal text-custom-700">(optional)</span>
+            </label>
+            <textarea
+              value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="e.g. Running low on A4 pads..."
+              rows={2}
+              className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+            >Cancel</button>
+            <button type="submit" disabled={isLoading || items.length === 0}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40"
+            >{isLoading ? "Submitting..." : "Submit Request"}</button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ─── My Requests Modal ────────────────────────────────────────────────────────
+
+const requestStatusColors: Record<BoutiqueRequestStatus, string> = {
+  pending:   "bg-yellow-100 text-yellow-700",
+  approved:  "bg-emerald-100 text-emerald-700",
+  rejected:  "bg-red-100 text-red-700",
+  fulfilled: "bg-blue-100 text-blue-700",
+};
+
+function MyRequestsModal({ requests, onClose }: {
+  requests: BoutiqueRequest[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">My Stock Requests</h3>
+            <p className="text-sm text-custom-700 mt-0.5">{requests.length} request{requests.length !== 1 ? "s" : ""} submitted</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+
+        {requests.length === 0 ? (
+          <div className="py-12 text-center">
+            <HiOutlineClipboardList className="w-10 h-10 text-custom-400 mx-auto mb-3" />
+            <p className="text-sm text-custom-700">No requests yet</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {requests.map((req) => (
+              <div key={req.id} className="rounded-xl border border-custom-300 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 bg-custom-50 border-b border-custom-200">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-mono font-bold text-primary-500">#{req.requestNumber}</span>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${requestStatusColors[req.status]}`}>
+                      {req.status}
+                    </span>
+                  </div>
+                  <span className="text-xs text-custom-700">
+                    {new Date(req.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+                <div className="divide-y divide-custom-100">
+                  {req.items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm text-secondary-100">{item.product?.name ?? item.productId}</span>
+                      <span className="text-sm font-bold text-secondary-100">× {item.quantity}</span>
+                    </div>
+                  ))}
+                </div>
+                {req.notes && (
+                  <div className="px-4 py-2.5 bg-custom-50 border-t border-custom-200">
+                    <p className="text-xs text-custom-700">Note: {req.notes}</p>
+                  </div>
+                )}
+                {req.responseNotes && (
+                  <div className="px-4 py-2.5 bg-yellow-50 border-t border-yellow-100">
+                    <p className="text-xs text-yellow-700">Response: {req.responseNotes}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
+          >Close</button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BoutiquePage() {
   const [search, setSearch] = useState("");
@@ -45,6 +830,10 @@ export default function BoutiquePage() {
   const [selectedStatus, setSelectedStatus] = useState<StockStatus | "all">("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<BoutiqueProduct | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showMyRequests, setShowMyRequests] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showPendingBalances, setShowPendingBalances] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
   const {
@@ -62,6 +851,11 @@ export default function BoutiquePage() {
     status: selectedStatus !== "all" ? selectedStatus : undefined,
     search: search.trim() || undefined,
   });
+
+  const { data: myRequests = [], refetch: refetchRequests } = useGetMyBoutiqueRequestsQuery();
+  const { data: partialData }  = useGetSalesQuery({ paymentStatus: "partial",  limit: 100 });
+  const { data: overpaidData } = useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
+  const pendingCount = (partialData?.sales?.length ?? 0) + (overpaidData?.sales?.length ?? 0);
 
   const products = data?.products ?? [];
 
@@ -92,14 +886,53 @@ export default function BoutiquePage() {
               Browse available products and check stock before confirming a customer order
             </p>
           </div>
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm"
-            title="Refresh"
-          >
-            <HiOutlineRefresh className="w-4 h-4" />
-            <span className="hidden sm:inline font-semibold">Refresh</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPendingBalances(true)}
+              className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors text-sm font-semibold"
+            >
+              <HiOutlineCash className="w-4 h-4" />
+              <span className="hidden sm:inline">Pending Balances</span>
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-bold">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowAddProduct(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors text-sm font-semibold"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Product</span>
+            </button>
+            <button
+              onClick={() => { setShowMyRequests(true); refetchRequests(); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm font-semibold"
+            >
+              <HiOutlineClipboardList className="w-4 h-4" />
+              <span className="hidden sm:inline">My Requests</span>
+              {myRequests.filter((r) => r.status === "pending").length > 0 && (
+                <span className="w-5 h-5 rounded-full bg-primary-500 text-white text-xs flex items-center justify-center font-bold">
+                  {myRequests.filter((r) => r.status === "pending").length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowRequestModal(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
+            >
+              <HiOutlineShoppingCart className="w-4 h-4" />
+              <span className="hidden sm:inline">Request Stock</span>
+            </button>
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm"
+              title="Refresh"
+            >
+              <HiOutlineRefresh className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* ── Summary Cards ───────────────────────────────────────────────── */}
@@ -364,104 +1197,43 @@ export default function BoutiquePage() {
 
       {/* ── Product Detail Modal ──────────────────────────────────────────────── */}
       {selectedProduct && (
-        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-          <Card className="!p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-secondary-100">
-                  {selectedProduct.name}
-                </h3>
-                <p className="text-xs font-mono text-custom-700 mt-0.5">
-                  SKU: {selectedProduct.sku}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedProduct(null)}
-                className="text-custom-700 hover:text-secondary-100"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
+        <ProductDetailModal
+          product={selectedProduct}
+          categoryColor={categoryColorMap[selectedProduct.categoryId] ?? CATEGORY_COLORS[0]}
+          onClose={() => setSelectedProduct(null)}
+          onSold={() => { setSelectedProduct(null); refetch(); }}
+        />
+      )}
 
-            <div className="flex gap-2 mb-4">
-              <span
-                className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                  categoryColorMap[selectedProduct.categoryId] ?? CATEGORY_COLORS[0]
-                }`}
-              >
-                {selectedProduct.category?.name ?? "—"}
-              </span>
-              <span
-                className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${
-                  statusConfig[selectedProduct.status].color
-                }`}
-              >
-                {statusConfig[selectedProduct.status].icon}
-                {statusConfig[selectedProduct.status].label}
-              </span>
-            </div>
+      {/* ── Stock Request Modal ───────────────────────────────────────────────── */}
+      {showRequestModal && (
+        <StockRequestModal
+          products={products}
+          onClose={() => setShowRequestModal(false)}
+          onSuccess={() => { setShowRequestModal(false); refetchRequests(); }}
+        />
+      )}
 
-            <p className="text-sm text-custom-700 mb-4">{selectedProduct.description}</p>
+      {/* ── My Requests Modal ────────────────────────────────────────────────── */}
+      {showMyRequests && (
+        <MyRequestsModal
+          requests={myRequests}
+          onClose={() => setShowMyRequests(false)}
+        />
+      )}
 
-            <div className="rounded-xl bg-custom-100 border border-custom-300 p-4 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-custom-700">Price</span>
-                <span className="font-bold text-secondary-100">
-                  {selectedProduct.price.toLocaleString()} RWF{" "}
-                  <span className="font-normal text-custom-700 text-xs">
-                    / {selectedProduct.unit}
-                  </span>
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-custom-700">Current Stock</span>
-                <span
-                  className={`font-bold ${
-                    selectedProduct.status === "out-of-stock"
-                      ? "text-red-600"
-                      : selectedProduct.status === "low-stock"
-                      ? "text-yellow-600"
-                      : "text-emerald-600"
-                  }`}
-                >
-                  {selectedProduct.stock} units
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-custom-700">Minimum Stock</span>
-                <span className="font-semibold text-secondary-100">
-                  {selectedProduct.minStock} units
-                </span>
-              </div>
-            </div>
+      {/* ── Pending Balances Modal ──────────────────────────────────────────────── */}
+      {showPendingBalances && (
+        <PendingBalancesModal onClose={() => setShowPendingBalances(false)} />
+      )}
 
-            {selectedProduct.status === "out-of-stock" && (
-              <div className="mt-4 flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-                <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>
-                  This product is currently out of stock. Inform the customer and check back
-                  later.
-                </span>
-              </div>
-            )}
-            {selectedProduct.status === "low-stock" && (
-              <div className="mt-4 flex items-start gap-2 px-4 py-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
-                <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>
-                  Stock is running low. Confirm availability with the stock team before
-                  committing to the customer.
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={() => setSelectedProduct(null)}
-              className="mt-4 w-full px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
-            >
-              Close
-            </button>
-          </Card>
-        </div>
+      {/* ── Add Product Modal ─────────────────────────────────────────────────── */}
+      {showAddProduct && (
+        <AddProductModal
+          categories={categories}
+          onClose={() => setShowAddProduct(false)}
+          onSuccess={() => { setShowAddProduct(false); refetch(); }}
+        />
       )}
     </DashboardLayout>
   );

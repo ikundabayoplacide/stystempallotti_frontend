@@ -196,14 +196,29 @@ export default function PhoneInput({ value, onChange, error, className = "" }: P
         <input
           type="tel"
           value={number}
-          onChange={(e) => setNumber(e.target.value.replace(/\D/g, ""))}
-          placeholder="7XXXXXXXX"
+          onChange={(e) => {
+            const digits = e.target.value.replace(/\D/g, "");
+            const max = selected.code === "RW" ? 9 : 15;
+            setNumber(digits.slice(0, max));
+          }}
+          placeholder={selected.code === "RW" ? "7XXXXXXXX" : "local number"}
+          maxLength={selected.code === "RW" ? 9 : 15}
           className="flex-1 px-3 py-2 text-sm outline-none bg-transparent text-secondary-100 placeholder:text-custom-500"
         />
+        {selected.code === "RW" && (
+          <span className={`pr-3 text-xs font-mono shrink-0 ${
+            number.length === 9 ? "text-emerald-500" : "text-custom-500"
+          }`}>
+            {number.length}/9
+          </span>
+        )}
       </div>
 
       {/* Error */}
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
+      {!error && selected.code === "RW" && (
+        <p className="mt-1 text-xs text-custom-500">Enter 9 digits after +250 (e.g. 788000000)</p>
+      )}
 
       {/* Dropdown */}
       {open && (
