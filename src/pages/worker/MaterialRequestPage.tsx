@@ -116,7 +116,7 @@ export default function MaterialRequestPage() {
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cfg ? cfg.bgColor : "bg-primary-100"}`}>
                     {s === "all"
                       ? <HiOutlineClipboardList className="w-5 h-5 text-primary-600" />
-                      : <cfg.icon className={`w-5 h-5 ${cfg.color}`} />
+                      : cfg ? <cfg.icon className={`w-5 h-5 ${cfg.color}`} /> : null
                     }
                   </div>
                 </div>

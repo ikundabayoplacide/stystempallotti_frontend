@@ -8,8 +8,11 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
-import type { JobStatus } from "../../types/JobStatus";
 import { jobStatusConfig } from "../../types/JobStatus";
+
+// Local status type extended for this UI-only kanban board
+type TaskStatus = "received" | "quotation-completed" | "approved" | "paid" | "in-production"
+  | "in-composition" | "in-printing" | "in-binding" | "in-packaging" | "completed" | "delivered";
 
 interface Task {
   id: string;
@@ -20,7 +23,7 @@ interface Task {
   priority: "High" | "Medium" | "Low";
   assignedTo?: string;
   department?: string;
-  status: JobStatus;
+  status: TaskStatus;
 }
 
 const initialTasks: Task[] = [
@@ -31,7 +34,7 @@ const initialTasks: Task[] = [
     service: "Offset Printing",
     deadline: "2026-05-02",
     priority: "High",
-    status: "received",
+    status: "received" as TaskStatus,
   },
   {
     id: "JOB-002",
@@ -40,7 +43,7 @@ const initialTasks: Task[] = [
     service: "Binding",
     deadline: "2026-05-01",
     priority: "Medium",
-    status: "received",
+    status: "received" as TaskStatus,
   },
   {
     id: "JOB-003",
@@ -49,7 +52,7 @@ const initialTasks: Task[] = [
     service: "Composition",
     deadline: "2026-05-03",
     priority: "Low",
-    status: "quotation-completed",
+    status: "quotation-completed" as TaskStatus,
   },
   {
     id: "JOB-005",
@@ -90,7 +93,7 @@ const initialTasks: Task[] = [
     service: "Binding",
     deadline: "2026-05-06",
     priority: "Medium",
-    status: "approved",
+    status: "approved" as TaskStatus,
   },
   {
     id: "JOB-009",
@@ -99,7 +102,7 @@ const initialTasks: Task[] = [
     service: "Composition",
     deadline: "2026-05-07",
     priority: "High",
-    status: "paid",
+    status: "paid" as TaskStatus,
   },
 ];
 
@@ -121,7 +124,7 @@ const priorityColor: Record<string, string> = {
 // Group statuses for kanban view
 type KanbanColumn = "received" | "in-progress" | "in-production" | "completed";
 
-const kanbanConfig: Record<KanbanColumn, { label: string; color: string; icon: any; statuses: JobStatus[] }> = {
+const kanbanConfig: Record<KanbanColumn, { label: string; color: string; icon: any; statuses: TaskStatus[] }> = {
   received: { 
     label: "Received", 
     color: "bg-blue-500", 
@@ -177,7 +180,7 @@ export default function TaskAssignmentPage() {
     setTasks(
       tasks.map((task) =>
         task.id === taskId
-          ? { ...task, department, status: "quotation-completed" as JobStatus }
+          ? { ...task, department, status: "quotation-completed" as TaskStatus }
           : task
       )
     );
@@ -198,7 +201,7 @@ export default function TaskAssignmentPage() {
       service: newTaskForm.service,
       deadline: newTaskForm.deadline,
       priority: newTaskForm.priority,
-      status: "received",
+      status: "received" as TaskStatus,
     };
 
     setTasks([newTask, ...tasks]);
@@ -326,7 +329,7 @@ export default function TaskAssignmentPage() {
                 {/* Column Content */}
                 <div className="bg-custom-100 rounded-b-xl p-3 flex-1 space-y-3 min-h-[400px]">
                   {columnTasks.map((task) => {
-                    const taskStatus = jobStatusConfig[task.status];
+                    const taskStatus = jobStatusConfig[task.status as keyof typeof jobStatusConfig] ?? { label: task.status, bgColor: "bg-gray-100", color: "text-gray-700", description: "" };
                     return (
                     <Card
                       key={task.id}
@@ -386,7 +389,7 @@ export default function TaskAssignmentPage() {
                       )}
 
                       {/* Action Button */}
-                      {column === "received" && task.status === "received" && (
+                      {column === "received" && (task.status as string) === "received" && (
                         <button
                           className="w-full mt-2 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
                           onClick={(e) => {

@@ -14,6 +14,7 @@ import {
   useGetEmployeeJobsQuery,
 } from "../../store/services/employeesService";
 import { jobStatusConfig } from "../../types/JobStatus";
+import type { JobStatus } from "../../types/JobStatus";
 
 const priorityColor: Record<string, string> = {
   urgent: "bg-red-500 text-white",
@@ -171,7 +172,7 @@ export default function WorkerDashboard() {
         ) : (
           <div className="divide-y divide-custom-200">
             {activeJobs.slice(0, showAllJobs ? activeJobs.length : 2).map((job) => {
-              const statusCfg = jobStatusConfig[job.status] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
+              const statusCfg = jobStatusConfig[job.status as JobStatus] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
               return (
                 <div key={job.id} className={`px-4 py-4 hover:bg-custom-50 transition-colors ${job.priority === "urgent" ? "bg-red-50" : ""}`}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

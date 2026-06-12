@@ -77,7 +77,7 @@ function AddProductModal({ categories, onClose, onSuccess }: {
     }
     const payload = {
         name: form.name.trim(),
-        description: form.description.trim() || undefined,
+        description: form.description.trim() || "",
         categoryId: form.categoryId,
         unit: form.unit.trim(),
         price: Number(form.price),

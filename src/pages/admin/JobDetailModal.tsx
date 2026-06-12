@@ -122,9 +122,8 @@ function StatusTimeline({ current }: { current: string }) {
   return (
     <div className="flex items-center gap-1 flex-wrap">
       {STATUS_FLOW.map((s, i) => {
-        const done    = i < currentIdx;
-        const active  = i === currentIdx;
-        const pending = i > currentIdx;
+        const done   = i < currentIdx;
+        const active = i === currentIdx;
         return (
           <div key={s} className="flex items-center gap-1">
             <div

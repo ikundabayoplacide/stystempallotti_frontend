@@ -15,6 +15,9 @@ import { Button, Card, Input } from "../../components/ui";
 import type { JobStatus } from "../../types/JobStatus";
 import { jobStatusConfig } from "../../types/JobStatus";
 
+// Extended type for dossier UI which includes payment states
+type DossierStatus = JobStatus | "paid";
+
 interface DossierDocument {
   name: string;
   type: string;
@@ -27,7 +30,7 @@ interface Dossier {
   jobId: string;
   client: string;
   service: string;
-  status: JobStatus;
+  status: DossierStatus;
   createdAt: string;
   completedAt?: string;
   documents: DossierDocument[];
@@ -288,7 +291,7 @@ export default function DossierPage() {
                   </tr>
                 ) : (
                   filtered.map((dossier) => {
-                    const statusConfig = jobStatusConfig[dossier.status];
+    const statusConfig = jobStatusConfig[dossier.status as JobStatus] ?? { label: dossier.status, bgColor: "bg-gray-100", color: "text-gray-700" };
 
                     return (
                       <tr key={dossier.id} className="hover:bg-custom-50 transition-colors">
@@ -588,10 +591,10 @@ export default function DossierPage() {
                   </p>
                   <span
                     className={`inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full ${
-                      jobStatusConfig[selectedDossier.status].bgColor
-                    } ${jobStatusConfig[selectedDossier.status].color}`}
+                      (jobStatusConfig[selectedDossier.status as JobStatus] ?? { bgColor: "bg-gray-100" }).bgColor
+                    } ${(jobStatusConfig[selectedDossier.status as JobStatus] ?? { color: "text-gray-700" }).color}`}
                   >
-                    {jobStatusConfig[selectedDossier.status].label}
+                    {jobStatusConfig[selectedDossier.status as JobStatus]?.label ?? selectedDossier.status}
                   </span>
                 </div>
                 <button

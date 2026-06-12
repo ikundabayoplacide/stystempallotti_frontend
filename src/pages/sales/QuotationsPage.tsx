@@ -609,7 +609,6 @@ export default function QuotationsPage() {
   // KPI counts from current page — ideally backend returns totals per status
   const draftCount    = quotations.filter((q) => q.status === "draft").length;
   const sentCount     = quotations.filter((q) => q.status === "sent").length;
-  const acceptedCount = quotations.filter((q) => q.status === "accepted").length;
   const acceptedValue = quotations
     .filter((q) => q.status === "accepted")
     .reduce((s, q) => s + (q.totalAmount ?? 0), 0);

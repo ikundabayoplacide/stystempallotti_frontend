@@ -316,7 +316,7 @@ export default function SalesCustomerPage() {
     if (formData.clientType === "company" && !formData.company.trim()) { toast.error("Company name is required."); return; }
     const payload: CreateCustomerPayload & { tin?: string } = {
       name: formData.name,
-      ...(formData.email.trim() && { email: formData.email.toLowerCase() }),
+      email: formData.email.trim() ? formData.email.toLowerCase() : "",
       phone: formData.phone,
       company: formData.clientType === "company" ? formData.company || undefined : undefined,
       ...(formData.clientType === "company" && formData.tin.trim() && { tin: formData.tin }),

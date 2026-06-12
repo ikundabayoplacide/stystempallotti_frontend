@@ -87,7 +87,7 @@ function loadImageAsBase64(url: string): Promise<string> {
 const HEADER_H   = 35;  // mm – height of header.png on the page
 const FOOTER_TOP = 26;  // mm from page bottom
 
-function drawLetterhead(pdf: jsPDF, headerBase64: string | null, title: string, subtitle: string) {
+function drawLetterhead(pdf: any, headerBase64: string | null, title: string, subtitle: string) {
   const pw = pdf.internal.pageSize.getWidth();
 
   // ── Paste header.png full-width ──
@@ -109,7 +109,7 @@ function drawLetterhead(pdf: jsPDF, headerBase64: string | null, title: string, 
   }
 }
 
-function drawFooter(pdf: jsPDF, pageNum: number, totalPages: number) {
+function drawFooter(pdf: any, pageNum: number, totalPages: number) {
   const pw = pdf.internal.pageSize.getWidth();
   const ph = pdf.internal.pageSize.getHeight();
   const fy = ph - FOOTER_TOP;
@@ -183,7 +183,7 @@ async function buildPdf(
     styles: { fontSize: 7, cellPadding: 2 },
     headStyles: { fillColor: [0, 160, 210], textColor: 255, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [245, 251, 255] },
-    didDrawPage: (data) => {
+    didDrawPage: (data: { pageNumber: number }) => {
       if (data.pageNumber > 1) drawLetterhead(pdf, headerBase64, title, subtitle);
       const total = (pdf as any).internal.getNumberOfPages();
       drawFooter(pdf, data.pageNumber, total);

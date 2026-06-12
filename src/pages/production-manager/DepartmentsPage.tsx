@@ -88,7 +88,7 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
               </div>
             ) : (
               <ul className="space-y-2">
-                {workers.map((w) => (
+                {workers.map((w: { id: string; fullName: string; phoneNumber: string; isActive: boolean; contractType?: string }) => (
                   <li key={w.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
