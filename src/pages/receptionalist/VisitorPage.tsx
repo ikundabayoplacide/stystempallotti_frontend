@@ -326,11 +326,29 @@ export default function VisitorPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
+  const validateForm = (): boolean => {
+    if (!formData.phone.trim()) { toast.error("Phone number is required."); return false; }
+    // Rwandan number: dial +250 + 9 local digits = 13 chars total, local part must be exactly 9 digits
+    const phoneDigits = formData.phone.replace(/\D/g, "");
+    if (formData.phone.startsWith("+250") && phoneDigits.length !== 12) {
+      toast.error("Rwandan phone number must be exactly 10 digits (e.g. 0788000000)."); return false;
+    }
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      toast.error("Please enter a valid email address."); return false;
+    }
+    if (formData.clientType === "company") {
+      if (!formData.company.trim()) { toast.error("Company name is required."); return false; }
+      if (formData.tin.trim() && formData.tin.trim().length > 9) {
+        toast.error("TIN number must not exceed 9 digits."); return false;
+      }
+    }
+    if (formData.clientType === "groupe" && !formData.groupeName.trim()) { toast.error("Group name is required."); return false; }
+    return true;
+  };
+
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData.phone.trim()) { toast.error("Phone number is required."); return; }
-    if (formData.clientType === "company" && !formData.company.trim()) { toast.error("Company name is required."); return; }
-    if (formData.clientType === "groupe" && !formData.groupeName.trim()) { toast.error("Group name is required."); return; }
+    if (!validateForm()) return;
     const groupeNotes = formData.clientType === "groupe"
       ? `[Groupe] ${formData.groupeName}${formData.groupeSize ? ` | Members: ${formData.groupeSize}` : ""}`
       : undefined;
@@ -364,9 +382,7 @@ export default function VisitorPage() {
 
   const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!formData.phone.trim()) { toast.error("Phone number is required."); return; }
-    if (formData.clientType === "company" && !formData.company.trim()) { toast.error("Company name is required."); return; }
-    if (formData.clientType === "groupe" && !formData.groupeName.trim()) { toast.error("Group name is required."); return; }
+    if (!validateForm()) return;
     if (!selectedCustomer) return;
     const groupeNotes = formData.clientType === "groupe"
       ? `[Groupe] ${formData.groupeName}${formData.groupeSize ? ` | Members: ${formData.groupeSize}` : ""}`
@@ -701,7 +717,8 @@ export default function VisitorPage() {
                         TIN Number <span className="text-xs text-custom-600 font-normal">(Tax ID)</span>
                       </label>
                       <Input type="text" placeholder="e.g., 102345678" value={formData.tin}
-                        onChange={(e) => set("tin", e.target.value)} fullWidth />
+                        onChange={(e) => set("tin", e.target.value)} maxLength={9} fullWidth />
+                      <p className="mt-1 text-xs text-custom-500">Max 9 digits — e.g. 102345678</p>
                     </div>
                   </>
                 )}
