@@ -441,7 +441,7 @@ export default function CustomerPage() {
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Company / TIN</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Company|Groupe / TIN</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Contact</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Location</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Category</th>

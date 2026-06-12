@@ -259,12 +259,17 @@ function VisitModal({ customer, activeVisit, onClose, onDone }: VisitModalProps)
 
 interface FormData {
   name: string; email: string; phone: string;
-  clientType: "individual" | "company"; company: string; tin: string;
+  clientType: "individual" | "company" | "groupe";
+  companyType: "private" | "public";
+  company: string; tin: string;
+  groupeName: string; groupeSize: string;
   address: string; notes: string; type: CustomerType;
 }
 const emptyForm: FormData = {
   name: "", email: "", phone: "",
-  clientType: "individual", company: "", tin: "",
+  clientType: "individual", companyType: "public",
+  company: "", tin: "",
+  groupeName: "", groupeSize: "",
   address: "", notes: "", type: "VISITOR",
 };
 
@@ -325,14 +330,22 @@ export default function VisitorPage() {
     e.preventDefault();
     if (!formData.phone.trim()) { toast.error("Phone number is required."); return; }
     if (formData.clientType === "company" && !formData.company.trim()) { toast.error("Company name is required."); return; }
-    const payload: CreateCustomerPayload & { tin?: string } = {
+    if (formData.clientType === "groupe" && !formData.groupeName.trim()) { toast.error("Group name is required."); return; }
+    const groupeNotes = formData.clientType === "groupe"
+      ? `[Groupe] ${formData.groupeName}${formData.groupeSize ? ` | Members: ${formData.groupeSize}` : ""}`
+      : undefined;
+    const payload: CreateCustomerPayload & { tin?: string; companyType?: string; groupeSize?: string } = {
       name: formData.name,
       ...(formData.email.trim() && { email: formData.email.toLowerCase() }),
       phone: formData.phone,
-      company: formData.clientType === "company" ? formData.company || undefined : undefined,
+      company: formData.clientType === "company" ? formData.company || undefined
+             : formData.clientType === "groupe" ? formData.groupeName || undefined
+             : undefined,
       ...(formData.clientType === "company" && formData.tin.trim() && { tin: formData.tin }),
+      ...(formData.clientType === "company" && { companyType: formData.companyType }),
+      ...(formData.clientType === "groupe" && formData.groupeSize.trim() && { groupeSize: formData.groupeSize }),
       address: formData.address || undefined,
-      notes: formData.notes || undefined,
+      notes: groupeNotes ?? (formData.notes || undefined),
       type: formData.type,
     };
     try {
@@ -353,16 +366,22 @@ export default function VisitorPage() {
     e.preventDefault();
     if (!formData.phone.trim()) { toast.error("Phone number is required."); return; }
     if (formData.clientType === "company" && !formData.company.trim()) { toast.error("Company name is required."); return; }
+    if (formData.clientType === "groupe" && !formData.groupeName.trim()) { toast.error("Group name is required."); return; }
     if (!selectedCustomer) return;
+    const groupeNotes = formData.clientType === "groupe"
+      ? `[Groupe] ${formData.groupeName}${formData.groupeSize ? ` | Members: ${formData.groupeSize}` : ""}`
+      : undefined;
     try {
       await updateCustomer({
         id: selectedCustomer.id,
         name: formData.name,
         ...(formData.email.trim() && { email: formData.email.toLowerCase() }),
         phone: formData.phone,
-        company: formData.clientType === "company" ? formData.company || undefined : undefined,
+        company: formData.clientType === "company" ? formData.company || undefined
+               : formData.clientType === "groupe" ? formData.groupeName || undefined
+               : undefined,
         address: formData.address || undefined,
-        notes: formData.notes || undefined,
+        notes: groupeNotes ?? (formData.notes || undefined),
         type: formData.type,
       }).unwrap();
       toast.success("Customer updated successfully");
@@ -374,11 +393,20 @@ export default function VisitorPage() {
 
   const openEditModal = (customer: Customer) => {
     setSelectedCustomer(customer);
+    const notes = customer.notes ?? "";
+    const isGroupe = notes.startsWith("[Groupe]");
+    const groupeMatch = notes.match(/^\[Groupe\] (.+?)(?:\s\|\sMembers:\s(\d+))?$/);
     setFormData({
       name: customer.name, email: customer.email ?? "", phone: customer.phone ?? "",
-      clientType: customer.company ? "company" : "individual",
-      company: customer.company ?? "", tin: (customer as any).tin ?? "",
-      address: customer.address ?? "", notes: customer.notes ?? "", type: customer.type,
+      clientType: isGroupe ? "groupe" : customer.company ? "company" : "individual",
+      companyType: (customer as any).companyType ?? "public",
+      company: isGroupe ? "" : (customer.company ?? ""),
+      tin: (customer as any).tin ?? "",
+      groupeName: isGroupe ? (groupeMatch?.[1] ?? "") : "",
+      groupeSize: isGroupe ? (groupeMatch?.[2] ?? "") : "",
+      address: customer.address ?? "",
+      notes: isGroupe ? "" : notes,
+      type: customer.type,
     });
     setShowEditModal(true);
   };
@@ -482,7 +510,7 @@ export default function VisitorPage() {
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Company / TIN</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Company|Groupe</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Contact</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Location</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Category</th>
@@ -638,9 +666,14 @@ export default function VisitorPage() {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-secondary-100 mb-2">Client Type</label>
                   <div className="flex gap-3">
-                    {(["individual", "company"] as const).map((ct) => (
+                    {(["individual", "company", "groupe"] as const).map((ct) => (
                       <button key={ct} type="button"
-                        onClick={() => setFormData((p) => ({ ...p, clientType: ct, ...(ct === "individual" && { company: "", tin: "" }) }))}
+                        onClick={() => setFormData((p) => ({
+                          ...p, clientType: ct,
+                          ...(ct === "individual" && { company: "", tin: "", groupeName: "", groupeSize: "" }),
+                          ...(ct === "groupe" && { company: "", tin: "" }),
+                          ...(ct === "company" && { groupeName: "", groupeSize: "" }),
+                        }))}
                         className={`flex-1 py-2.5 rounded-xl border text-sm font-semibold transition-colors capitalize ${
                           formData.clientType === ct ? "bg-primary-500 text-white border-primary-500" : "border-custom-300 text-custom-700 hover:bg-custom-100"
                         }`}>{ct}</button>
@@ -649,6 +682,15 @@ export default function VisitorPage() {
                 </div>
                 {formData.clientType === "company" && (
                   <>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-secondary-100 mb-2">Company Type <span className="text-red-500">*</span></label>
+                      <select value={formData.companyType}
+                        onChange={(e) => set("companyType", e.target.value)}
+                        className={selectCls}>
+                        <option value="private">Private</option>
+                        <option value="public">Public</option>
+                      </select>
+                    </div>
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-2">Company Name <span className="text-red-500">*</span></label>
                       <Input type="text" placeholder="e.g., ABC Corporation" value={formData.company}
@@ -663,7 +705,23 @@ export default function VisitorPage() {
                     </div>
                   </>
                 )}
-                <div className={formData.clientType === "company" ? "md:col-span-2" : ""}>
+                {formData.clientType === "groupe" && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-2">Group Name <span className="text-red-500">*</span></label>
+                      <Input type="text" placeholder="e.g., Church Youth Group" value={formData.groupeName}
+                        onChange={(e) => set("groupeName", e.target.value)} required fullWidth />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-secondary-100 mb-2">
+                        Number of People <span className="text-xs text-custom-600 font-normal">(optional)</span>
+                      </label>
+                      <Input type="number" placeholder="e.g., 15" min="1" value={formData.groupeSize}
+                        onChange={(e) => set("groupeSize", e.target.value)} fullWidth />
+                    </div>
+                  </>
+                )}
+                <div className={formData.clientType !== "individual" ? "md:col-span-2" : ""}>
                   <label className="block text-sm font-semibold text-secondary-100 mb-2">Address</label>
                   <Input type="text" placeholder="e.g., KN 5 Ave" value={formData.address}
                     onChange={(e) => set("address", e.target.value)} fullWidth />

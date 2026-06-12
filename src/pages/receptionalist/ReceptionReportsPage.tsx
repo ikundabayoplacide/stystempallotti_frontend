@@ -835,7 +835,7 @@ function VisitorReport() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Name", "Phone", "Company", "Category", "Address", "Registered"].map((h) => (
+                {["Name", "Phone", "Company|Groupe", "Category", "Address", "Registered"].map((h) => (
                   <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
                 ))}
               </tr>
@@ -852,7 +852,23 @@ function VisitorReport() {
                     {c.email && <p className="text-xs text-custom-700">{c.email}</p>}
                   </td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{c.phone ?? <span className="text-custom-400">—</span>}</td>
-                  <td className="px-3 py-2.5 text-sm text-secondary-100">{c.company ?? <span className="text-custom-400">—</span>}</td>
+                  <td className="px-3 py-2.5">
+                    {(() => {
+                      const notes = c.notes ?? "";
+                      const isGroupe = notes.startsWith("[Groupe]");
+                      const groupeMatch = notes.match(/^\[Groupe\] (.+?)(?:\s\|\sMembers:\s(\d+))?$/);
+                      if (isGroupe) return (
+                        <div>
+                          <p className="text-sm font-semibold text-secondary-100">{groupeMatch?.[1] ?? c.company ?? "—"}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Groupe</span>
+                            {groupeMatch?.[2] && <span className="text-xs text-custom-700">{groupeMatch[2]} people</span>}
+                          </div>
+                        </div>
+                      );
+                      return <span className="text-sm text-secondary-100">{c.company ?? <span className="text-custom-400">—</span>}</span>;
+                    })()}
+                  </td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${typeColor[c.type] ?? "bg-gray-100 text-gray-700"}`}>
                       {typeLabel[c.type] ?? c.type}
