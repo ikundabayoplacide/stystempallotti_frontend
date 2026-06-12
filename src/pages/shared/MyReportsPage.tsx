@@ -31,7 +31,7 @@ export default function MyReportsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-secondary-100">My Reports</h1>
-            <p className="text-sm text-custom-700">Reports you have submitted — {total} total</p>
+            <p className="text-sm text-custom-700">Reports you have submitted <span className="font-semibold text-black">{total}</span> total</p>
           </div>
         </div>
 

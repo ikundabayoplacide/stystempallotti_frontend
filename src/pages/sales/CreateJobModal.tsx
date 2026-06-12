@@ -125,8 +125,8 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   const filteredStockItems = (stockData?.data ?? []).filter((si) => {
     if (addedIds.has(si.id)) return false;
     if (!itemSearch.trim()) return true;
-    return si.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
-           si.category.toLowerCase().includes(itemSearch.toLowerCase());
+    return (si.name ?? "").toLowerCase().includes(itemSearch.toLowerCase()) ||
+           (si.category ?? "").toLowerCase().includes(itemSearch.toLowerCase());
   });
 
   // ── Calculated total from items ────────────────────────────────────────────

@@ -42,6 +42,7 @@ export default function LoginPage() {
         SUPERVISOR: "/supervisor",
         WORKER: "/worker",
         HR: "/hr",
+        HOBE: "/hobe",
       };
       setTimeout(() => navigate(roleRoutes[role] ?? "/"), 0);
     } catch {

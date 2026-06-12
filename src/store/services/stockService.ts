@@ -4,17 +4,21 @@ import type { RootState } from "../index";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type StockStatus = "available" | "low" | "out-of-stock";
+export type StockItemType = "boutique" | "hobe" | "general";
 
 export interface StockItem {
   id: string;
-  name: string;
+  itemName: string;          // backend field name
+  name?: string;             // alias — some responses may use this
   description?: string;
   category: string;
-  unit: string;           // e.g. "kg", "sheets", "rolls", "pcs"
-  unitCost?: number;      // cost per unit — used for amount calculation
+  type: StockItemType;
+  unit: string;
+  unitCost?: number;
   currentStock: number;
-  minStock: number;
-  stockStatus: StockStatus; // computed by backend
+  alarmStock: number;
+  minStock: number;          // kept for backwards compat
+  stockStatus: StockStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,7 +54,8 @@ export interface StockSortie {
 
 export interface GetItemsParams {
   category?: string;
-  stockStatus?: string;   // accept any string — backend may use different casing
+  type?: StockItemType;       // filter by boutique | hobe | general
+  stockStatus?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -71,21 +76,23 @@ export interface GetSortiesParams {
 }
 
 export interface CreateStockItemPayload {
-  name: string;
+  itemName: string;          // backend expects "itemName"
   description?: string;
   category: string;
+  type: StockItemType;
   unit: string;
   currentStock: number;
-  minStock: number;
+  alarmStock: number;        // backend expects "alarmStock"
 }
 
 export interface UpdateStockItemPayload {
   id: string;
-  name?: string;
+  itemName?: string;
   description?: string;
   category?: string;
+  type?: StockItemType;
   unit?: string;
-  minStock?: number;
+  alarmStock?: number;       // backend expects "alarmStock"
 }
 
 export interface CreateEntryPayload {

@@ -30,6 +30,7 @@ const roleMap: Record<UserRole, LegacyRole> = {
   SUPERVISOR: "supervisor",
   WORKER: "worker",
   HR: "hr",
+  HOBE: "hobe",
 };
 
 // Legacy lowercase roles — kept so existing components don't break
@@ -43,7 +44,8 @@ type LegacyRole =
   | "stock"
   | "supervisor"
   | "worker"
-  | "hr";
+  | "hr"
+  | "hobe";
 
 interface AuthContextType {
   isAuthenticated: boolean;

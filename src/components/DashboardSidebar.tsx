@@ -77,6 +77,15 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard",  path: "/hr",            icon: HiOutlineHome },
     { label: "Employees",  path: "/hr/employees",   icon: HiOutlineUsers },
   ],
+  hobe: [
+    { label: "Dashboard",  path: "/hobe",            icon: HiOutlineHome },
+    { label: "Trade",      path: "/hobe/trade",       icon: HiOutlineCube },
+    { label: "Requests",   path: "/hobe/requests",    icon: HiOutlineClipboardList },
+    { label: "Reports",    path: "/hobe/report",      icon: HiOutlineChartBar, children: [
+      { label: "Generate Reports", path: "/hobe/report",           icon: HiOutlineChartBar },
+      { label: "My Reports",       path: "/hobe/report/my-reports", icon: HiOutlineDocumentText },
+    ]},
+  ],
   daf: [
     { label: "Dashboard",       path: "/finance/daf",          icon: HiOutlineHome },
     { label: "Job Approvals",   path: "/finance/daf/approvals", icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },

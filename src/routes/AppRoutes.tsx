@@ -16,7 +16,7 @@ import {
     SystemSettingsPage,
     UIPermissionsPage,
     UserManagementPage,
-    WorkflowConfigPage
+    WorkflowConfigPage,
 } from "../pages/admin";
 
 // Sales Officer Pages
@@ -77,6 +77,10 @@ import ReceptionReportsPage from "../pages/receptionalist/ReceptionReportsPage";
 import JobManagementPage from "../pages/sales/JobManagementPage";
 import HRPage from "../pages/HR/HRPage";
 import EmployeesPage from "../pages/HR/EmployeesPage";
+import HobePage from "../pages/Hobe/Dashboard";
+import RequestsPage from "../pages/Hobe/Requests";
+import ReportsPage from "../pages/Hobe/Reports";
+import HobeTrade from "../pages/Hobe/Trade";
 
 export default function AppRoutes() {
   return (
@@ -179,6 +183,14 @@ export default function AppRoutes() {
       <Route path="/worker/reports/my" element={<ProtectedRoute allowedRoles={["worker"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]} pageId="material-requests"><MaterialRequestPage /></ProtectedRoute>} />
       <Route path="/worker/notifications" element={<ProtectedRoute allowedRoles={["worker"]}><NotificationsPage userRole="worker" userName="Worker" /></ProtectedRoute>} />
+
+      {/* Hobe */}
+      <Route path="/hobe" element={<ProtectedRoute allowedRoles={["hobe"]}><HobePage /></ProtectedRoute>} />
+      <Route path="/hobe/requests" element={<ProtectedRoute allowedRoles={["hobe"]}><RequestsPage /></ProtectedRoute>} />
+      <Route path="/hobe/trade" element={<ProtectedRoute allowedRoles={["hobe"]}><HobeTrade /></ProtectedRoute>} />
+      <Route path="/hobe/report" element={<ProtectedRoute allowedRoles={["hobe"]}><ReportsPage /></ProtectedRoute>} />
+      <Route path="/hobe/report/my-reports" element={<ProtectedRoute allowedRoles={["hobe"]}><MyReportsPage /></ProtectedRoute>} />
+      <Route path="/hobe/notifications" element={<ProtectedRoute allowedRoles={["hobe"]}><NotificationsPage userRole="hobe" userName="Hobe" /></ProtectedRoute>} />
 
 {/* routes for HR */}
       <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />

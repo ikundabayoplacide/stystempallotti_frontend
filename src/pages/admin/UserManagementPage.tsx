@@ -113,6 +113,7 @@ const roleColors: Record<string, string> = {
   DAF: "bg-indigo-100 text-indigo-700",
   ACCOUNTANT: "bg-cyan-100 text-cyan-700",
   HR: "bg-teal-100 text-teal-700",
+  HOBE: "bg-lime-100 text-lime-700",
 };
 
 // ADMIN excluded — admins are not created from this form
@@ -126,6 +127,7 @@ const roleLabels: Record<string, string> = {
   SUPERVISOR: "Supervisor",
   WORKER: "Worker",
   HR: "HR",
+  HOBE: "Hobe",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────

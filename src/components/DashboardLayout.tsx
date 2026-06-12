@@ -38,6 +38,7 @@ export default function DashboardLayout({
       receptionist: "/reception/notifications",
       sales: "/sales/notifications",
       hr: "/hr/notifications",
+      hobe: "/hobe/notifications",
       daf: "/finance/daf/notifications",
       accountant: "/finance/accountant1/notifications",
       "production-manager": "/production-manager/notifications",

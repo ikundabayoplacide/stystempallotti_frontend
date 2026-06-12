@@ -1,422 +1,433 @@
 import { useState } from "react";
 import {
-    HiOutlineArchive,
-    HiOutlineCheckCircle,
-    HiOutlineExclamationCircle,
-    HiOutlinePencil,
-    HiOutlinePlus,
-    HiOutlineSearch,
-    HiOutlineTrash,
-    HiOutlineTrendingDown,
-    HiOutlineX,
+  HiOutlineArchive,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+  HiOutlinePencil,
+  HiOutlinePlus,
+  HiOutlineRefresh,
+  HiOutlineSearch,
+  HiOutlineTrash,
+  HiOutlineTrendingDown,
+  HiOutlineX,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
-import { Button, Card, Input } from "../../components/ui";
+import { Card } from "../../components/ui";
+import {
+  useGetStockItemsQuery,
+  useCreateStockItemMutation,
+  useUpdateStockItemMutation,
+  useDeleteStockItemMutation,
+  type StockItem,
+  type StockItemType,
+} from "../../store/services/stockService";
 
-interface StockItem {
-  id: string;
-  name: string;
-  category: string;
-  qty: number;
-  unit: string;
-  minLevel: number;
-  status: string;
-  supplier: string;
-  cost: number;
-  lastRestocked: string;
-  lastUsed: string;
-}
+// ─── Config ───────────────────────────────────────────────────────────────────
 
-const initialStockItems: StockItem[] = [
-  {
-    id: "STK-001",
-    name: "A4 Paper (80gsm)",
-    category: "Paper",
-    qty: 2,
-    unit: "reams",
-    minLevel: 10,
-    status: "Low",
-    supplier: "Paper Plus Ltd",
-    cost: 15000,
-    lastRestocked: "2026-04-25",
-    lastUsed: "2026-04-30",
-  },
-  {
-    id: "STK-002",
-    name: "Black Ink Cartridge",
-    category: "Ink",
-    qty: 1,
-    unit: "units",
-    minLevel: 5,
-    status: "Critical",
-    supplier: "Ink Solutions",
-    cost: 45000,
-    lastRestocked: "2026-04-20",
-    lastUsed: "2026-04-30",
-  },
-  {
-    id: "STK-003",
-    name: "Binding Wire",
-    category: "Binding",
-    qty: 5,
-    unit: "rolls",
-    minLevel: 10,
-    status: "Low",
-    supplier: "Binding Supplies Co",
-    cost: 8000,
-    lastRestocked: "2026-04-22",
-    lastUsed: "2026-04-29",
-  },
-  {
-    id: "STK-004",
-    name: "A3 Paper (100gsm)",
-    category: "Paper",
-    qty: 25,
-    unit: "reams",
-    minLevel: 15,
-    status: "Good",
-    supplier: "Paper Plus Ltd",
-    cost: 22000,
-    lastRestocked: "2026-04-28",
-    lastUsed: "2026-04-28",
-  },
-  {
-    id: "STK-005",
-    name: "Cyan Ink Cartridge",
-    category: "Ink",
-    qty: 8,
-    unit: "units",
-    minLevel: 5,
-    status: "Good",
-    supplier: "Ink Solutions",
-    cost: 45000,
-    lastRestocked: "2026-04-26",
-    lastUsed: "2026-04-30",
-  },
-  {
-    id: "STK-006",
-    name: "Spiral Binding Coils",
-    category: "Binding",
-    qty: 0,
-    unit: "boxes",
-    minLevel: 5,
-    status: "Out of Stock",
-    supplier: "Binding Supplies Co",
-    cost: 12000,
-    lastRestocked: "2026-04-15",
-    lastUsed: "2026-04-27",
-  },
-  {
-    id: "STK-007",
-    name: "Glossy Paper (A4)",
-    category: "Paper",
-    qty: 15,
-    unit: "reams",
-    minLevel: 10,
-    status: "Good",
-    supplier: "Paper Plus Ltd",
-    cost: 18000,
-    lastRestocked: "2026-04-27",
-    lastUsed: "2026-04-29",
-  },
+const TYPE_OPTIONS: { value: StockItemType; label: string; color: string }[] = [
+  { value: "general",  label: "General",  color: "bg-gray-100 text-gray-600" },
+  { value: "boutique", label: "Boutique", color: "bg-pink-100 text-pink-700" },
+  { value: "hobe",     label: "Hobe",     color: "bg-lime-100 text-lime-700" },
 ];
 
-const statusColor: Record<string, string> = {
-  Good: "bg-green-100 text-green-700",
-  Low: "bg-yellow-100 text-yellow-700",
-  Critical: "bg-orange-100 text-orange-700",
-  "Out of Stock": "bg-red-100 text-red-700",
+const STATUS_COLOR: Record<string, string> = {
+  available:    "bg-emerald-100 text-emerald-700",
+  low:          "bg-yellow-100 text-yellow-700",
+  "out-of-stock": "bg-red-100 text-red-600",
 };
 
-export default function InventoryPage() {
-  const [stockItems, setStockItems] = useState<StockItem[]>(initialStockItems);
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("All");
-  const [filterCategory, setFilterCategory] = useState<string>("All");
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
+const STATUS_LABEL: Record<string, string> = {
+  available:    "Available",
+  low:          "Low Stock",
+  "out-of-stock": "Out of Stock",
+};
 
-  const [formData, setFormData] = useState({
-    itemName: "",
-    category: "Paper",
-    quantity: "",
-    unit: "reams",
-    minLevel: "",
-    supplier: "",
-    cost: "",
-  });
+// ─── Add / Edit Modal ─────────────────────────────────────────────────────────
 
-  const handleAdd = (e: React.FormEvent) => {
+function ItemModal({ item, onClose }: {
+  item: StockItem | null;   // null = add mode
+  onClose: () => void;
+}) {
+  const isEdit = !!item;
+  const [form, setForm] = useState(
+    item
+      ? {
+          name: item.itemName,
+          description: item.description ?? "",
+          category: item.category,
+          type: item.type,
+          unit: item.unit,
+          currentStock: String(item.currentStock),
+          alarmStock: String(item.alarmStock ?? item.minStock),
+        }
+      : {
+          name: "",
+          description: "",
+          category: "",
+          type: "general" as StockItemType,
+          unit: "units",
+          currentStock: "",
+          alarmStock: "",
+        }
+  );
+
+  const [createItem, { isLoading: creating }] = useCreateStockItemMutation();
+  const [updateItem, { isLoading: updating }] = useUpdateStockItemMutation();
+  const isLoading = creating || updating;
+
+  const set = (key: string) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newItem: StockItem = {
-      id: `STK-${String(stockItems.length + 1).padStart(3, "0")}`,
-      name: formData.itemName,
-      category: formData.category,
-      qty: Number(formData.quantity),
-      unit: formData.unit,
-      minLevel: Number(formData.minLevel),
-      status: Number(formData.quantity) === 0 ? "Out of Stock" : Number(formData.quantity) < Number(formData.minLevel) ? "Low" : "Good",
-      supplier: formData.supplier,
-      cost: Number(formData.cost),
-      lastRestocked: new Date().toISOString().split("T")[0],
-      lastUsed: "-",
-    };
-    setStockItems([...stockItems, newItem]);
-    setFormData({
-      itemName: "",
-      category: "Paper",
-      quantity: "",
-      unit: "reams",
-      minLevel: "",
-      supplier: "",
-      cost: "",
-    });
-    setShowAddModal(false);
-  };
-
-  const handleEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedItem) return;
-    
-    setStockItems(
-      stockItems.map((item) =>
-        item.id === selectedItem.id
-          ? {
-              ...item,
-              name: formData.itemName,
-              category: formData.category,
-              qty: Number(formData.quantity),
-              unit: formData.unit,
-              minLevel: Number(formData.minLevel),
-              status: Number(formData.quantity) === 0 ? "Out of Stock" : Number(formData.quantity) < Number(formData.minLevel) ? "Low" : "Good",
-              supplier: formData.supplier,
-              cost: Number(formData.cost),
-            }
-          : item
-      )
-    );
-    setShowEditModal(false);
-    setSelectedItem(null);
-    setFormData({
-      itemName: "",
-      category: "Paper",
-      quantity: "",
-      unit: "reams",
-      minLevel: "",
-      supplier: "",
-      cost: "",
-    });
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this item?")) {
-      setStockItems(stockItems.filter((item) => item.id !== id));
+    if (!form.name.trim() || !form.category.trim() || !form.unit.trim()) {
+      toast.error("Name, category, and unit are required"); return;
+    }
+    try {
+      if (isEdit) {
+        await updateItem({
+          id: item!.id,
+          itemName: form.name.trim(),
+          description: form.description.trim() || undefined,
+          category: form.category.trim(),
+          type: form.type,
+          unit: form.unit.trim(),
+          alarmStock: Number(form.alarmStock),
+        }).unwrap();
+        toast.success("Item updated");
+      } else {
+        await createItem({
+          itemName: form.name.trim(),
+          description: form.description.trim() || undefined,
+          category: form.category.trim(),
+          type: form.type,
+          unit: form.unit.trim(),
+          currentStock: Number(form.currentStock),
+          alarmStock: Number(form.alarmStock),
+        }).unwrap();
+        toast.success("Item added to stock");
+      }
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to save item");
     }
   };
 
-  const openEditModal = (item: StockItem) => {
-    setSelectedItem(item);
-    setFormData({
-      itemName: item.name,
-      category: item.category,
-      quantity: String(item.qty),
-      unit: item.unit,
-      minLevel: String(item.minLevel),
-      supplier: item.supplier,
-      cost: String(item.cost),
-    });
-    setShowEditModal(true);
-  };
-
-  const filtered = stockItems.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.id.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = filterStatus === "All" || item.status === filterStatus;
-    const matchesCategory = filterCategory === "All" || item.category === filterCategory;
-    return matchesSearch && matchesStatus && matchesCategory;
-  });
-
-  const totalItems = stockItems.length;
-  const lowStock = stockItems.filter((i) => i.status === "Low" || i.status === "Critical").length;
-  const outOfStock = stockItems.filter((i) => i.status === "Out of Stock").length;
-  const wellStocked = stockItems.filter((i) => i.status === "Good").length;
+  const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
 
   return (
-    <DashboardLayout userRole="stock" userName="Stock Manager" notificationCount={lowStock + outOfStock}>
-      <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-              Inventory Management
-            </h1>
-            <p className="text-sm text-custom-700 mt-1">
-              Complete inventory list with stock levels and details
-            </p>
-          </div>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors text-sm flex items-center gap-2 w-fit"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            Add New Item
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-lg w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-xl font-bold text-secondary-100">
+            {isEdit ? "Edit Stock Item" : "Add New Stock Item"}
+          </h3>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-6 h-6" />
           </button>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card className="!p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
-                <HiOutlineArchive className="w-5 h-5 text-primary-600" />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Name */}
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Name *</label>
+              <input value={form.name} onChange={set("name")} placeholder="e.g. A4 Paper Ream" className={inputCls} />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{totalItems}</p>
-            <p className="text-xs text-custom-700">Total Items</p>
-          </Card>
-          <Card className="!p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center">
-                <HiOutlineExclamationCircle className="w-5 h-5 text-yellow-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-secondary-100">{lowStock}</p>
-            <p className="text-xs text-custom-700">Low Stock</p>
-          </Card>
-          <Card className="!p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                <HiOutlineTrendingDown className="w-5 h-5 text-red-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-secondary-100">{outOfStock}</p>
-            <p className="text-xs text-custom-700">Out of Stock</p>
-          </Card>
-          <Card className="!p-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-secondary-100">{wellStocked}</p>
-            <p className="text-xs text-custom-700">Well Stocked</p>
-          </Card>
-        </div>
 
-        {/* Filters */}
-        <Card className="!p-4">
-          <div className="flex flex-col md:flex-row gap-3">
-            <div className="relative flex-1">
-              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
-              <input
-                type="text"
-                placeholder="Search by name or ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
+            {/* Description */}
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">
+                Description <span className="font-normal text-custom-700">(optional)</span>
+              </label>
+              <textarea value={form.description} onChange={set("description")} rows={2}
+                placeholder="Optional description..."
+                className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none"
               />
             </div>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
-            >
-              <option value="All">All Categories</option>
-              <option value="Paper">Paper</option>
-              <option value="Ink">Ink</option>
-              <option value="Binding">Binding</option>
-              <option value="Packaging">Packaging</option>
-              <option value="Other">Other</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
-            >
-              <option value="All">All Status</option>
-              <option value="Good">Good</option>
-              <option value="Low">Low</option>
-              <option value="Critical">Critical</option>
-              <option value="Out of Stock">Out of Stock</option>
-            </select>
-          </div>
-        </Card>
 
-        {/* Inventory Table */}
+            {/* Category */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Category *</label>
+              <input value={form.category} onChange={set("category")} placeholder="e.g. Paper" className={inputCls} />
+            </div>
+
+            {/* Type */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Type *</label>
+              <select value={form.type} onChange={set("type")} className={inputCls}>
+                {TYPE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Unit */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit *</label>
+              <input value={form.unit} onChange={set("unit")} placeholder="e.g. reams, units, kg" className={inputCls} />
+            </div>
+
+            {/* Min Stock */}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock *</label>
+              <input type="number" min={0} value={form.alarmStock} onChange={set("alarmStock")} placeholder="0" className={inputCls} />
+            </div>
+
+            {/* Initial stock — only on create */}
+            {!isEdit && (
+              <div>
+                <label className="block text-xs font-semibold text-secondary-100 mb-1">Initial Stock *</label>
+                <input type="number" min={0} value={form.currentStock} onChange={set("currentStock")} placeholder="0" className={inputCls} />
+              </div>
+            )}
+          </div>
+
+          {/* Type hint */}
+          <div className={`px-3 py-2 rounded-xl text-xs font-semibold ${TYPE_OPTIONS.find((t) => t.value === form.type)?.color ?? "bg-gray-100 text-gray-600"}`}>
+            {form.type === "hobe"     && "This item will only be visible to the Hobe manager for stock requests."}
+            {form.type === "boutique" && "This item will be used for Boutique stock management."}
+            {form.type === "general"  && "General purpose item — visible to production and other departments."}
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+            >Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
+            >{isLoading ? "Saving..." : isEdit ? "Save Changes" : "Add Item"}</button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 7;
+
+type TypeFilter = "all" | StockItemType;
+
+export default function InventoryPage() {
+  const [search, setSearch]             = useState("");
+  const [typeFilter, setTypeFilter]     = useState<TypeFilter>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage]                 = useState(1);
+  const [showModal, setShowModal]       = useState(false);
+  const [editItem, setEditItem]         = useState<StockItem | null>(null);
+
+  const { data, isLoading, isError, refetch } = useGetStockItemsQuery({
+    search: search.trim() || undefined,
+    type: typeFilter !== "all" ? typeFilter : undefined,
+    stockStatus: statusFilter !== "all" ? statusFilter : undefined,
+    limit: 200,
+  });
+
+  const [deleteItem] = useDeleteStockItemMutation();
+
+  const items = data?.data ?? [];
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+  const totalItems    = items.length;
+  const lowCount      = items.filter((i) => i.stockStatus === "low").length;
+  const outCount      = items.filter((i) => i.stockStatus === "out-of-stock").length;
+  const okCount       = items.filter((i) => i.stockStatus === "available").length;
+  const hobeCount     = items.filter((i) => i.type === "hobe").length;
+  const boutiqueCount = items.filter((i) => i.type === "boutique").length;
+
+  // ── Pagination ─────────────────────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const paginated  = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset to page 1 whenever filters change
+  const handleSearch      = (v: string) => { setSearch(v);      setPage(1); };
+  const handleTypeFilter  = (v: TypeFilter) => { setTypeFilter(v);  setPage(1); };
+  const handleStatusFilter = (v: string) => { setStatusFilter(v); setPage(1); };
+
+  const handleDelete = async (item: StockItem) => {
+    if (!confirm(`Delete "${item.itemName}"? This cannot be undone.`)) return;
+    try {
+      await deleteItem(item.id).unwrap();
+      toast.success("Item deleted");
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to delete item");
+    }
+  };
+
+  return (
+    <DashboardLayout userRole="stock" userName="Stock Manager" notificationCount={lowCount + outCount}>
+      <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
+
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Inventory Management</h1>
+            <p className="text-sm text-custom-700 mt-1">
+              Manage all stock items — general, boutique, and hobe
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => refetch()}
+              className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700"
+              title="Refresh"
+            >
+              <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              onClick={() => { setEditItem(null); setShowModal(true); }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              Add Item
+            </button>
+          </div>
+        </div>
+
+        {/* ── KPI Cards ───────────────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Total Items",   value: totalItems,    color: "text-secondary-100", icon: HiOutlineArchive,          bg: "bg-primary-100",  iconColor: "text-primary-600" },
+            { label: "Available",     value: okCount,       color: "text-emerald-600",   icon: HiOutlineCheckCircle,      bg: "bg-emerald-100",  iconColor: "text-emerald-600" },
+            { label: "Low Stock",     value: lowCount,      color: "text-yellow-600",    icon: HiOutlineExclamationCircle,bg: "bg-yellow-100",   iconColor: "text-yellow-600" },
+            { label: "Out of Stock",  value: outCount,      color: "text-red-600",       icon: HiOutlineTrendingDown,     bg: "bg-red-100",      iconColor: "text-red-600" },
+            { label: "Hobe Items",    value: hobeCount,     color: "text-lime-600",      icon: HiOutlineArchive,          bg: "bg-lime-100",     iconColor: "text-lime-600" },
+            { label: "Boutique Items",value: boutiqueCount, color: "text-pink-600",      icon: HiOutlineArchive,          bg: "bg-pink-100",     iconColor: "text-pink-600" },
+          ].map(({ label, value, color, icon: Icon, bg, iconColor }) => (
+            <Card key={label} className="!p-4">
+              <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-2`}>
+                <Icon className={`w-4 h-4 ${iconColor}`} />
+              </div>
+              <p className={`text-2xl font-bold ${color}`}>{isLoading ? "—" : value}</p>
+              <p className="text-xs text-custom-700 mt-0.5">{label}</p>
+            </Card>
+          ))}
+        </div>
+
+        {/* ── Filters ─────────────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+            <input
+              type="text" value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search by name or category..."
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 placeholder:text-custom-700 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+            />
+          </div>
+          {/* Type filter pills */}
+          <div className="flex gap-1 bg-custom-100 p-1 rounded-xl">
+            {([
+              { value: "all",      label: "All Types" },
+              { value: "general",  label: "General" },
+              { value: "hobe",     label: "Hobe" },
+              { value: "boutique", label: "Boutique" },
+            ] as { value: TypeFilter; label: string }[]).map((opt) => (
+              <button key={opt.value} onClick={() => handleTypeFilter(opt.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  typeFilter === opt.value ? "bg-primary-500 text-white shadow-sm" : "text-custom-700 hover:text-secondary-100"
+                }`}
+              >{opt.label}</button>
+            ))}
+          </div>
+          {/* Status filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => handleStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+          >
+            <option value="all">All Status</option>
+            <option value="available">Available</option>
+            <option value="low">Low Stock</option>
+            <option value="out-of-stock">Out of Stock</option>
+          </select>
+        </div>
+
+        {/* ── Table ───────────────────────────────────────────────────────── */}
         <Card className="!p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Item ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Quantity</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Min Level</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Supplier</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Cost (RWF)</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Last Restocked</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-secondary-100 uppercase">Actions</th>
+                  {["Name", "Category", "Type", "Stock", "Alarm", "Status", "Unit", "Added"].map((h) => (
+                    <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                  ))}
+                  <th className="px-3 py-2.5 text-right text-xs font-bold text-secondary-100 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-custom-200">
-                {filtered.length === 0 ? (
+              <tbody className="divide-y divide-custom-200">
+                {isLoading ? (
+                  <tr><td colSpan={9} className="px-4 py-10 text-center text-custom-700 text-sm">Loading...</td></tr>
+                ) : isError ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-custom-700">
-                      No items found
+                    <td colSpan={9} className="px-4 py-10 text-center">
+                      <p className="text-secondary-100 font-semibold mb-2">Failed to load inventory</p>
+                      <button onClick={() => refetch()} className="text-xs text-primary-500 hover:underline">Retry</button>
                     </td>
                   </tr>
-                ) : (
-                  filtered.map((item) => (
+                ) : items.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-10 text-center">
+                      <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
+                      <p className="text-sm text-custom-700">No items found</p>
+                    </td>
+                  </tr>
+                ) : paginated.map((item) => {
+                  const typeOpt = TYPE_OPTIONS.find((t) => t.value === item.type);
+                  const fillPct = item.minStock > 0
+                    ? Math.min(100, Math.round((item.currentStock / (item.minStock * 3)) * 100))
+                    : item.currentStock > 0 ? 100 : 0;
+                  return (
                     <tr key={item.id} className="hover:bg-custom-50 transition-colors">
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-bold text-primary-600">{item.id}</span>
+                      <td className="px-3 py-2.5">
+                        <p className="text-sm font-semibold text-secondary-100">{item.itemName}</p>
+                        {item.description && <p className="text-xs text-custom-700 truncate max-w-[160px]">{item.description}</p>}
                       </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-semibold text-secondary-100">{item.name}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm text-custom-700">{item.category}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm font-bold text-secondary-100">
-                          {item.qty} {item.unit}
+                      <td className="px-3 py-2.5 text-sm text-custom-700">{item.category}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${typeOpt?.color ?? "bg-gray-100 text-gray-600"}`}>
+                          {typeOpt?.label ?? item.type}
                         </span>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm text-custom-700">
-                          {item.minLevel} {item.unit}
+                      <td className="px-3 py-2.5">
+                        <p className={`text-sm font-bold ${
+                          item.stockStatus === "out-of-stock" ? "text-red-600"
+                          : item.stockStatus === "low" ? "text-yellow-600"
+                          : "text-emerald-600"
+                        }`}>{item.currentStock.toLocaleString()}</p>
+                        <div className="w-16 h-1 bg-custom-200 rounded-full mt-1">
+                          <div className={`h-1 rounded-full ${
+                            item.stockStatus === "out-of-stock" ? "bg-red-400"
+                            : item.stockStatus === "low" ? "bg-yellow-400"
+                            : "bg-emerald-400"
+                          }`} style={{ width: `${fillPct}%` }} />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-sm text-custom-700">{item.alarmStock ?? item.minStock}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                          {STATUS_LABEL[item.stockStatus] ?? item.stockStatus}
                         </span>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${statusColor[item.status]}`}>
-                          {item.status}
-                        </span>
+                      <td className="px-3 py-2.5 text-sm text-custom-700">{item.unit}</td>
+                      <td className="px-3 py-2.5 text-xs text-custom-700">
+                        {new Date(item.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
                       </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm text-custom-700">{item.supplier}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm text-secondary-100">{item.cost.toLocaleString()}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-sm text-custom-700">{item.lastRestocked}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => openEditModal(item)}
-                            className="p-2 rounded-lg hover:bg-primary-100 transition-colors"
+                            onClick={() => { setEditItem(item); setShowModal(true); }}
+                            className="p-1.5 rounded-lg hover:bg-primary-100 transition-colors"
                             title="Edit"
                           >
                             <HiOutlinePencil className="w-4 h-4 text-primary-500" />
                           </button>
                           <button
-                            onClick={() => handleDelete(item.id)}
-                            className="p-2 rounded-lg hover:bg-red-100 transition-colors"
+                            onClick={() => handleDelete(item)}
+                            className="p-1.5 rounded-lg hover:bg-red-100 transition-colors"
                             title="Delete"
                           >
                             <HiOutlineTrash className="w-4 h-4 text-red-500" />
@@ -424,176 +435,52 @@ export default function InventoryPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </Card>
 
-        {/* Add/Edit Modal */}
-        {(showAddModal || showEditModal) && (
-          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-            <Card className="!p-6 max-w-2xl w-full my-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-secondary-100">
-                  {showAddModal ? "Add New Stock Item" : "Edit Stock Item"}
-                </h3>
+        {/* ── Pagination ──────────────────────────────────────────────────── */}
+        {items.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-custom-700">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, items.length)} of {items.length} items
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+              >Prev</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
                 <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setShowEditModal(false);
-                    setSelectedItem(null);
-                    setFormData({
-                      itemName: "",
-                      category: "Paper",
-                      quantity: "",
-                      unit: "reams",
-                      minLevel: "",
-                      supplier: "",
-                      cost: "",
-                    });
-                  }}
-                  className="text-custom-700 hover:text-secondary-100"
-                >
-                  <HiOutlineX className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={showAddModal ? handleAdd : handleEdit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Item Name *
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="e.g., A4 Paper (80gsm)"
-                      value={formData.itemName}
-                      onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
-                      required
-                      fullWidth
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      required
-                      className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
-                    >
-                      <option value="Paper">Paper</option>
-                      <option value="Ink">Ink</option>
-                      <option value="Binding">Binding</option>
-                      <option value="Packaging">Packaging</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Quantity *
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="Enter quantity"
-                      value={formData.quantity}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      required
-                      fullWidth
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Unit *
-                    </label>
-                    <select
-                      value={formData.unit}
-                      onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                      required
-                      className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors duration-200"
-                    >
-                      <option value="reams">Reams</option>
-                      <option value="units">Units</option>
-                      <option value="rolls">Rolls</option>
-                      <option value="boxes">Boxes</option>
-                      <option value="kg">Kilograms</option>
-                      <option value="liters">Liters</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Minimum Level *
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="Alert threshold"
-                      value={formData.minLevel}
-                      onChange={(e) => setFormData({ ...formData, minLevel: e.target.value })}
-                      required
-                      fullWidth
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Supplier *
-                    </label>
-                    <Input
-                      type="text"
-                      placeholder="Supplier name"
-                      value={formData.supplier}
-                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                      required
-                      fullWidth
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-secondary-100 mb-2">
-                      Cost (RWF) *
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="Unit cost"
-                      value={formData.cost}
-                      onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                      required
-                      fullWidth
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 justify-end pt-4 border-t border-custom-300">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setShowEditModal(false);
-                      setSelectedItem(null);
-                      setFormData({
-                        itemName: "",
-                        category: "Paper",
-                        quantity: "",
-                        unit: "reams",
-                        minLevel: "",
-                        supplier: "",
-                        cost: "",
-                      });
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {showAddModal ? "Add Item" : "Save Changes"}
-                  </Button>
-                </div>
-              </form>
-            </Card>
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                    n === page
+                      ? "bg-primary-500 text-white"
+                      : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+                  }`}
+                >{n}</button>
+              ))}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+              >Next</button>
+            </div>
           </div>
         )}
       </div>
+
+      {showModal && (
+        <ItemModal
+          item={editItem}
+          onClose={() => { setShowModal(false); setEditItem(null); }}
+        />
+      )}
     </DashboardLayout>
   );
 }
