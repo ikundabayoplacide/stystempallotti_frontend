@@ -54,6 +54,17 @@ export const reportsApi = createApi({
 
   endpoints: (builder) => ({
 
+    // GET /reports/my — reports submitted by the logged-in user
+    getMyReports: builder.query<PaginatedReports, { page?: number; limit?: number } | void>({
+      query: (params) => ({ url: "/reports/my", params: (params ?? {}) as Record<string, any> }),
+      transformResponse: (res: any) => {
+        const reports = Array.isArray(res.data) ? res.data : (res.data?.reports ?? []);
+        const pagination = res.pagination ?? { total: reports.length, page: 1, limit: reports.length, totalPages: 1 };
+        return { reports, ...pagination };
+      },
+      providesTags: [{ type: "Report", id: "MY" }],
+    }),
+
     // POST /reports
     createReport: builder.mutation<Report, CreateReportPayload>({
       query: ({ title, purpose, items, notes, attachment }) => {
@@ -111,6 +122,7 @@ export const reportsApi = createApi({
 });
 
 export const {
+  useGetMyReportsQuery,
   useCreateReportMutation,
   useGetReportsQuery,
   useGetReportByIdQuery,

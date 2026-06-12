@@ -3,6 +3,7 @@ import {
   HiOutlineArchive,
   HiOutlineBriefcase,
   HiOutlineChartBar,
+  HiOutlineChevronDown,
   HiOutlineClipboardList,
   HiOutlineCog,
   HiOutlineCube,
@@ -15,7 +16,7 @@ import {
   HiOutlineViewGrid,
   HiOutlineX
 } from "react-icons/hi";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
 import { useAppSelector } from "../store/hooks";
@@ -25,8 +26,8 @@ interface MenuItem {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** permission name required to see this item, e.g. "customers.view". Omit = always visible */
   permissionKey?: string;
+  children?: { label: string; path: string; icon: React.ComponentType<{ className?: string }> }[];
 }
 
 interface DashboardSidebarProps {
@@ -59,7 +60,10 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Payments",   path: "/reception/payments",  icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
     { label: "Deliveries", path: "/reception/deliveries",icon: HiOutlineArchive,        permissionKey: "deliveries.view" },
     { label: "Boutique",   path: "/reception/boutique",  icon: HiOutlineViewGrid,       permissionKey: "boutique.view" },
-    { label: "Reports",    path: "/reception/reports",   icon: HiOutlineChartBar },
+    { label: "Reports",    path: "/reception/reports",   icon: HiOutlineChartBar, children: [
+      { label: "Generate Reports", path: "/reception/reports",    icon: HiOutlineChartBar },
+      { label: "My Reports",       path: "/reception/reports/my", icon: HiOutlineDocumentText },
+    ]},
   ],
   sales: [
     { label: "Dashboard",  path: "/sales",            icon: HiOutlineHome },
@@ -78,7 +82,10 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Job Approvals",   path: "/finance/daf/approvals", icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },
     { label: "Finance Control", path: "/finance/daf/control",   icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
     { label: "HR Management",   path: "/finance/daf/hr",        icon: HiOutlineUsers,          permissionKey: "hr.view" },
-    { label: "Reports",         path: "/finance/daf/reports",   icon: HiOutlineChartBar,       permissionKey: "reports.view" },
+    { label: "Reports",         path: "/finance/daf/reports",   icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
+      { label: "Generate Reports", path: "/finance/daf/reports",    icon: HiOutlineChartBar },
+      { label: "My Reports",       path: "/finance/daf/reports/my", icon: HiOutlineDocumentText },
+    ]},
   ],
   accountant: [
     { label: "Dashboard",    path: "/finance/accountant1",           icon: HiOutlineHome },
@@ -104,17 +111,19 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   supervisor: [
     { label: "Dashboard",     path: "/supervisor",                icon: HiOutlineHome },
     { label: "Jobs",          path: "/supervisor/jobs",            icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    // { label: "Production",    path: "/supervisor/production",     icon: HiOutlineCube,          permissionKey: "production.view" },
     { label: "Employees",     path: "/supervisor/employees",      icon: HiOutlineUsers },
-    { label: "Reports",       path: "/supervisor/reports",        icon: HiOutlineChartBar,      permissionKey: "reports.view" },
-    // { label: "Review Reports",path: "/supervisor/reports/review", icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
+    { label: "Reports",       path: "/supervisor/reports",        icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
+      { label: "Generate Reports", path: "/supervisor/reports",    icon: HiOutlineChartBar },
+      { label: "My Reports",       path: "/supervisor/reports/my", icon: HiOutlineDocumentText },
+    ]},
   ],
   worker: [
     { label: "My Jobs",          path: "/worker",           icon: HiOutlineHome },
     { label: "Task Board",       path: "/worker/tasks",     icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
-    // { label: "Time Logs",        path: "/worker/time-logs", icon: HiOutlineClock,         permissionKey: "timelogs.view" },
-    // { label: "My Stats",         path: "/worker/stats",     icon: HiOutlineChartBar,      permissionKey: "reports.view" },
-    { label: "My Reports",       path: "/worker/reports",   icon: HiOutlineDocumentText,  permissionKey: "reports.view" },
+    { label: "Reports",          path: "/worker/reports",   icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
+      { label: "Generate Reports", path: "/worker/reports",    icon: HiOutlineChartBar },
+      { label: "My Reports",       path: "/worker/reports/my", icon: HiOutlineDocumentText },
+    ]},
     { label: "Material Requests",path: "/worker/materials", icon: HiOutlineArchive,       permissionKey: "stock.view" },
   ],
 };
@@ -129,10 +138,27 @@ export default function DashboardSidebar({
   const location = useLocation();
   const { logout } = useAuth();
   const { token } = useAppSelector((state) => state.auth);
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(() => {
+    // Auto-open dropdowns whose children match the current path on mount
+    const initial = new Set<string>();
+    Object.values(menuItems).flat().forEach((item) => {
+      if (item.children?.some((c) => window.location.pathname === c.path)) {
+        initial.add(item.path);
+      }
+    });
+    return initial;
+  });
   const { data: myPermissions = [], isSuccess } = useGetMyPermissionsQuery(undefined, {
     skip: !token,
     refetchOnMountOrArgChange: true,
   });
+
+  const toggleDropdown = (path: string) =>
+    setOpenDropdowns((prev) => {
+      const next = new Set(prev);
+      next.has(path) ? next.delete(path) : next.add(path);
+      return next;
+    });
 
   const grantedSet = useMemo(() => {
     const s = new Set(myPermissions.map((p) => p.name));
@@ -230,35 +256,73 @@ export default function DashboardSidebar({
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {items.map((item) => {
             const isActive = location.pathname === item.path;
+            const hasChildren = !!item.children?.length;
+            const isDropdownOpen = openDropdowns.has(item.path);
+            const childActive = item.children?.some((c) => location.pathname === c.path);
+
             return (
-              <button
-                key={item.path}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("🔗 Navigating to:", item.path);
-                  navigate(item.path);
-                  // Close mobile sidebar after navigation
-                  if (window.innerWidth < 1024 && !isCollapsed) {
-                    onToggle();
-                  }
-                }}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                  transition-all duration-200
-                  ${isActive
-                    ? "bg-primary-500 text-secondary-200"
-                    : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
-                  }
-                  ${isCollapsed ? "justify-center" : ""}
-                `}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="font-semibold text-sm">{item.label}</span>
+              <div key={item.path}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (hasChildren && !isCollapsed) {
+                      toggleDropdown(item.path);
+                    } else {
+                      navigate(item.path);
+                      if (window.innerWidth < 1024 && !isCollapsed) onToggle();
+                    }
+                  }}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                    transition-all duration-200
+                    ${(isActive || childActive)
+                      ? "bg-primary-500 text-secondary-200"
+                      : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
+                    }
+                    ${isCollapsed ? "justify-center" : ""}
+                  `}
+                  title={isCollapsed ? item.label : undefined}
+                >
+                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  {!isCollapsed && (
+                    <>
+                      <span className="font-semibold text-sm flex-1 text-left">{item.label}</span>
+                      {hasChildren && (
+                        <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${
+                          isDropdownOpen ? "rotate-180" : ""
+                        }`} />
+                      )}
+                    </>
+                  )}
+                </button>
+
+                {/* Children */}
+                {hasChildren && !isCollapsed && isDropdownOpen && (
+                  <div className="ml-4 mt-1 space-y-1 border-l-2 border-custom-200 pl-3">
+                    {item.children!.map((child) => {
+                      const childIsActive = location.pathname === child.path;
+                      return (
+                        <button
+                          key={child.path}
+                          onClick={() => {
+                            navigate(child.path);
+                            if (window.innerWidth < 1024 && !isCollapsed) onToggle();
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200 ${
+                            childIsActive
+                              ? "bg-primary-100 text-primary-600 font-semibold"
+                              : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
+                          }`}
+                        >
+                          <child.icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="font-medium text-sm">{child.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </nav>

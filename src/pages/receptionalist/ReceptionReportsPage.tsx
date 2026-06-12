@@ -617,7 +617,7 @@ function BoutiqueSalesReport() {
           sub={totalPaid < totalExpected ? `Gap: ${(totalExpected - totalPaid).toLocaleString()} RWF` : undefined}
           color={totalPaid < totalExpected ? "text-orange-600" : "text-emerald-600"} />
         {partialCount > 0 && <StatCard label="Partial Payments" value={partialCount} sub={`Balance due: ${totalBalance.toLocaleString()} RWF`} color="text-orange-600" />}
-        {overpaidCount > 0 && <StatCard label="Overpaid" value={overpaidCount} color="text-blue-600" />}
+        {overpaidCount > 0 && <StatCard label="Overpaid (Change Due)" value={overpaidCount} sub={`${totalReturns.toLocaleString()} RWF to return`} color="text-blue-600" />}
         </div>
 
       {/* By payment method */}
