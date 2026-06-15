@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   HiOutlineBriefcase,
   HiOutlineCalendar,
@@ -8,11 +8,14 @@ import {
   HiOutlineColorSwatch,
   HiOutlineCurrencyDollar,
   HiOutlineDocumentText,
+  HiOutlineDownload,
   HiOutlineExclamationCircle,
   HiOutlineOfficeBuilding,
   HiOutlinePaperClip,
   HiOutlineTag,
   HiOutlineTemplate,
+  HiOutlineTrash,
+  HiOutlineUpload,
   HiOutlineX,
 } from "react-icons/hi";
 import { Button, Card } from "../../components/ui";
@@ -22,6 +25,11 @@ import {
 } from "../../store/services/jobsService";
 import type { Job } from "../../store/services/jobsService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
+import {
+  useGetJobDocumentsQuery,
+  useUploadJobDocumentsMutation,
+  useDeleteJobDocumentMutation,
+} from "../../store/services/jobDocumentsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -260,6 +268,50 @@ function JobBody({
     "transition-colors duration-200 font-[family-name:var(--font-family-primary)] text-sm";
 
   const alreadyAssigned = !!job.departmentAssignedToId;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: docs = [], isLoading: loadingDocs } = useGetJobDocumentsQuery(job.id);
+  const [uploadDocs, { isLoading: uploading }] = useUploadJobDocumentsMutation();
+  const [deleteDoc, { isLoading: deleting }]   = useDeleteJobDocumentMutation();
+  const [deletingId, setDeletingId]            = useState<string | null>(null);
+  const [uploadError, setUploadError]          = useState<string | null>(null);
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadError(null);
+    try {
+      await uploadDocs({ jobId: job.id, files: Array.from(files) }).unwrap();
+    } catch {
+      setUploadError("Failed to upload documents. Please try again.");
+    }
+  };
+
+  const handleDelete = async (docId: string) => {
+    setDeletingId(docId);
+    try {
+      await deleteDoc({ jobId: job.id, docId }).unwrap();
+    } catch {
+      // silently ignore
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType?.startsWith("image/"))       return "text-blue-500";
+    if (mimeType === "application/pdf")       return "text-red-500";
+    if (mimeType?.includes("spreadsheet") || mimeType?.includes("excel")) return "text-green-600";
+    if (mimeType?.includes("word") || mimeType?.includes("document"))     return "text-blue-600";
+    return "text-custom-700";
+  };
+
+  const formatSize = (url: string) => {
+    // base64 size estimate: string length * 0.75
+    const approxBytes = Math.round((url?.length ?? 0) * 0.75);
+    if (approxBytes < 1024) return `${approxBytes} B`;
+    if (approxBytes < 1024 * 1024) return `${(approxBytes / 1024).toFixed(1)} KB`;
+    return `${(approxBytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   return (
     <div className="px-6 py-6 space-y-6">
@@ -343,6 +395,95 @@ function JobBody({
           </div>
         </div>
       )}
+
+      {/* ── Documents ───────────────────────────────────────────────────── */}
+      <div className="border-t border-custom-300 pt-6">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+            Documents {!loadingDocs && `(${docs.length})`}
+          </p>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors disabled:opacity-50"
+          >
+            <HiOutlineUpload className="w-3.5 h-3.5" />
+            {uploading ? "Uploading…" : "Upload"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
+            className="hidden"
+            onChange={(e) => handleFileUpload(e.target.files)}
+          />
+        </div>
+
+        {uploadError && (
+          <div className="flex items-center gap-2 px-3 py-2 mb-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+            <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />
+            {uploadError}
+          </div>
+        )}
+
+        {loadingDocs ? (
+          <div className="flex items-center gap-2 py-4 text-custom-700 text-sm">
+            <HiOutlineClock className="w-4 h-4 animate-spin" /> Loading documents…
+          </div>
+        ) : docs.length === 0 ? (
+          <div className="py-6 text-center rounded-xl border-2 border-dashed border-custom-200">
+            <HiOutlinePaperClip className="w-8 h-8 text-custom-400 mx-auto mb-2" />
+            <p className="text-sm text-custom-700">No documents attached yet</p>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-2 text-xs font-semibold text-primary-500 hover:underline"
+            >
+              Upload the first document
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {docs.map((doc) => (
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 p-3 rounded-xl border border-custom-300 bg-custom-50 group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-white border border-custom-200 flex items-center justify-center shrink-0">
+                  <HiOutlineDocumentText className={`w-5 h-5 ${getFileIcon(doc.mimeType)}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-secondary-100 truncate">{doc.fileName}</p>
+                  <p className="text-xs text-custom-700">
+                    {doc.mimeType} · {formatSize(doc.fileUrl)}
+                    {doc.uploadedBy && ` · by ${doc.uploadedBy.name}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Download */}
+                  <a
+                    href={doc.fileUrl}
+                    download={doc.fileName}
+                    className="p-1.5 rounded-lg hover:bg-primary-100 text-custom-700 hover:text-primary-600 transition-colors"
+                    title="Download"
+                  >
+                    <HiOutlineDownload className="w-4 h-4" />
+                  </a>
+                  {/* Delete */}
+                  <button
+                    onClick={() => handleDelete(doc.id)}
+                    disabled={deleting && deletingId === doc.id}
+                    className="p-1.5 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors disabled:opacity-50"
+                    title="Delete"
+                  >
+                    <HiOutlineTrash className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ── Assign to Department ────────────────────────────────────────── */}
       <div className="border-t border-custom-300 pt-6">

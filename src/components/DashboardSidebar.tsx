@@ -39,101 +39,118 @@ interface DashboardSidebarProps {
 
 const menuItems: Record<UserRole, MenuItem[]> = {
   admin: [
-    { label: "Dashboard",      path: "/admin",               icon: HiOutlineHome },
-    { label: "Users",          path: "/admin/users",          icon: HiOutlineUsers,          permissionKey: "users.view" },
-    { label: "Customers",      path: "/admin/customers",      icon: HiOutlineUsers,          permissionKey: "customers.view" },
-    { label: "Jobs",           path: "/admin/jobs",           icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },
-    { label: "Departments",    path: "/admin/departments",    icon: HiOutlineUsers,          permissionKey: "departments.view" },
-    { label: "Production",     path: "/admin/production",     icon: HiOutlineCube,           permissionKey: "production.view" },
-    { label: "Sales",          path: "/admin/sales",          icon: HiOutlineBriefcase,      permissionKey: "quotations.view" },
-    { label: "Finance",        path: "/admin/finance",        icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
-    { label: "Stock",          path: "/admin/stock",          icon: HiOutlineArchive,        permissionKey: "stock.view" },
-    { label: "Reports",        path: "/admin/reports",        icon: HiOutlineChartBar,       permissionKey: "reports.view" },
-    { label: "View Reports",   path: "/admin/reports/view",   icon: HiOutlineDocumentText,   permissionKey: "reports.view" },
-    { label: "Workflow Config",path: "/admin/workflow",       icon: HiOutlineAdjustments,    permissionKey: "workflow_config.view" },
-    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid,       permissionKey: "ui_permissions.view" },
-    { label: "Settings",       path: "/admin/settings",       icon: HiOutlineCog,            permissionKey: "settings.view" },
+    { label: "Dashboard", path: "/admin", icon: HiOutlineHome },
+    { label: "Users", path: "/admin/users", icon: HiOutlineUsers, permissionKey: "users.view" },
+    { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers, permissionKey: "customers.view" },
+    { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    { label: "Departments", path: "/admin/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
+    { label: "Production", path: "/admin/production", icon: HiOutlineCube, permissionKey: "production.view" },
+    { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase, permissionKey: "quotations.view" },
+    { label: "Finance", path: "/admin/finance", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
+    { label: "Stock", path: "/admin/stock", icon: HiOutlineArchive, permissionKey: "stock.view" },
+    { label: "Reports", path: "/admin/reports", icon: HiOutlineChartBar, permissionKey: "reports.view" },
+    { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText, permissionKey: "reports.view" },
+    { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
+    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid, permissionKey: "ui_permissions.view" },
+    { label: "Settings", path: "/admin/settings", icon: HiOutlineCog, permissionKey: "settings.view" },
   ],
   receptionist: [
-    { label: "Dashboard",  path: "/reception",           icon: HiOutlineHome },
-    { label: "Visitor",    path: "/reception/visitor",   icon: HiOutlineClipboardList,  permissionKey: "visitors.view" },
-    { label: "Payments",   path: "/reception/payments",  icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
-    { label: "Deliveries", path: "/reception/deliveries",icon: HiOutlineArchive,        permissionKey: "deliveries.view" },
-    { label: "Boutique",   path: "/reception/boutique",  icon: HiOutlineViewGrid,       permissionKey: "boutique.view" },
-    { label: "Reports",    path: "/reception/reports",   icon: HiOutlineChartBar, children: [
-      { label: "Generate Reports", path: "/reception/reports",    icon: HiOutlineChartBar },
-      { label: "My Reports",       path: "/reception/reports/my", icon: HiOutlineDocumentText },
-    ]},
+    { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
+    { label: "Visitor", path: "/reception/visitor", icon: HiOutlineClipboardList, permissionKey: "visitors.view" },
+    { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
+    { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
+    { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
+    {
+      label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/reception/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/reception/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   sales: [
-    { label: "Dashboard",  path: "/sales",            icon: HiOutlineHome },
-    { label: "Jobs",       path: "/sales/jobs",        icon: HiOutlineBriefcase,      permissionKey: "jobs.view" },
-    { label: "Stock",      path: "/sales/stocks",      icon: HiOutlineArchive,        permissionKey: "stock.view" },
-    { label: "Quotations", path: "/sales/quotations",  icon: HiOutlineDocumentText,   permissionKey: "quotations.view" },
-    { label: "Invoices",   path: "/sales/invoices",    icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
-    { label: "Dossiers",   path: "/sales/dossiers",    icon: HiOutlineArchive,        permissionKey: "dossiers.view" },
+    { label: "Dashboard", path: "/sales", icon: HiOutlineHome },
+    { label: "Jobs", path: "/sales/jobs", icon: HiOutlineBriefcase, permissionKey: "jobs.view" },
+    { label: "Stock", path: "/sales/stocks", icon: HiOutlineArchive, permissionKey: "stock.view" },
+    { label: "Quotations Invoice", path: "/sales/quotations", icon: HiOutlineDocumentText, permissionKey: "quotations.view" },
+    { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
+    { label: "Procurement", path: "/sales/procurement", icon: HiOutlineArchive, permissionKey: "dossiers.view" },
+    {
+      label: "Reports", path: "/sales/reports", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/sales/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/sales/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
-    hr: [
-    { label: "Dashboard",  path: "/hr",            icon: HiOutlineHome },
-    { label: "Employees",  path: "/hr/employees",   icon: HiOutlineUsers },
+  hr: [
+    { label: "Dashboard", path: "/hr", icon: HiOutlineHome },
+    { label: "Employees", path: "/hr/employees", icon: HiOutlineUsers },
   ],
   hobe: [
-    { label: "Dashboard",  path: "/hobe",            icon: HiOutlineHome },
-    { label: "Trade",      path: "/hobe/trade",       icon: HiOutlineCube },
-    { label: "Requests",   path: "/hobe/requests",    icon: HiOutlineClipboardList },
-    { label: "Reports",    path: "/hobe/report",      icon: HiOutlineChartBar, children: [
-      { label: "Generate Reports", path: "/hobe/report",           icon: HiOutlineChartBar },
-      { label: "My Reports",       path: "/hobe/report/my-reports", icon: HiOutlineDocumentText },
-    ]},
+    { label: "Dashboard", path: "/hobe", icon: HiOutlineHome },
+    { label: "Trade", path: "/hobe/trade", icon: HiOutlineCube },
+    { label: "Requests", path: "/hobe/requests", icon: HiOutlineClipboardList },
+    {
+      label: "Reports", path: "/hobe/report", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/hobe/report", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/hobe/report/my-reports", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   daf: [
-    { label: "Dashboard",       path: "/finance/daf",          icon: HiOutlineHome },
-    { label: "Job Approvals",   path: "/finance/daf/approvals", icon: HiOutlineClipboardList,  permissionKey: "jobs.view" },
-    { label: "Finance Control", path: "/finance/daf/control",   icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
-    { label: "HR Management",   path: "/finance/daf/hr",        icon: HiOutlineUsers,          permissionKey: "hr.view" },
-    { label: "Reports",         path: "/finance/daf/reports",   icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
-      { label: "Generate Reports", path: "/finance/daf/reports",    icon: HiOutlineChartBar },
-      { label: "My Reports",       path: "/finance/daf/reports/my", icon: HiOutlineDocumentText },
-    ]},
+    { label: "Dashboard", path: "/finance/daf", icon: HiOutlineHome },
+    { label: "Job Approvals", path: "/finance/daf/approvals", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    { label: "Finance Control", path: "/finance/daf/control", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
+    { label: "HR Management", path: "/finance/daf/hr", icon: HiOutlineUsers, permissionKey: "hr.view" },
+    {label:"Quotations",path:"/finance/daf/quatation",icon:HiOutlineAdjustments,permissionKey:"finance.view"},
+    {
+      label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
+        { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/finance/daf/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   accountant: [
-    { label: "Dashboard",    path: "/finance/accountant1",           icon: HiOutlineHome },
-    { label: "Payments",     path: "/finance/accountant1/payments",   icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
-    { label: "Invoices",     path: "/finance/accountant1/invoices",   icon: HiOutlineDocumentText,   permissionKey: "invoices.view" },
-    { label: "Documents",    path: "/finance/accountant1/documents",  icon: HiOutlineClipboardList,  permissionKey: "dossiers.view" },
-    { label: "E-Procurement",path: "/finance/accountant2/procurement",icon: HiOutlineCube,           permissionKey: "procurement.view" },
-    { label: "Taxes",        path: "/finance/accountant2/taxes",      icon: HiOutlineDocumentText,   permissionKey: "taxes.view" },
-    { label: "Recovery",     path: "/finance/accountant2/recovery",   icon: HiOutlineCurrencyDollar, permissionKey: "recovery.view" },
+    { label: "Dashboard", path: "/finance/accountant1", icon: HiOutlineHome },
+    { label: "Payments", path: "/finance/accountant1/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
+    { label: "Invoices", path: "/finance/accountant1/invoices", icon: HiOutlineDocumentText, permissionKey: "invoices.view" },
+    { label: "Documents", path: "/finance/accountant1/documents", icon: HiOutlineClipboardList, permissionKey: "dossiers.view" },
+    { label: "E-Procurement", path: "/finance/accountant2/procurement", icon: HiOutlineCube, permissionKey: "procurement.view" },
+    { label: "Taxes", path: "/finance/accountant2/taxes", icon: HiOutlineDocumentText, permissionKey: "taxes.view" },
+    { label: "Recovery", path: "/finance/accountant2/recovery", icon: HiOutlineCurrencyDollar, permissionKey: "recovery.view" },
   ],
   "production-manager": [
-    { label: "Dashboard",   path: "/production-manager",             icon: HiOutlineHome },
-    { label: "Job Planning",path: "/production-manager/planning",    icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers,         permissionKey: "departments.view" },
+    { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
+    { label: "Job Planning", path: "/production-manager/planning", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
     // { label: "Progress",    path: "/production-manager/progress",    icon: HiOutlineChartBar,      permissionKey: "production.view" },
   ],
   stock: [
-    { label: "Dashboard",        path: "/stock",           icon: HiOutlineHome },
-    { label: "Inventory",        path: "/stock/inventory", icon: HiOutlineArchive,       permissionKey: "stock.view" },
-    { label: "Material Requests",path: "/stock/requests",  icon: HiOutlineClipboardList, permissionKey: "stock.view" },
-    { label: "Suppliers",        path: "/stock/suppliers", icon: HiOutlineUsers,         permissionKey: "suppliers.view" },
+    { label: "Dashboard", path: "/stock", icon: HiOutlineHome },
+    { label: "Inventory", path: "/stock/inventory", icon: HiOutlineArchive, permissionKey: "stock.view" },
+    { label: "Material Requests", path: "/stock/requests", icon: HiOutlineClipboardList, permissionKey: "stock.view" },
+    { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers, permissionKey: "suppliers.view" },
   ],
   supervisor: [
-    { label: "Dashboard",     path: "/supervisor",                icon: HiOutlineHome },
-    { label: "Jobs",          path: "/supervisor/jobs",            icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    { label: "Employees",     path: "/supervisor/employees",      icon: HiOutlineUsers },
-    { label: "Reports",       path: "/supervisor/reports",        icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
-      { label: "Generate Reports", path: "/supervisor/reports",    icon: HiOutlineChartBar },
-      { label: "My Reports",       path: "/supervisor/reports/my", icon: HiOutlineDocumentText },
-    ]},
+    { label: "Dashboard", path: "/supervisor", icon: HiOutlineHome },
+    { label: "Jobs", path: "/supervisor/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    { label: "Employees", path: "/supervisor/employees", icon: HiOutlineUsers },
+    {
+      label: "Reports", path: "/supervisor/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
+        { label: "Generate Reports", path: "/supervisor/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/supervisor/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   worker: [
-    { label: "My Jobs",          path: "/worker",           icon: HiOutlineHome },
-    { label: "Task Board",       path: "/worker/tasks",     icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
-    { label: "Reports",          path: "/worker/reports",   icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
-      { label: "Generate Reports", path: "/worker/reports",    icon: HiOutlineChartBar },
-      { label: "My Reports",       path: "/worker/reports/my", icon: HiOutlineDocumentText },
-    ]},
-    { label: "Material Requests",path: "/worker/materials", icon: HiOutlineArchive,       permissionKey: "stock.view" },
+    { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
+    { label: "Task Board", path: "/worker/tasks", icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
+    {
+      label: "Reports", path: "/worker/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
+        { label: "Generate Reports", path: "/worker/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/worker/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
+    { label: "Material Requests", path: "/worker/materials", icon: HiOutlineArchive, permissionKey: "stock.view" },
   ],
 };
 
@@ -298,9 +315,8 @@ export default function DashboardSidebar({
                     <>
                       <span className="font-semibold text-sm flex-1 text-left">{item.label}</span>
                       {hasChildren && (
-                        <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${
-                          isDropdownOpen ? "rotate-180" : ""
-                        }`} />
+                        <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? "rotate-180" : ""
+                          }`} />
                       )}
                     </>
                   )}
@@ -318,11 +334,10 @@ export default function DashboardSidebar({
                             navigate(child.path);
                             if (window.innerWidth < 1024 && !isCollapsed) onToggle();
                           }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200 ${
-                            childIsActive
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200 ${childIsActive
                               ? "bg-primary-100 text-primary-600 font-semibold"
                               : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
-                          }`}
+                            }`}
                         >
                           <child.icon className="w-4 h-4 flex-shrink-0" />
                           <span className="font-medium text-sm">{child.label}</span>

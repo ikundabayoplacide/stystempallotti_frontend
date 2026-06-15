@@ -3,6 +3,7 @@ import {
   HiOutlineBriefcase,
   HiOutlineCheckCircle,
   HiOutlineCube,
+  HiOutlineDocumentText,
   HiOutlineExclamationCircle,
   HiOutlineMail,
   HiOutlineOfficeBuilding,
@@ -40,11 +41,11 @@ const selectCls =
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
 
-function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
-  const labels = ["Customer & Details", "Stock Items", "Review & Amount"];
+function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
+  const labels = ["Customer & Details", "Stock Items", "Documents", "Review & Amount"];
   return (
     <div className="flex items-center gap-2">
-      {[1, 2, 3].map((s) => (
+      {([1, 2, 3, 4] as const).map((s) => (
         <div key={s} className="flex items-center gap-2">
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
             step === s
@@ -60,7 +61,7 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
           }`}>
             {labels[s - 1]}
           </span>
-          {s < 3 && <div className="w-8 h-px bg-custom-300 mx-1" />}
+          {s < 4 && <div className="w-8 h-px bg-custom-300 mx-1" />}
         </div>
       ))}
     </div>
@@ -70,7 +71,7 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CreateJobModal({ onClose, onCreated }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   // ── Step 1 state ───────────────────────────────────────────────────────────
   const [customerSearch, setCustomerSearch] = useState("");
@@ -95,6 +96,26 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ── Step 3 state — documents ───────────────────────────────────────────────
+  const [documents, setDocuments] = useState<File[]>([]);
+
+  const addDocuments = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles = Array.from(files).filter(
+      (f) => !documents.some((d) => d.name === f.name && d.size === f.size)
+    );
+    setDocuments((prev) => [...prev, ...newFiles]);
+  };
+
+  const removeDocument = (index: number) =>
+    setDocuments((prev) => prev.filter((_, i) => i !== index));
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -192,6 +213,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
           ...(si.notes.trim() && { notes: si.notes }),
         })),
       }),
+      ...(documents.length > 0 && { documents }),
     };
 
     try {
@@ -665,7 +687,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       type="button"
                       onClick={() => setStep(3)}
                     >
-                      Next: Review & Amount →
+                      Next: Documents →
                     </Button>
                   </div>
                 </div>
@@ -673,12 +695,112 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
             </div>
           )}
 
-          {/* ── Step 3: Review & Amount ──────────────────────────────────── */}
+          {/* ── Step 3: Documents ────────────────────────────────────────── */}
           {step === 3 && (
             <div className="flex flex-col flex-1 min-h-0">
               <div className="px-6 py-4 border-b border-custom-200 shrink-0">
                 <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
-                  Step 3 of 3 — Review & Amount
+                  Step 3 of 4 — Attach Documents
+                </p>
+                <p className="text-xs text-custom-600 mt-1">
+                  Upload any client documents related to this job (design files, briefs, references). Optional.
+                </p>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-6 min-h-0">
+                <div className="max-w-lg mx-auto space-y-5">
+
+                  {/* Drop zone */}
+                  <label
+                    htmlFor="job-docs-input"
+                    className="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-custom-300 hover:border-primary-400 hover:bg-primary-50 transition-colors cursor-pointer group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-custom-100 group-hover:bg-primary-100 flex items-center justify-center transition-colors">
+                      <HiOutlineDocumentText className="w-6 h-6 text-custom-700 group-hover:text-primary-500 transition-colors" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-secondary-100">Click to browse or drag files here</p>
+                      <p className="text-xs text-custom-700 mt-1">
+                        PDF, Word, Excel, images — up to 10 files
+                      </p>
+                    </div>
+                    <input
+                      id="job-docs-input"
+                      type="file"
+                      multiple
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
+                      className="hidden"
+                      onChange={(e) => addDocuments(e.target.files)}
+                    />
+                  </label>
+
+                  {/* File list */}
+                  {documents.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                        Selected ({documents.length})
+                      </p>
+                      {documents.map((file, idx) => {
+                        const isImage = file.type.startsWith("image/");
+                        const isPdf   = file.type === "application/pdf";
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-3 p-3 rounded-xl border border-custom-300 bg-custom-50 group"
+                          >
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-white border border-custom-200">
+                              <HiOutlineDocumentText className={`w-5 h-5 ${isPdf ? "text-red-500" : isImage ? "text-blue-500" : "text-custom-700"}`} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-secondary-100 truncate">{file.name}</p>
+                              <p className="text-xs text-custom-700">{formatFileSize(file.size)} · {file.type || "unknown"}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeDocument(idx)}
+                              className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-100 text-custom-700 hover:text-red-600 transition-all shrink-0"
+                              title="Remove"
+                            >
+                              <HiOutlineTrash className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {documents.length === 0 && (
+                    <p className="text-center text-xs text-custom-700">
+                      No documents selected — you can skip this step.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
+                >
+                  ← Back
+                </button>
+                <div className="flex gap-3">
+                  <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+                  <Button type="button" onClick={() => setStep(4)}>
+                    Next: Review & Amount →
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 4: Review & Amount ──────────────────────────────────── */}
+          {step === 4 && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="px-6 py-4 border-b border-custom-200 shrink-0">
+                <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                  Step 4 of 4 — Review & Amount
                 </p>
                 <p className="text-xs text-custom-600 mt-1">
                   Amount is calculated from your stock items. You can adjust it before submitting.
@@ -749,6 +871,28 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                     </div>
                   )}
 
+                  {/* Documents summary */}
+                  {documents.length > 0 && (
+                    <div className="rounded-xl border border-custom-300 bg-custom-50 p-4">
+                      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">
+                        Attached Documents ({documents.length})
+                      </p>
+                      <div className="space-y-1.5">
+                        {documents.map((f, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <HiOutlineDocumentText className="w-4 h-4 text-primary-500 shrink-0" />
+                            <span className="text-secondary-100 truncate">{f.name}</span>
+                            <span className="text-custom-700 text-xs shrink-0">
+                              {f.size < 1024 * 1024
+                                ? `${(f.size / 1024).toFixed(1)} KB`
+                                : `${(f.size / (1024 * 1024)).toFixed(1)} MB`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Amount field — pre-filled, editable */}
                   <div>
                     <label className="block text-sm font-bold text-secondary-100 mb-1.5">
@@ -791,7 +935,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
               <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                   className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
                 >
                   ← Back

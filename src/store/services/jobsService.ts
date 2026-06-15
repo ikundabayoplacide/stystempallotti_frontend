@@ -128,6 +128,7 @@ export interface CreateJobPayload {
   dueDate?: string;
   notes?: string;
   items?: JobItemPayload[];
+  documents?: File[]; // optional files attached on creation
 }
 
 export interface UpdateJobPayload {
@@ -274,7 +275,38 @@ export const jobsApi = createApi({
 
     // POST /jobs
     createJob: builder.mutation<Job, CreateJobPayload>({
-      query: (body) => ({ url: "/jobs", method: "POST", body }),
+      query: (body) => {
+        const { documents, items, ...rest } = body;
+
+        if (!documents || documents.length === 0) {
+          // No files — send plain JSON as before (backend handles it natively)
+          return {
+            url: "/jobs",
+            method: "POST",
+            body: {
+              ...rest,
+              ...(items && items.length > 0 && { items }),
+            },
+          };
+        }
+
+        // Files present — send multipart/form-data
+        const form = new FormData();
+        Object.entries(rest).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) form.append(k, String(v));
+        });
+        // Append items as individual indexed fields so multer doesn't need
+        // to JSON.parse a string — each item becomes items[0][field]=value
+        if (items && items.length > 0) {
+          items.forEach((item, idx) => {
+            form.append(`items[${idx}][stockItemId]`, item.stockItemId);
+            form.append(`items[${idx}][quantityNeeded]`, String(item.quantityNeeded));
+            if (item.notes) form.append(`items[${idx}][notes]`, item.notes);
+          });
+        }
+        documents.forEach((f) => form.append("documents", f));
+        return { url: "/jobs", method: "POST", body: form };
+      },
       transformResponse: (res: ApiResponse<Job>) => res.data,
       invalidatesTags: [{ type: "Job", id: "LIST" }],
     }),

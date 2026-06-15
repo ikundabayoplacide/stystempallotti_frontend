@@ -5,3 +5,4 @@ export { default as SalesDashboard } from "./SalesDashboard";
 export { default as SalesPage } from "./SalesPage";
 export { default as SalesStockPage } from "./Stock";
 export { default as SalesCustomerPage } from "./CustomerPage";
+export { default as SalesReportsPage } from "./SalesReportsPage";
