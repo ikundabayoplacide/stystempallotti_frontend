@@ -122,6 +122,10 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
     { label: "Job Planning", path: "/production-manager/planning", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
+    { label: "Reports", path: "/production-manager/reports", icon: HiOutlineChartBar, children: [
+      { label: "Generate Reports", path: "/production-manager/reports", icon: HiOutlineChartBar },
+      { label: "My Reports", path: "/production-manager/reports/my", icon: HiOutlineDocumentText },
+    ] },
     // { label: "Progress",    path: "/production-manager/progress",    icon: HiOutlineChartBar,      permissionKey: "production.view" },
   ],
   stock: [
@@ -144,13 +148,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   worker: [
     { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
     { label: "Task Board", path: "/worker/tasks", icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
-    {
+    { label: "Material Requests", path: "/worker/materials", icon: HiOutlineArchive, permissionKey: "stock.view" },
+       {
       label: "Reports", path: "/worker/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/worker/reports", icon: HiOutlineChartBar },
         { label: "My Reports", path: "/worker/reports/my", icon: HiOutlineDocumentText },
       ]
     },
-    { label: "Material Requests", path: "/worker/materials", icon: HiOutlineArchive, permissionKey: "stock.view" },
   ],
 };
 

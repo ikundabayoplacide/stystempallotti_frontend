@@ -41,7 +41,7 @@ import {
 } from "../pages/finance";
 
 // Production Manager Pages
-import { DepartmentsPage, JobAssignmentPage, ProductionManagerPage } from "../pages/production-manager";
+import { DepartmentsPage, JobAssignmentPage, ProductionManagerPage, ProductionManagerReportsPage } from "../pages/production-manager";
 
 // Production Department Pages
 
@@ -158,6 +158,8 @@ export default function AppRoutes() {
       <Route path="/production-manager" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerPage /></ProtectedRoute>} />
       <Route path="/production-manager/planning" element={<ProtectedRoute allowedRoles={["production-manager"]}><JobAssignmentPage /></ProtectedRoute>} />
       <Route path="/production-manager/departments" element={<ProtectedRoute allowedRoles={["production-manager"]}><DepartmentsPage /></ProtectedRoute>} />
+      <Route path="/production-manager/reports" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerReportsPage /></ProtectedRoute>} />
+      <Route path="/production-manager/reports/my" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyReportsPage /></ProtectedRoute>} />
       {/* <Route path="/production-manager/progress" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProgressPage /></ProtectedRoute>} /> */}
       <Route path="/production-manager/notifications" element={<ProtectedRoute allowedRoles={["production-manager"]}><NotificationsPage userRole="production-manager" userName="Production Manager" /></ProtectedRoute>} />
 
