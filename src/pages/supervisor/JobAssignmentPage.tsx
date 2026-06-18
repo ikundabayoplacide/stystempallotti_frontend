@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import {
   HiOutlineCheckCircle,
   HiOutlineClock,
+  HiOutlineDotsVertical,
+  HiOutlineEye,
   HiOutlineExclamationCircle,
   HiOutlineFlag,
   HiOutlineRefresh,
@@ -86,19 +88,108 @@ function StateBadge({ state }: { state: JobState }) {
   );
 }
 
-// ─── Mark Done button (inline) ───────────────────────────────────────────────
+// ─── Progress Badge ──────────────────────────────────────────────────────────
 
-function MarkDoneButton({ job, onClick }: { job: Job; onClick: (job: Job) => void }) {
-  const canMark = job.state != null && DONE_STATE_MAP[job.state as NonNullable<JobState>] !== undefined;
-  if (!canMark) return <span className="text-xs text-custom-500 italic">—</span>;
+const PROGRESS_CONFIG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  started:   { label: "Started",   bg: "bg-blue-100",   text: "text-blue-700",   dot: "bg-blue-500" },
+  paused:    { label: "Paused",    bg: "bg-yellow-100", text: "text-yellow-700", dot: "bg-yellow-500" },
+  resumed:   { label: "Resumed",   bg: "bg-indigo-100", text: "text-indigo-700", dot: "bg-indigo-500" },
+  completed: { label: "Completed", bg: "bg-green-100",  text: "text-green-700",  dot: "bg-green-500" },
+};
+
+function ProgressBadge({ progress }: { progress: string | null }) {
+  if (!progress) return <span className="text-xs text-custom-500 italic">—</span>;
+  const cfg = PROGRESS_CONFIG[progress] ?? { label: progress, bg: "bg-gray-100", text: "text-gray-700", dot: "bg-gray-400" };
   return (
-    <button
-      onClick={() => onClick(job)}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors text-xs font-semibold"
-    >
-      <HiOutlineFlag className="w-3.5 h-3.5" />
-      Mark Done
-    </button>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.text}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+      {cfg.label}
+    </span>
+  );
+}
+
+// ─── Actions Menu ─────────────────────────────────────────────────────────────
+
+interface ActionsMenuProps {
+  job: Job;
+  alreadyAssigned: boolean;
+  onView: (job: Job) => void;
+  onAssign: (job: Job) => void;
+  onMarkDone: (job: Job) => void;
+}
+
+function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone }: ActionsMenuProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const canMarkDone = job.state != null && DONE_STATE_MAP[job.state as NonNullable<JobState>] !== undefined && job.progress === "completed";
+
+  if (job.status === "delivered" || job.status === "completed") {
+    return (
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => onView(job)}
+          className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600"
+          title="View details"
+        >
+          <HiOutlineEye className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-end gap-1" ref={ref}>
+      {/* Eye — view details */}
+      <button
+        onClick={() => onView(job)}
+        className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600"
+        title="View details"
+      >
+        <HiOutlineEye className="w-4 h-4" />
+      </button>
+
+      {/* ... dropdown */}
+      <div className="relative">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700"
+          title="Actions"
+        >
+          <HiOutlineDotsVertical className="w-4 h-4" />
+        </button>
+
+        {open && (
+          <div className="absolute right-0 top-8 z-30 w-44 bg-white border border-custom-200 rounded-xl shadow-lg py-1 text-sm">
+            <button
+              onClick={() => { setOpen(false); onAssign(job); }}
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-custom-50 text-secondary-100 transition-colors"
+            >
+              <HiOutlineUserAdd className="w-4 h-4 text-primary-500" />
+              {alreadyAssigned ? "Reassign" : "Assign "}
+            </button>
+
+            {canMarkDone && (
+              <button
+                onClick={() => { setOpen(false); onMarkDone(job); }}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-custom-50 text-secondary-100 transition-colors"
+              >
+                <HiOutlineFlag className="w-4 h-4 text-green-500" />
+                Mark Done
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -110,6 +201,13 @@ export default function SupervisorJobsPage() {
   const [showModal, setShowModal] = useState(false);
   const [activeJob, setActiveJob] = useState<Job | null>(null);
   const [error, setError]         = useState("");
+
+  // ── Detail view modal state ──
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [detailJob, setDetailJob]             = useState<Job | null>(null);
+
+  const openDetailModal  = (job: Job) => { setDetailJob(job); setShowDetailModal(true); };
+  const closeDetailModal = () => { setShowDetailModal(false); setDetailJob(null); };
 
   // ── Assign employee modal state ──
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -290,11 +388,10 @@ export default function SupervisorJobsPage() {
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  {["Job", "Client", "Status", "Dept State", "Priority", "Due Date", "Actions"].map((h) => (
+                  {["Job", "Client", "Status", "Dept State", "Progress", "Priority", "Due Date", "Actions"].map((h) => (
                     <th
                       key={h}
-                      className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}
-                    >
+                      className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}>
                       {h}
                     </th>
                   ))}
@@ -303,7 +400,7 @@ export default function SupervisorJobsPage() {
               <tbody className="bg-white divide-y divide-custom-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
+                    <td colSpan={8} className="px-4 py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-custom-700">
                         <HiOutlineRefresh className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Loading jobs…</span>
@@ -312,7 +409,7 @@ export default function SupervisorJobsPage() {
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-custom-700 text-sm">
+                    <td colSpan={8} className="px-4 py-12 text-center text-custom-700 text-sm">
                       No jobs assigned to your department
                     </td>
                   </tr>
@@ -340,6 +437,9 @@ export default function SupervisorJobsPage() {
                           <StateBadge state={job.state ?? null} />
                         </td>
                         <td className="px-4 py-4">
+                          <ProgressBadge progress={job.progress ?? null} />
+                        </td>
+                        <td className="px-4 py-4">
                           <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>
                             {job.priority}
                           </span>
@@ -349,33 +449,16 @@ export default function SupervisorJobsPage() {
                             {job.dueDate ? job.dueDate.split("T")[0] : "—"}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {/* Assign / Reassign employee to this job */}
-                            {(() => {
-                              const alreadyAssigned = employees.some(
-                                (e) =>
-                                  (e.assignedJobs?.some((j) => j.id === job.id) ?? false) ||
-                                  e.jobId === job.id
-                              );
-                              return (
-                                <button
-                                  onClick={() => openAssignModal(job)}
-                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors text-xs font-semibold text-white ${
-                                    alreadyAssigned
-                                      ? "bg-amber-500 hover:bg-amber-600"
-                                      : "bg-primary-500 hover:bg-primary-600"
-                                  }`}
-                                  title={alreadyAssigned ? "Reassign employee" : "Assign employee"}
-                                >
-                                  <HiOutlineUserAdd className="w-3.5 h-3.5" />
-                                  {alreadyAssigned ? "Reassign" : "Assign"}
-                                </button>
-                              );
-                            })()}
-                            {/* Mark department done */}
-                            <MarkDoneButton job={job} onClick={openModal} />
-                          </div>
+                        <td className="px-4 py-4">
+                          <ActionsMenu
+                            job={job}
+                            alreadyAssigned={employees.some(
+                              (e) => (e.assignedJobs?.some((j) => j.id === job.id) ?? false) || e.jobId === job.id
+                            )}
+                            onView={openDetailModal}
+                            onAssign={openAssignModal}
+                            onMarkDone={openModal}
+                          />
                         </td>
                       </tr>
                     );
@@ -404,6 +487,110 @@ export default function SupervisorJobsPage() {
             </div>
           )}
         </Card>
+
+        {/* ── Job Detail Modal ── */}
+        {showDetailModal && detailJob && (
+          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+            <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <h3 className="text-xl font-bold text-secondary-100">Job Details</h3>
+                  <p className="text-sm text-custom-700 mt-0.5">{detailJob.jobNumber} — {detailJob.title}</p>
+                </div>
+                <button onClick={closeDetailModal} className="text-custom-700 hover:text-secondary-100">
+                  <HiOutlineX className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-sm">
+                {/* Client & Priority */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-0.5">Client</p>
+                    <p className="font-semibold text-secondary-100">{detailJob.customer?.name ?? "—"}</p>
+                    {detailJob.customer?.phone && <p className="text-xs text-custom-700">{detailJob.customer.phone}</p>}
+                  </div>
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-0.5">Priority</p>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${priorityColor[detailJob.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                      {detailJob.priority}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status & State */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-1">Status</p>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${jobStatusConfig[detailJob.status]?.bgColor} ${jobStatusConfig[detailJob.status]?.color}`}>
+                      {jobStatusConfig[detailJob.status]?.label ?? detailJob.status}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-1">Dept State</p>
+                    <StateBadge state={detailJob.state ?? null} />
+                  </div>
+                </div>
+
+                {/* Progress */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-1">Worker Progress</p>
+                    <ProgressBadge progress={detailJob.progress ?? null} />
+                  </div>
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-0.5">Due Date</p>
+                    <p className="font-semibold text-secondary-100">{detailJob.dueDate ? detailJob.dueDate.split("T")[0] : "—"}</p>
+                  </div>
+                </div>
+
+                {/* Timestamps */}
+                {(detailJob.startedAt || detailJob.pausedAt || detailJob.resumedAt || detailJob.completedAt) && (
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 space-y-1.5">
+                    <p className="text-xs font-semibold text-custom-700 mb-1">Timeline</p>
+                    {detailJob.startedAt   && <p className="text-xs text-secondary-100">Started: <span className="font-semibold">{new Date(detailJob.startedAt).toLocaleString()}</span></p>}
+                    {detailJob.pausedAt    && <p className="text-xs text-secondary-100">Paused: <span className="font-semibold">{new Date(detailJob.pausedAt).toLocaleString()}</span></p>}
+                    {detailJob.resumedAt   && <p className="text-xs text-secondary-100">Resumed: <span className="font-semibold">{new Date(detailJob.resumedAt).toLocaleString()}</span></p>}
+                    {detailJob.completedAt && <p className="text-xs text-secondary-100">Completed: <span className="font-semibold">{new Date(detailJob.completedAt).toLocaleString()}</span></p>}
+                  </div>
+                )}
+
+                {/* Job info */}
+                {(detailJob.jobType || detailJob.quantity || detailJob.size || detailJob.colorMode) && (
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 grid grid-cols-2 gap-2">
+                    {detailJob.jobType   && <div><p className="text-xs text-custom-700">Type</p><p className="font-semibold text-secondary-100">{detailJob.jobType}</p></div>}
+                    {detailJob.quantity  && <div><p className="text-xs text-custom-700">Quantity</p><p className="font-semibold text-secondary-100">{detailJob.quantity}</p></div>}
+                    {detailJob.size      && <div><p className="text-xs text-custom-700">Size</p><p className="font-semibold text-secondary-100">{detailJob.size}</p></div>}
+                    {detailJob.colorMode && <div><p className="text-xs text-custom-700">Color Mode</p><p className="font-semibold text-secondary-100">{detailJob.colorMode}</p></div>}
+                  </div>
+                )}
+
+                {/* Description */}
+                {detailJob.description && (
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-1">Description</p>
+                    <p className="text-secondary-100 leading-snug">{detailJob.description}</p>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {detailJob.notes && (
+                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                    <p className="text-xs text-custom-700 mb-1">Notes</p>
+                    <p className="text-secondary-100 leading-snug">{detailJob.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={closeDetailModal}
+                className="mt-5 w-full px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 text-sm font-semibold text-custom-700"
+              >
+                Close
+              </button>
+            </Card>
+          </div>
+        )}
 
         {/* ── Mark Done Confirm Modal ── */}
         {showModal && activeJob && (() => {

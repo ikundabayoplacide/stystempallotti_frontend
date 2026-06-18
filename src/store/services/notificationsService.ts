@@ -13,7 +13,12 @@ export type NotificationType =
   | "REPORT_GENERATED"
   | "JOB_CREATED"
   | "JOB_ASSIGNED"
-  | "JOB_STATUS_CHANGED";
+  | "JOB_STATUS_CHANGED"
+  | "PROGRESS_COMPLETED"
+  | "JOB_DONE"
+  | "JOB_COMPLETED"
+  | "EMPLOYEE_CREATED"
+  | "JOB_DAF_ACTION";
 
 export interface Notification {
   id: string;                  // NotificationRead id

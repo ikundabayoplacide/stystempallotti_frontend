@@ -86,7 +86,10 @@ const ASSIGNABLE_STATUSES  = new Set(["confirmed", "in-composition", "in-montage
 const APPROVABLE_STATUSES  = new Set(["pending"]);
 const REJECTABLE_STATUSES  = new Set(["pending", "confirmed"]);
 const EDITABLE_STATUSES    = new Set(["pending", "confirmed"]);
-const COMPLETABLE_STATUSES = new Set(["confirmed"]);
+const COMPLETABLE_STATES = new Set([
+  "composition-done", "montage-done", "printing-done",
+  "binding-done", "packaging-done", "qualitycheck-done",
+]);
 
 const PAGE_SIZE = 5;
 
@@ -106,11 +109,13 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  if (job.status === "delivered") return null;
+
   const canApprove   = APPROVABLE_STATUSES.has(job.status);
   const canAssign    = ASSIGNABLE_STATUSES.has(job.status);
   const canReject    = REJECTABLE_STATUSES.has(job.status);
   const canEdit      = EDITABLE_STATUSES.has(job.status);
-  const canComplete  = COMPLETABLE_STATUSES.has(job.status);
+  const canComplete  = !!job.state && COMPLETABLE_STATES.has(job.state);
 
   type ActionDef = { label: string; type: ModalType; icon: React.ReactNode; cls: string };
   const actions: ActionDef[] = [

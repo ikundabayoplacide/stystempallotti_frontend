@@ -63,6 +63,11 @@ export interface UpdateUserPayload {
   isActive?: boolean;
 }
 
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
 // Generic wrapper the backend uses: { success, message, data, pagination }
 interface ApiResponse<T> {
   success: boolean;
@@ -156,6 +161,25 @@ export const usersApi = createApi({
         { type: "User", id: "LIST" },
       ],
     }),
+
+    // GET /users/me
+    getMe: builder.query<User, void>({
+      query: () => "/users/me",
+      transformResponse: (res: ApiResponse<User>) => res.data,
+      providesTags: [{ type: "User", id: "ME" }],
+    }),
+
+    // PUT /users/me
+    updateMe: builder.mutation<User, Partial<Pick<User, "name" | "phone" | "gender">>>({
+      query: (body) => ({ url: "/users/me", method: "PUT", body }),
+      transformResponse: (res: ApiResponse<User>) => res.data,
+      invalidatesTags: [{ type: "User", id: "ME" }],
+    }),
+
+    // POST /auth/change-password
+    changePassword: builder.mutation<void, ChangePasswordPayload>({
+      query: (body) => ({ url: "/auth/change-password", method: "POST", body }),
+    }),
   }),
 });
 
@@ -165,4 +189,7 @@ export const {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
+  useGetMeQuery,
+  useUpdateMeMutation,
+  useChangePasswordMutation,
 } = usersApi;

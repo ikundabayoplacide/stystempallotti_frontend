@@ -76,6 +76,11 @@ export interface Job {
   createdById: string;
   departmentAssignedToId?: string;
   payments?: JobPayment[];
+  progress?: "started" | "paused" | "resumed" | "completed" | null;
+  startedAt?: string | null;
+  pausedAt?: string | null;
+  resumedAt?: string | null;
+  completedAt?: string | null;
   deliveredByName?: string;
   deliveredByContact?: string;
   createdAt: string;

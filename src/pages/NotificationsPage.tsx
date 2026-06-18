@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   HiOutlineBell,
   HiOutlineCheckCircle,
@@ -8,8 +9,11 @@ import {
   HiOutlineExclamation,
   HiOutlineInformationCircle,
   HiOutlineShoppingBag,
+  HiOutlineThumbDown,
+  HiOutlineThumbUp,
   HiOutlineTrash,
   HiOutlineUser,
+  HiOutlineUserAdd,
 } from "react-icons/hi";
 import { DashboardLayout } from "../components";
 import { Card } from "../components/ui";
@@ -89,6 +93,36 @@ const typeConfig: Record<
     bg: "bg-cyan-50",
     border: "border-cyan-200",
   },
+  PROGRESS_COMPLETED: {
+    icon: HiOutlineCheckCircle,
+    color: "text-teal-600",
+    bg: "bg-teal-50",
+    border: "border-teal-200",
+  },
+  JOB_DONE: {
+    icon: HiOutlineThumbUp,
+    color: "text-green-700",
+    bg: "bg-green-50",
+    border: "border-green-200",
+  },
+  JOB_COMPLETED: {
+    icon: HiOutlineCheckCircle,
+    color: "text-emerald-700",
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+  },
+  EMPLOYEE_CREATED: {
+    icon: HiOutlineUserAdd,
+    color: "text-violet-600",
+    bg: "bg-violet-50",
+    border: "border-violet-200",
+  },
+  JOB_DAF_ACTION: {
+    icon: HiOutlineThumbDown,
+    color: "text-rose-600",
+    bg: "bg-rose-50",
+    border: "border-rose-200",
+  },
 };
 
 const fallbackConfig = {
@@ -116,10 +150,17 @@ interface NotificationsPageProps {
   userName?: string;
 }
 
+const routeMap: Record<string, (id: string) => string> = {
+  job: (id) => `/jobs/${id}`,
+  employee: (id) => `/employees/${id}`,
+  payment: (id) => `/payments/${id}`,
+};
+
 export default function NotificationsPage({
   userRole,
   userName = "User",
 }: NotificationsPageProps) {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(1);
   const limit = 20;
@@ -220,7 +261,14 @@ export default function NotificationsPage({
               return (
                 <Card
                   key={n.id}
-                  className={`!p-4 ${!n.isRead ? "border-l-4 border-l-primary-500" : "opacity-75"}`}
+                  onClick={() => {
+                    if (!n.isRead) markOne(n.id);
+                    if (n.relatedEntityType && n.relatedEntityId) {
+                      const fn = routeMap[n.relatedEntityType];
+                      if (fn) navigate(fn(n.relatedEntityId));
+                    }
+                  }}
+                  className={`!p-4 cursor-pointer hover:shadow-sm transition-shadow ${!n.isRead ? "border-l-4 border-l-primary-500" : "opacity-75"}`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}

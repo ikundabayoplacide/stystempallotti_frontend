@@ -1,6 +1,7 @@
 import {
   HiOutlineAdjustments,
   HiOutlineArchive,
+  HiOutlineBell,
   HiOutlineBriefcase,
   HiOutlineChartBar,
   HiOutlineChevronDown,
@@ -10,7 +11,6 @@ import {
   HiOutlineCurrencyDollar,
   HiOutlineDocumentText,
   HiOutlineHome,
-  HiOutlineLogout,
   HiOutlineMenu,
   HiOutlineUsers,
   HiOutlineViewGrid,
@@ -18,9 +18,10 @@ import {
 } from "react-icons/hi";
 import { useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth, type UserRole } from "../context/AuthContext";
+import { type UserRole } from "../context/AuthContext";
 import { useAppSelector } from "../store/hooks";
 import { useGetMyPermissionsQuery } from "../store/services/permissionsService";
+import { useGetUnreadCountQuery } from "../store/services/notificationsService";
 
 interface MenuItem {
   label: string;
@@ -73,7 +74,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Stock", path: "/sales/stocks", icon: HiOutlineArchive, permissionKey: "stock.view" },
     { label: "Quotations Invoice", path: "/sales/quotations", icon: HiOutlineDocumentText, permissionKey: "quotations.view" },
     { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
-    { label: "Procurement", path: "/sales/procurement", icon: HiOutlineArchive, permissionKey: "dossiers.view" },
     {
       label: "Reports", path: "/sales/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/sales/reports", icon: HiOutlineChartBar },
@@ -101,7 +101,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Job Approvals", path: "/finance/daf/approvals", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Finance Control", path: "/finance/daf/control", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
     { label: "HR Management", path: "/finance/daf/hr", icon: HiOutlineUsers, permissionKey: "hr.view" },
-    {label:"Quotations",path:"/finance/daf/quatation",icon:HiOutlineAdjustments,permissionKey:"finance.view"},
+    { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
+    { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
@@ -126,7 +127,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       { label: "Generate Reports", path: "/production-manager/reports", icon: HiOutlineChartBar },
       { label: "My Reports", path: "/production-manager/reports/my", icon: HiOutlineDocumentText },
     ] },
-    // { label: "Progress",    path: "/production-manager/progress",    icon: HiOutlineChartBar,      permissionKey: "production.view" },
   ],
   stock: [
     { label: "Dashboard", path: "/stock", icon: HiOutlineHome },
@@ -149,7 +149,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
     { label: "Task Board", path: "/worker/tasks", icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
     { label: "Material Requests", path: "/worker/materials", icon: HiOutlineArchive, permissionKey: "stock.view" },
-       {
+    {
       label: "Reports", path: "/worker/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/worker/reports", icon: HiOutlineChartBar },
         { label: "My Reports", path: "/worker/reports/my", icon: HiOutlineDocumentText },
@@ -166,7 +166,6 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
   const { token } = useAppSelector((state) => state.auth);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(() => {
     // Auto-open dropdowns whose children match the current path on mount
@@ -181,6 +180,11 @@ export default function DashboardSidebar({
   const { data: myPermissions = [], isSuccess } = useGetMyPermissionsQuery(undefined, {
     skip: !token,
     refetchOnMountOrArgChange: true,
+  });
+
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery(undefined, {
+    skip: !token,
+    pollingInterval: 30_000,
   });
 
   const toggleDropdown = (path: string) =>
@@ -215,9 +219,32 @@ export default function DashboardSidebar({
     return filtered;
   }, [userRole, grantedSet]);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  const notifPath: Record<UserRole, string> = {
+    admin: "/admin/notifications",
+    receptionist: "/reception/notifications",
+    sales: "/sales/notifications",
+    hr: "/hr/notifications",
+    hobe: "/hobe/notifications",
+    daf: "/finance/daf/notifications",
+    accountant: "/finance/accountant1/notifications",
+    "production-manager": "/production-manager/notifications",
+    stock: "/stock/notifications",
+    supervisor: "/supervisor/notifications",
+    worker: "/worker/notifications",
+  };
+
+  const settingsPath: Record<UserRole, string> = {
+    admin: "/admin/settings",
+    receptionist: "/reception/profile",
+    sales: "/sales/profile",
+    hr: "/hr/profile",
+    hobe: "/hobe/profile",
+    daf: "/finance/daf/profile",
+    accountant: "/finance/accountant1/profile",
+    "production-manager": "/production-manager/profile",
+    stock: "/stock/profile",
+    supervisor: "/supervisor/profile",
+    worker: "/worker/profile",
   };
 
   return (
@@ -318,6 +345,11 @@ export default function DashboardSidebar({
                   {!isCollapsed && (
                     <>
                       <span className="font-semibold text-sm flex-1 text-left">{item.label}</span>
+                      {item.label === "Notifications" && unreadCount > 0 && (
+                        <span className="ml-auto w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
                       {hasChildren && (
                         <HiOutlineChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? "rotate-180" : ""
                           }`} />
@@ -355,20 +387,36 @@ export default function DashboardSidebar({
           })}
         </nav>
 
-        {/* Footer Actions */}
+        {/* Footer */}
         <div className="p-3 border-t border-custom-300 space-y-1">
           <button
-            className={`
-              w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-              text-red-600 hover:bg-red-50 hover:text-red-700
-              transition-all duration-200
-              ${isCollapsed ? "justify-center" : ""}
-            `}
-            title={isCollapsed ? "Logout" : undefined}
-            onClick={handleLogout}
+            onClick={() => navigate(notifPath[userRole])}
+            className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+              location.pathname === notifPath[userRole]
+                ? "bg-primary-500 text-secondary-200"
+                : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
+            } ${isCollapsed ? "justify-center" : ""}`}
+            title={isCollapsed ? "Notifications" : undefined}
           >
-            <HiOutlineLogout className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && <span className="font-semibold text-sm">Logout</span>}
+            <HiOutlineBell className="w-5 h-5 flex-shrink-0" />
+            {!isCollapsed && <span className="font-semibold text-sm flex-1 text-left">Notifications</span>}
+            {unreadCount > 0 && (
+              <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => navigate(settingsPath[userRole])}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+              location.pathname === settingsPath[userRole]
+                ? "bg-primary-500 text-secondary-200"
+                : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
+            } ${isCollapsed ? "justify-center" : ""}`}
+            title={isCollapsed ? "Settings" : undefined}
+          >
+            <HiOutlineCog className="w-5 h-5 flex-shrink-0" />
+            {!isCollapsed && <span className="font-semibold text-sm">Settings</span>}
           </button>
         </div>
       </aside>

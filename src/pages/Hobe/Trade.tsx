@@ -9,6 +9,7 @@ import {
   HiOutlineX,
   HiOutlineCash,
   HiOutlineFilter,
+  HiOutlinePlus,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
@@ -18,11 +19,104 @@ import {
   useGetHobeSalesQuery,
   useSellHobeMutation,
   useUpdateHobeSaleMutation,
+  useCreateHobeMutation,
   type Hobe,
   type HobeSale,
   type HobePaymentMethod,
 } from "../../store/services/hobeService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
+
+// ─── Add Hobe Modal ───────────────────────────────────────────────────────────
+
+function AddHobeModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [form, setForm] = useState({
+    nameOfHobe: "", doneAt: "", expiredAt: "", qty: "", pricePerItem: "", ob: "", note: "",
+  });
+  const [createHobe, { isLoading }] = useCreateHobeMutation();
+
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nameOfHobe || !form.doneAt || !form.expiredAt || !form.qty || !form.pricePerItem) {
+      toast.error("Please fill in all required fields"); return;
+    }
+    try {
+      await createHobe({
+        nameOfHobe:   form.nameOfHobe.trim(),
+        doneAt:       form.doneAt,
+        expiredAt:    form.expiredAt,
+        qty:          Number(form.qty),
+        pricePerItem: Number(form.pricePerItem),
+        ob:           form.ob ? Number(form.ob) : undefined,
+        note:         form.note.trim() || undefined,
+      }).unwrap();
+      toast.success("Hobe batch added successfully");
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to add hobe");
+    }
+  };
+
+  const inputClass = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl !p-6 max-w-lg w-full my-8 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Add Hobe Batch</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Register a new hobe batch for trade</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Name *</label>
+              <input value={form.nameOfHobe} onChange={set("nameOfHobe")} placeholder="e.g. Inkjet Paper A4" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Done At *</label>
+              <input type="date" value={form.doneAt} onChange={set("doneAt")} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Expires At *</label>
+              <input type="date" value={form.expiredAt} onChange={set("expiredAt")} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Quantity *</label>
+              <input type="number" min={1} value={form.qty} onChange={set("qty")} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Price per Item (RWF) *</label>
+              <input type="number" min={0} value={form.pricePerItem} onChange={set("pricePerItem")} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">OB <span className="font-normal text-custom-700">(optional)</span></label>
+              <input type="number" min={0} value={form.ob} onChange={set("ob")} placeholder="0" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Note <span className="font-normal text-custom-700">(optional)</span></label>
+              <input value={form.note} onChange={set("note")} placeholder="Any remarks..." className={inputClass} />
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+            >Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40"
+            >{isLoading ? "Saving..." : "Add Batch"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 // ─── Payment methods ─────────────────────────────────────────────────────────
 
@@ -439,6 +533,7 @@ export default function HobeTrade() {
   const [statusFilter, setStatusFilter]         = useState<StatusFilter>("all");
   const [selectedHobe, setSelectedHobe]         = useState<Hobe | null>(null);
   const [showPendingBalances, setShowPendingBalances] = useState(false);
+  const [showAddHobe, setShowAddHobe]           = useState(false);
 
   const { data, isLoading, isError, refetch } = useGetHobesQuery();
   const { data: partialData }  = useGetHobeSalesQuery({ paymentStatus: "partial",  limit: 100 });
@@ -473,6 +568,13 @@ export default function HobeTrade() {
             <p className="text-sm text-custom-700 mt-1">Select a batch to record a sale</p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddHobe(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Batch</span>
+            </button>
             <button
               onClick={() => setShowPendingBalances(true)}
               className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors text-sm font-semibold"
@@ -623,6 +725,13 @@ export default function HobeTrade() {
           </div>
         )}
       </div>
+
+      {showAddHobe && (
+        <AddHobeModal
+          onClose={() => setShowAddHobe(false)}
+          onSuccess={() => { setShowAddHobe(false); refetch(); }}
+        />
+      )}
 
       {selectedHobe && (
         <SellModal

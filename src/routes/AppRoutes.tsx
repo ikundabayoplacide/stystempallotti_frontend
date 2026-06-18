@@ -60,6 +60,7 @@ import WorkerReportsPage from "../pages/worker/WorkerReportsPage";
 
 // Reception Pages
 import NotificationsPage from "../pages/NotificationsPage";
+import ProfilePage from "../pages/ProfilePage";
 import {
   DeliveriesPage,
   BoutiquePage,
@@ -80,8 +81,7 @@ import HobePage from "../pages/Hobe/Dashboard";
 import RequestsPage from "../pages/Hobe/Requests";
 import ReportsPage from "../pages/Hobe/Reports";
 import HobeTrade from "../pages/Hobe/Trade";
-import ProdurementPage from "../pages/sales/ProdurementPage";
-
+import ProdurementPage from "../pages/finance/ProdurementPage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -104,6 +104,7 @@ export default function AppRoutes() {
       <Route path="/admin/workflow" element={<ProtectedRoute allowedRoles={["admin"]}><WorkflowConfigPage /></ProtectedRoute>} />
       <Route path="/admin/ui-permissions" element={<ProtectedRoute allowedRoles={["admin"]}><UIPermissionsPage /></ProtectedRoute>} />
       <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={["admin"]}><NotificationsPage userRole="admin" userName="Admin" /></ProtectedRoute>} />
+      <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* Reception Routes */}
       <Route path="/reception" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionPage /></ProtectedRoute>} />
@@ -112,6 +113,7 @@ export default function AppRoutes() {
       <Route path="/reception/payments" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="payments"><PaymentCollectionPage /></ProtectedRoute>} />
       <Route path="/reception/boutique" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="boutique"><BoutiquePage /></ProtectedRoute>} />
       <Route path="/reception/notifications" element={<ProtectedRoute allowedRoles={["receptionist"]}><NotificationsPage userRole="receptionist" userName="Receptionist" /></ProtectedRoute>} />
+      <Route path="/reception/profile" element={<ProtectedRoute allowedRoles={["receptionist"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
       <Route path="/reception/reports/my" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyReportsPage /></ProtectedRoute>} />
 
@@ -121,11 +123,12 @@ export default function AppRoutes() {
       <Route path="/sales/jobs" element={<ProtectedRoute allowedRoles={["sales"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
       <Route path="/sales/performaInvoice" element={<ProtectedRoute allowedRoles={["sales"]} pageId="proforma"><ProformaInvoicePage /></ProtectedRoute>} />
       <Route path="/sales/notifications" element={<ProtectedRoute allowedRoles={["sales"]}><NotificationsPage userRole="sales" userName="Sales Officer" /></ProtectedRoute>} />
+      <Route path="/sales/profile" element={<ProtectedRoute allowedRoles={["sales"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/sales/stocks" element={<ProtectedRoute allowedRoles={["sales"]} pageId="stocks"><SalesStockPage /></ProtectedRoute>} />
       <Route path="/sales/customers" element={<ProtectedRoute allowedRoles={["sales"]} pageId="customers"><SalesCustomerPage /></ProtectedRoute>} />
       <Route path="/sales/reports" element={<ProtectedRoute allowedRoles={["sales"]}><SalesReportsPage /></ProtectedRoute>} />
       <Route path="/sales/reports/my" element={<ProtectedRoute allowedRoles={["sales"]}><MyReportsPage /></ProtectedRoute>} />
-      <Route path="/sales/procurement" element={<ProtectedRoute allowedRoles={["sales"]}><ProdurementPage /></ProtectedRoute>} />
+
 
 
 
@@ -138,7 +141,9 @@ export default function AppRoutes() {
       <Route path="/finance/daf/reports/my" element={<ProtectedRoute allowedRoles={["daf"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/finance/daf/approvals" element={<ProtectedRoute allowedRoles={["daf"]} pageId="finance-control"><DAFJobApprovalPage /></ProtectedRoute>} />
       <Route path="/finance/daf/notifications" element={<ProtectedRoute allowedRoles={["daf"]}><NotificationsPage userRole="daf" userName="DAF" /></ProtectedRoute>} />
+      <Route path="/finance/daf/profile" element={<ProtectedRoute allowedRoles={["daf"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/finance/daf/quatation" element={<ProtectedRoute allowedRoles={["daf"]}><QuotationsPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/procurement" element={<ProtectedRoute allowedRoles={["daf"]}><ProdurementPage /></ProtectedRoute>} />
 
 
       {/* Accountant Routes - Unified */}
@@ -147,6 +152,7 @@ export default function AppRoutes() {
       <Route path="/finance/accountant1/payments" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="payments"><Accountant1PaymentsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/documents" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="documents"><Accountant1DocumentsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/notifications" element={<ProtectedRoute allowedRoles={["accountant"]}><NotificationsPage userRole="accountant" userName="Accountant" /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/profile" element={<ProtectedRoute allowedRoles={["accountant"]}><ProfilePage /></ProtectedRoute>} />
 
       <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant2Page /></ProtectedRoute>} />
       <Route path="/finance/accountant2/procurement" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="procurement"><Accountant2ProcurementPage /></ProtectedRoute>} />
@@ -162,6 +168,7 @@ export default function AppRoutes() {
       <Route path="/production-manager/reports/my" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyReportsPage /></ProtectedRoute>} />
       {/* <Route path="/production-manager/progress" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProgressPage /></ProtectedRoute>} /> */}
       <Route path="/production-manager/notifications" element={<ProtectedRoute allowedRoles={["production-manager"]}><NotificationsPage userRole="production-manager" userName="Production Manager" /></ProtectedRoute>} />
+      <Route path="/production-manager/profile" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* Stock Department Routes */}
       <Route path="/stock" element={<ProtectedRoute allowedRoles={["stock"]}><StockPage /></ProtectedRoute>} />
@@ -169,6 +176,7 @@ export default function AppRoutes() {
       <Route path="/stock/requests" element={<ProtectedRoute allowedRoles={["stock"]}><MaterialRequestsPage /></ProtectedRoute>} />
       <Route path="/stock/suppliers" element={<ProtectedRoute allowedRoles={["stock"]}><SuppliersPage /></ProtectedRoute>} />
       <Route path="/stock/notifications" element={<ProtectedRoute allowedRoles={["stock"]}><NotificationsPage userRole="stock" userName="Stock Manager" /></ProtectedRoute>} />
+      <Route path="/stock/profile" element={<ProtectedRoute allowedRoles={["stock"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* Supervisor Routes */}
       <Route path="/supervisor" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorPage /></ProtectedRoute>} />
@@ -180,6 +188,7 @@ export default function AppRoutes() {
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/my" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/notifications" element={<ProtectedRoute allowedRoles={["supervisor"]}><NotificationsPage userRole="supervisor" userName="Supervisor" /></ProtectedRoute>} />
+      <Route path="/supervisor/profile" element={<ProtectedRoute allowedRoles={["supervisor"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* Worker Routes */}
       <Route path="/worker" element={<ProtectedRoute allowedRoles={["worker"]}><WorkerPage /></ProtectedRoute>} />
@@ -190,6 +199,7 @@ export default function AppRoutes() {
       <Route path="/worker/reports/my" element={<ProtectedRoute allowedRoles={["worker"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]} pageId="material-requests"><MaterialRequestPage /></ProtectedRoute>} />
       <Route path="/worker/notifications" element={<ProtectedRoute allowedRoles={["worker"]}><NotificationsPage userRole="worker" userName="Worker" /></ProtectedRoute>} />
+      <Route path="/worker/profile" element={<ProtectedRoute allowedRoles={["worker"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* Hobe */}
       <Route path="/hobe" element={<ProtectedRoute allowedRoles={["hobe"]}><HobePage /></ProtectedRoute>} />
@@ -198,10 +208,13 @@ export default function AppRoutes() {
       <Route path="/hobe/report" element={<ProtectedRoute allowedRoles={["hobe"]}><ReportsPage /></ProtectedRoute>} />
       <Route path="/hobe/report/my-reports" element={<ProtectedRoute allowedRoles={["hobe"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/hobe/notifications" element={<ProtectedRoute allowedRoles={["hobe"]}><NotificationsPage userRole="hobe" userName="Hobe" /></ProtectedRoute>} />
+      <Route path="/hobe/profile" element={<ProtectedRoute allowedRoles={["hobe"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* routes for HR */}
       <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={["hr"]}><EmployeesPage /></ProtectedRoute>} />
+      <Route path="/hr/notifications" element={<ProtectedRoute allowedRoles={["hr"]}><NotificationsPage userRole="hr" userName="HR" /></ProtectedRoute>} />
+      <Route path="/hr/profile" element={<ProtectedRoute allowedRoles={["hr"]}><ProfilePage /></ProtectedRoute>} />
       {/* Public Routes with Layout (if needed) */}
       <Route element={<Layout />}>
         {/* Add public page routes here if needed */}
