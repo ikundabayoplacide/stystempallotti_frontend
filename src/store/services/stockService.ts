@@ -38,14 +38,23 @@ export type SortieStatus = "pending" | "approved" | "rejected";
 export interface StockSortie {
   id: string;
   stockItemId: string;
+  requesterId: string;
+  approvedById: string | null;
   stockItem?: StockItem;
-  quantity: number;
-  jobId?: string;
-  job?: { id: string; jobNumber: string; title: string };
+  quantity?: number;
+  quantityOut: string;          // backend returns string e.g. "2.00"
+  jobId?: string | null;
+  dossierNo?: string | null;
+  job?: { id: string; jobNumber: string; title: string } | null;
   reason?: string;
+  notes?: string | null;
   status: SortieStatus;
-  requestedBy?: { id: string; name: string };
-  approvedBy?: { id: string; name: string };
+  sortieDate: string;
+  stockBefore?: string;
+  stockAfter?: string;
+  requester?: { id: string; name: string; email: string; role: string }; // backend field name
+  requestedBy?: { id: string; name: string; role?: string };             // kept for compat
+  approvedBy?: { id: string; name: string; email: string; role: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +80,7 @@ export interface GetSortiesParams {
   stockItemId?: string;
   status?: SortieStatus;
   jobId?: string;
+  requesterRole?: "RECEPTIONIST" | "HOBE";
   page?: number;
   limit?: number;
 }
@@ -243,9 +253,14 @@ export const stockApi = createApi({
     getStockSorties: builder.query<Paginated<StockSortie>, GetSortiesParams | void>({
       query: (params) => ({
         url: "/sorties",
-        params: { limit: 50, ...(params ?? {}) } as Record<string, unknown>,
+        params: { limit: 200, ...(params ?? {}) } as Record<string, unknown>,
       }),
-      transformResponse: (res: ApiResponse<StockSortie[]>) => toPaginated(res),
+      transformResponse: (res: ApiResponse<StockSortie[]>) => {
+        console.log("[stockService.getStockSorties] raw response →", res);
+        console.log("[stockService.getStockSorties] data array →", res.data);
+        console.log("[stockService.getStockSorties] pagination →", res.pagination);
+        return toPaginated(res);
+      },
       providesTags: (result) =>
         result?.data
           ? [
@@ -253,6 +268,16 @@ export const stockApi = createApi({
               { type: "StockSortie", id: "LIST" },
             ]
           : [{ type: "StockSortie", id: "LIST" }],
+    }),
+
+    // GET /stock/sorties/my — own requests only (RECEPTIONIST, HOBE)
+    getMySorties: builder.query<Paginated<StockSortie>, GetSortiesParams | void>({
+      query: (params) => ({
+        url: "/sorties/my",
+        params: { limit: 100, ...(params ?? {}) } as Record<string, unknown>,
+      }),
+      transformResponse: (res: ApiResponse<StockSortie[]>) => toPaginated(res),
+      providesTags: [{ type: "StockSortie", id: "MY" }],
     }),
 
     // POST /stock/sorties — ADMIN, STOCK, SUPERVISOR, PRODUCTION_MANAGER
@@ -269,6 +294,7 @@ export const stockApi = createApi({
       invalidatesTags: (_r, _e, id) => [
         { type: "StockSortie", id },
         { type: "StockSortie", id: "LIST" },
+        { type: "StockSortie", id: "MY" },
         { type: "StockItem", id: "LIST" }, // stock deducted
       ],
     }),
@@ -280,6 +306,7 @@ export const stockApi = createApi({
       invalidatesTags: (_r, _e, id) => [
         { type: "StockSortie", id },
         { type: "StockSortie", id: "LIST" },
+        { type: "StockSortie", id: "MY" },
       ],
     }),
   }),
@@ -294,6 +321,7 @@ export const {
   useGetStockEntriesQuery,
   useCreateStockEntryMutation,
   useGetStockSortiesQuery,
+  useGetMySortiesQuery,
   useCreateStockSortieMutation,
   useApproveSortieMutation,
   useRejectSortieMutation,

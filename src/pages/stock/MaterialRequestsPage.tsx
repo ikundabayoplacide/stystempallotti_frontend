@@ -1,481 +1,305 @@
 import { useState } from "react";
 import {
-    HiOutlineCheckCircle,
-    HiOutlineClock,
-    HiOutlineX,
-    HiOutlineXCircle
+  HiOutlineCheckCircle,
+  HiOutlineClock,
+  HiOutlineX,
+  HiOutlineXCircle,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
+import {
+  useGetStockSortiesQuery,
+  useApproveSortieMutation,
+  useRejectSortieMutation,
+  type SortieStatus,
+  type StockSortie,
+} from "../../store/services/stockService";
 
-type RequestStatus = "pending" | "approved" | "rejected";
+type RoleFilter = "all" | "RECEPTIONIST" | "HOBE";
 
-interface MaterialRequest {
-  id: string;
-  jobId: string;
-  jobTitle: string;
-  requestedBy: string;
-  department: string;
-  materials: { name: string; quantity: string; unit: string }[];
-  requestDate: string;
-  status: RequestStatus;
-  notes?: string;
-  responseNotes?: string;
-  respondedAt?: string;
-}
-
-const initialRequests: MaterialRequest[] = [
-  {
-    id: "MR-001",
-    jobId: "JOB-001",
-    jobTitle: "Print 500 brochures",
-    requestedBy: "John Worker",
-    department: "Printing",
-    materials: [
-      { name: "Glossy Paper A4", quantity: "1000", unit: "sheets" },
-      { name: "Ink Cartridge (Color)", quantity: "2", unit: "units" },
-    ],
-    requestDate: "2026-05-04T09:00:00",
-    status: "pending",
-    notes: "Urgent - deadline is tomorrow",
-  },
-  {
-    id: "MR-002",
-    jobId: "JOB-005",
-    jobTitle: "Bind 200 booklets",
-    requestedBy: "Jane Smith",
-    department: "Binding",
-    materials: [
-      { name: "Binding Wire", quantity: "5", unit: "rolls" },
-      { name: "Cover Stock", quantity: "200", unit: "sheets" },
-    ],
-    requestDate: "2026-05-04T10:30:00",
-    status: "pending",
-  },
-  {
-    id: "MR-003",
-    jobId: "JOB-003",
-    jobTitle: "Business Cards",
-    requestedBy: "Mike Johnson",
-    department: "Printing",
-    materials: [
-      { name: "Cardstock Paper", quantity: "500", unit: "sheets" },
-      { name: "Laminating Film", quantity: "50", unit: "meters" },
-    ],
-    requestDate: "2026-05-03T14:00:00",
-    status: "approved",
-    responseNotes: "Materials supplied from warehouse A",
-    respondedAt: "2026-05-03T14:30:00",
-  },
-];
-
-const statusConfig: Record<
-  RequestStatus,
-  { label: string; color: string; icon: any; bgColor: string }
-> = {
-  pending: {
-    label: "Pending",
-    color: "text-yellow-600",
-    icon: HiOutlineClock,
-    bgColor: "bg-yellow-100",
-  },
-  approved: {
-    label: "Approved",
-    color: "text-green-600",
-    icon: HiOutlineCheckCircle,
-    bgColor: "bg-green-100",
-  },
-  rejected: {
-    label: "Rejected",
-    color: "text-red-600",
-    icon: HiOutlineXCircle,
-    bgColor: "bg-red-100",
-  },
+const statusConfig: Record<SortieStatus, { label: string; color: string; icon: any; bgColor: string }> = {
+  pending:  { label: "Pending",  color: "text-yellow-600", icon: HiOutlineClock,       bgColor: "bg-yellow-100" },
+  approved: { label: "Approved", color: "text-green-600",  icon: HiOutlineCheckCircle, bgColor: "bg-green-100"  },
+  rejected: { label: "Rejected", color: "text-red-600",    icon: HiOutlineXCircle,     bgColor: "bg-red-100"    },
 };
 
 export default function MaterialRequestsPage() {
-  const [requests, setRequests] = useState<MaterialRequest[]>(initialRequests);
-  const [selectedRequest, setSelectedRequest] = useState<MaterialRequest | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [responseNotes, setResponseNotes] = useState("");
-  const [filter, setFilter] = useState<"all" | RequestStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | SortieStatus>("all");
+  const [roleFilter, setRoleFilter]     = useState<RoleFilter>("all");
+  const [selected, setSelected]         = useState<StockSortie | null>(null);
+  const [rejectNotes, setRejectNotes]   = useState("");
+  const [actingId, setActingId]         = useState<string | null>(null);
 
-  const pendingCount = requests.filter((r) => r.status === "pending").length;
-
-  const filteredRequests =
-    filter === "all" ? requests : requests.filter((r) => r.status === filter);
-
-  const handleApprove = (requestId: string) => {
-    setRequests(
-      requests.map((r) =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: "approved" as RequestStatus,
-              responseNotes: responseNotes || "Approved and materials supplied",
-              respondedAt: new Date().toISOString(),
-            }
-          : r
-      )
-    );
-    setShowReviewModal(false);
-    setSelectedRequest(null);
-    setResponseNotes("");
+  const queryParams = {
+    limit: 200,
+    ...(roleFilter !== "all" ? { requesterRole: roleFilter } : {}),
   };
 
-  const handleReject = (requestId: string) => {
-    if (!responseNotes.trim()) {
-      alert("Please provide a reason for rejection");
-      return;
-    }
+  const { data: sortiesData, isLoading, error, isFetching } = useGetStockSortiesQuery(queryParams);
+  const all = sortiesData?.data ?? [];
 
-    setRequests(
-      requests.map((r) =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: "rejected" as RequestStatus,
-              responseNotes: responseNotes,
-              respondedAt: new Date().toISOString(),
-            }
-          : r
-      )
-    );
-    setShowReviewModal(false);
-    setSelectedRequest(null);
-    setResponseNotes("");
+  console.log("[MaterialRequestsPage] queryParams →", queryParams);
+  console.log("[MaterialRequestsPage] raw sortiesData →", sortiesData);
+  console.log("[MaterialRequestsPage] all sorties count →", all.length);
+  console.log("[MaterialRequestsPage] isLoading:", isLoading, "| isFetching:", isFetching, "| error:", error);
+  console.log("[MaterialRequestsPage] sorties detail →", all.map((s) => ({
+    id: s.id,
+    item: s.stockItem?.itemName ?? s.stockItemId,
+    status: s.status,
+    requester: s.requester,
+    quantityOut: s.quantityOut,
+    reason: s.reason,
+  })));
+
+  const pendingCount = all.filter((s) => s.status === "pending").length;
+  const filtered = statusFilter === "all" ? all : all.filter((s) => s.status === statusFilter);
+  console.log("[MaterialRequestsPage] statusFilter:", statusFilter, "| roleFilter:", roleFilter, "| filtered count:", filtered.length);
+
+  const [approve] = useApproveSortieMutation();
+  const [reject]  = useRejectSortieMutation();
+
+  const handleApprove = async (id: string) => {
+    setActingId(id);
+    try {
+      await approve(id).unwrap();
+      toast.success("Request approved.");
+      setSelected(null);
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to approve.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const handleReject = async (id: string) => {
+    if (!rejectNotes.trim()) { toast.error("Rejection reason is required."); return; }
+    setActingId(id);
+    try {
+      await reject(id).unwrap();
+      toast.success("Request rejected.");
+      setSelected(null);
+      setRejectNotes("");
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to reject.");
+    } finally {
+      setActingId(null);
+    }
   };
 
   return (
-    <DashboardLayout
-      userRole="stock"
-      userName="Stock Manager"
-      notificationCount={pendingCount}
-    >
+    <DashboardLayout userRole="stock" userName="Stock Manager" notificationCount={pendingCount}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
+
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-            Material Requests
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Stock Requests</h1>
           <p className="text-sm text-custom-700 mt-1">
-            {pendingCount > 0
-              ? `${pendingCount} request${pendingCount > 1 ? "s" : ""} pending approval`
-              : "All requests processed"}
+            {pendingCount > 0 ? `${pendingCount} request${pendingCount > 1 ? "s" : ""} pending approval` : "All requests processed"}
           </p>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-              filter === "all"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            All ({requests.length})
-          </button>
-          <button
-            onClick={() => setFilter("pending")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-              filter === "pending"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            Pending ({pendingCount})
-          </button>
-          <button
-            onClick={() => setFilter("approved")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-              filter === "approved"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            Approved ({requests.filter((r) => r.status === "approved").length})
-          </button>
+        {/* Role Filter */}
+        <div className="flex gap-2">
+          {(["all", "RECEPTIONIST", "HOBE"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRoleFilter(r)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                roleFilter === r ? "bg-secondary-100 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+              }`}
+            >
+              {r === "all" ? "All Roles" : r.charAt(0) + r.slice(1).toLowerCase()}
+            </button>
+          ))}
         </div>
 
-        {/* Requests List */}
+        {/* Status Filter Tabs */}
+        <div className="flex gap-2 overflow-x-auto">
+          {(["all", "pending", "approved", "rejected"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setStatusFilter(f)}
+              className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
+                statusFilter === f ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+              }`}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "pending" && pendingCount > 0 && ` (${pendingCount})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Table */}
         <Card className="!p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Request ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Job & Requester
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Department
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Materials
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Request Date
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-secondary-100 uppercase">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Item</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Requested By</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Qty</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Reason</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Date</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-secondary-100 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-custom-200">
-                {filteredRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-custom-700">
-                      No requests found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRequests.map((request) => {
-                    const config = statusConfig[request.status];
-                    const Icon = config.icon;
-
-                    return (
-                      <tr key={request.id} className="hover:bg-custom-50 transition-colors">
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-primary-600">
-                            {request.id}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="text-sm font-semibold text-secondary-100">
-                              {request.jobTitle}
-                            </p>
-                            <p className="text-xs text-custom-700">
-                              {request.requestedBy} • {request.jobId}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm text-custom-700">{request.department}</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="space-y-1">
-                            {request.materials.slice(0, 2).map((mat, idx) => (
-                              <div key={idx} className="text-xs text-secondary-100">
-                                • {mat.name}: {mat.quantity} {mat.unit}
-                              </div>
-                            ))}
-                            {request.materials.length > 2 && (
-                              <p className="text-xs text-custom-700">
-                                +{request.materials.length - 2} more
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <Icon className={`w-4 h-4 ${config.color}`} />
-                            <span
-                              className={`text-xs font-bold px-3 py-1 rounded-full ${config.bgColor} ${config.color}`}
-                            >
-                              {config.label}
+                {isLoading ? (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700">Loading...</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700">No requests found.</td></tr>
+                ) : filtered.map((req) => {
+                  const cfg = statusConfig[req.status];
+                  const Icon = cfg.icon;
+                  return (
+                    <tr key={req.id} className="hover:bg-custom-50 transition-colors">
+                      <td className="px-4 py-4 text-sm font-bold text-primary-600">
+                        {req.stockItem?.itemName ?? req.stockItemId}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-secondary-100">
+                        {req.requester?.name ?? req.requestedBy?.name ?? "—"}
+                      </td>
+                      <td className="px-4 py-4">
+                        {(() => {
+                          const role = req.requester?.role ?? req.requestedBy?.role;
+                          if (!role) return <span className="text-xs text-custom-400">—</span>;
+                          const isHobe = role.toUpperCase() === "HOBE";
+                          return (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              isHobe ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {isHobe ? "Hobe" : "Receptionist"}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm text-custom-700">
-                            {new Date(request.requestDate).toLocaleDateString()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {request.status === "pending" ? (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleApprove(request.id);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors text-xs font-semibold"
-                                >
-                                  <HiOutlineCheckCircle className="w-3 h-3 inline mr-1" />
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedRequest(request);
-                                    setShowReviewModal(true);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors text-xs font-semibold"
-                                >
-                                  <HiOutlineXCircle className="w-3 h-3 inline mr-1" />
-                                  Reject
-                                </button>
-                              </>
-                            ) : (
+                          );
+                        })()}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-secondary-100">
+                        {parseFloat(req.quantityOut)} {req.stockItem?.unit}
+                      </td>
+                      <td className="px-4 py-4 text-xs text-custom-700 max-w-[140px] truncate">{req.reason ?? req.notes ?? "—"}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-1">
+                          <Icon className={`w-4 h-4 ${cfg.color}`} />
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.bgColor} ${cfg.color}`}>{cfg.label}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-custom-700">{new Date(req.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          {req.status === "pending" ? (
+                            <>
                               <button
-                                onClick={() => {
-                                  setSelectedRequest(request);
-                                  setShowReviewModal(true);
-                                }}
-                                className="px-3 py-1.5 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-xs font-semibold"
+                                onClick={() => handleApprove(req.id)}
+                                disabled={actingId === req.id}
+                                className="px-3 py-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 text-xs font-semibold disabled:opacity-50"
                               >
-                                View Details
+                                {actingId === req.id ? "..." : "Approve"}
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+                              <button
+                                onClick={() => { setSelected(req); setRejectNotes(""); }}
+                                disabled={actingId === req.id}
+                                className="px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 text-xs font-semibold disabled:opacity-40"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => setSelected(req)}
+                              className="px-3 py-1.5 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 text-xs font-semibold"
+                            >
+                              Details
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </Card>
 
-        {/* Review Modal */}
-        {showReviewModal && selectedRequest && (
-          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-            <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex items-start justify-between mb-4">
+        {/* Detail / Reject Modal */}
+        {selected && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <Card className="!p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-secondary-100">
-                    {selectedRequest.id}
+                  <h3 className="text-lg font-bold text-secondary-100">
+                    {selected.stockItem?.itemName ?? selected.stockItemId}
                   </h3>
-                  <p className="text-sm text-custom-700 mt-1">
-                    {selectedRequest.jobTitle} ({selectedRequest.jobId})
-                  </p>
-                  <span
-                    className={`inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full ${
-                      statusConfig[selectedRequest.status].bgColor
-                    } ${statusConfig[selectedRequest.status].color}`}
-                  >
-                    {statusConfig[selectedRequest.status].label}
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusConfig[selected.status].bgColor} ${statusConfig[selected.status].color}`}>
+                    {statusConfig[selected.status].label}
                   </span>
                 </div>
-                <button
-                  onClick={() => {
-                    setShowReviewModal(false);
-                    setResponseNotes("");
-                  }}
-                  className="text-custom-700 hover:text-secondary-100 text-2xl"
-                >
-                  <HiOutlineX className="w-6 h-6" />
+                <button onClick={() => setSelected(null)} className="text-custom-700 hover:text-secondary-100">
+                  <HiOutlineX className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">
-                      Requested By
-                    </p>
-                    <p className="text-base text-secondary-100">
-                      {selectedRequest.requestedBy}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">
-                      Department
-                    </p>
-                    <p className="text-base text-secondary-100">
-                      {selectedRequest.department}
-                    </p>
-                  </div>
+              <div className="space-y-3 text-sm mb-4">
+                <div className="flex justify-between">
+                  <span className="text-custom-700">Requested By</span>
+                  <span className="font-semibold">{selected.requester?.name ?? selected.requestedBy?.name ?? "—"}</span>
                 </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-custom-700 mb-3">
-                    Materials Requested
-                  </p>
-                  <div className="space-y-2">
-                    {selectedRequest.materials.map((mat, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-xl bg-custom-50 border border-custom-200 flex items-center justify-between"
-                      >
-                        <span className="text-sm font-semibold text-secondary-100">
-                          {mat.name}
-                        </span>
-                        <span className="text-sm text-custom-700">
-                          {mat.quantity} {mat.unit}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-custom-700">Role</span>
+                  <span className="font-semibold">
+                    {(() => {
+                      const role = selected.requester?.role ?? selected.requestedBy?.role;
+                      if (!role) return "—";
+                      const isHobe = role.toUpperCase() === "HOBE";
+                      return isHobe ? "Hobe" : "Receptionist";
+                    })()}
+                  </span>
                 </div>
-
-                {selectedRequest.notes && (
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">
-                      Request Notes
-                    </p>
-                    <p className="text-base text-secondary-100">{selectedRequest.notes}</p>
-                  </div>
+                <div className="flex justify-between">
+                  <span className="text-custom-700">Quantity</span>
+                  <span className="font-semibold">{parseFloat(selected.quantityOut)} {selected.stockItem?.unit}</span>
+                </div>
+                {selected.reason && (
+                  <div><p className="text-custom-700 mb-1">Reason</p><p>{selected.reason}</p></div>
                 )}
-
-                {selectedRequest.responseNotes && (
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">
-                      Response Notes
-                    </p>
-                    <p className="text-base text-secondary-100">
-                      {selectedRequest.responseNotes}
-                    </p>
-                  </div>
+                {selected.notes && (
+                  <div><p className="text-custom-700 mb-1">Notes</p><p>{selected.notes}</p></div>
                 )}
+              </div>
 
-                {selectedRequest.status === "pending" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-custom-700 mb-2">
-                      Response Notes
-                    </label>
+              {selected.status === "pending" && (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">Rejection Reason</label>
                     <textarea
-                      value={responseNotes}
-                      onChange={(e) => setResponseNotes(e.target.value)}
-                      placeholder="Add notes about material supply or rejection reason..."
+                      value={rejectNotes}
+                      onChange={(e) => setRejectNotes(e.target.value)}
                       rows={3}
-                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none"
+                      placeholder="Required for rejection..."
+                      className="w-full px-3 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none text-sm"
                     />
                   </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                {selectedRequest.status === "pending" && (
-                  <>
+                  <div className="flex gap-3">
                     <button
-                      onClick={() => handleReject(selectedRequest.id)}
-                      className="flex-1 px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 transition-colors text-sm font-semibold"
+                      onClick={() => handleApprove(selected.id)}
+                      disabled={actingId === selected.id}
+                      className="flex-1 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 text-sm font-semibold disabled:opacity-40"
                     >
-                      <HiOutlineXCircle className="w-4 h-4 inline mr-2" />
-                      Reject
+                      {actingId === selected.id ? "Approving..." : "Approve"}
                     </button>
                     <button
-                      onClick={() => handleApprove(selectedRequest.id)}
-                      className="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold"
+                      onClick={() => handleReject(selected.id)}
+                      disabled={actingId === selected.id || !rejectNotes.trim()}
+                      className="flex-1 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold disabled:opacity-40"
                     >
-                      <HiOutlineCheckCircle className="w-4 h-4 inline mr-2" />
-                      Approve & Supply
+                      {actingId === selected.id ? "Rejecting..." : "Reject"}
                     </button>
-                  </>
-                )}
-                {selectedRequest.status !== "pending" && (
-                  <button
-                    onClick={() => {
-                      setShowReviewModal(false);
-                      setResponseNotes("");
-                    }}
-                    className="flex-1 px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-sm font-semibold text-custom-700"
-                  >
-                    Close
-                  </button>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </Card>
           </div>
         )}

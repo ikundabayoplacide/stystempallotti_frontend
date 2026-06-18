@@ -16,7 +16,7 @@ import { Card } from "../../components/ui";
 import {
   useGetStockItemsQuery,
   useCreateStockSortieMutation,
-  useGetStockSortiesQuery,
+  useGetMySortiesQuery,
   type StockItem,
 } from "../../store/services/stockService";
 
@@ -189,7 +189,7 @@ export default function RequestsPage() {
     useGetStockItemsQuery({ type: "hobe", limit: 200 });
 
   const { data: sortiesData, isLoading: sortiesLoading, refetch: refetchSorties } =
-    useGetStockSortiesQuery({ limit: 100 });
+    useGetMySortiesQuery({ limit: 100 });
 
   const hobeItems = (stockData?.data ?? []).filter((item) => {
     const q = search.trim().toLowerCase();

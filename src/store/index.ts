@@ -19,6 +19,7 @@ import { visitsApi } from "./services/visitsService";
 import { materialRequestsApi } from "./services/materialRequestsService";
 import { reportsApi } from "./services/reportsService";
 import { hobeApi } from "./services/hobeService";
+import { notificationsApi } from "./services/notificationsService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -44,6 +45,7 @@ export const store = configureStore({
     [materialRequestsApi.reducerPath]: materialRequestsApi.reducer,
     [reportsApi.reducerPath]: reportsApi.reducer,
     [hobeApi.reducerPath]: hobeApi.reducer,
+    [notificationsApi.reducerPath]: notificationsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -66,7 +68,8 @@ export const store = configureStore({
       .concat(employeesApi.middleware)
       .concat(materialRequestsApi.middleware)
       .concat(reportsApi.middleware)
-      .concat(hobeApi.middleware),
+      .concat(hobeApi.middleware)
+      .concat(notificationsApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

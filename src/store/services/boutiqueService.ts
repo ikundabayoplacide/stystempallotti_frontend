@@ -436,6 +436,37 @@ export const boutiqueApi = createApi({
       transformResponse: (res: ApiResponse<BoutiqueRequest[]>) => res.data ?? [],
       providesTags: [{ type: "BoutiqueRequest", id: "LIST" }],
     }),
+
+    // GET /boutique-stock-requests — all requests (ADMIN, STOCK)
+    getAllBoutiqueRequests: builder.query<BoutiqueRequest[], { status?: BoutiqueRequestStatus } | void>({
+      query: (params) => ({
+        url: `${import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"}/boutique-stock-requests`,
+        params: (params ?? {}) as Record<string, unknown>,
+      }),
+      transformResponse: (res: ApiResponse<BoutiqueRequest[]>) => res.data ?? [],
+      providesTags: [{ type: "BoutiqueRequest", id: "LIST" }],
+    }),
+
+    // PATCH /boutique-stock-requests/:id/approve — ADMIN, STOCK
+    approveBoutiqueRequest: builder.mutation<BoutiqueRequest, string>({
+      query: (id) => ({
+        url: `${import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"}/boutique-stock-requests/${id}/approve`,
+        method: "PATCH",
+      }),
+      transformResponse: (res: ApiResponse<BoutiqueRequest>) => res.data,
+      invalidatesTags: [{ type: "BoutiqueRequest", id: "LIST" }],
+    }),
+
+    // PATCH /boutique-stock-requests/:id/reject — ADMIN, STOCK
+    rejectBoutiqueRequest: builder.mutation<BoutiqueRequest, { id: string; responseNotes: string }>({
+      query: ({ id, ...body }) => ({
+        url: `${import.meta.env.VITE_API_URL ?? "http://localhost:8000/api"}/boutique-stock-requests/${id}/reject`,
+        method: "PATCH",
+        body,
+      }),
+      transformResponse: (res: ApiResponse<BoutiqueRequest>) => res.data,
+      invalidatesTags: [{ type: "BoutiqueRequest", id: "LIST" }],
+    }),
   }),
 });
 
@@ -457,4 +488,7 @@ export const {
   useGetSalesSummaryQuery,
   useCreateBoutiqueRequestMutation,
   useGetMyBoutiqueRequestsQuery,
+  useGetAllBoutiqueRequestsQuery,
+  useApproveBoutiqueRequestMutation,
+  useRejectBoutiqueRequestMutation,
 } = boutiqueApi;

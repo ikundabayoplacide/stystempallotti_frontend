@@ -23,7 +23,7 @@ import {
   useAssignDepartmentMutation,
 } from "../../store/services/employeesService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
-import { useGetUsersQuery } from "../../store/services/usersService";
+import { useGetUsersQuery, type User } from "../../store/services/usersService";
 
 export default function EmployeesPage() {
   const { userName } = useAuth();
@@ -467,12 +467,13 @@ function EmployeeFormModal({ employee, onClose }: { employee?: any; onClose: () 
 // ─── Link User Modal ─────────────────────────────────────────────────────────
 
 function LinkUserModal({ employee, onClose }: { employee: any; onClose: () => void }) {
-  const { data: users = [], isLoading: loadingUsers } = useGetUsersQuery();
+  const { data: usersData, isLoading: loadingUsers } = useGetUsersQuery();
+  const users = usersData?.users ?? [];
   const [updateEmployee, { isLoading, error }] = useUpdateEmployeeMutation();
   const [selectedUserId, setSelectedUserId] = useState<string>(employee.userId ?? "");
 
   // Only show WORKER role users for linking
-  const workerUsers = users.filter((u) => u.role === "WORKER");
+  const workerUsers = users.filter((u: User) => u.role === "WORKER");
 
   async function handleSave() {
     try {

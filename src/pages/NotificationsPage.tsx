@@ -1,110 +1,115 @@
 import { useState } from "react";
 import {
-    HiOutlineBell,
-    HiOutlineCheckCircle,
-    HiOutlineClock,
-    HiOutlineExclamation,
-    HiOutlineInformationCircle,
-    HiOutlineTrash
+  HiOutlineBell,
+  HiOutlineCheckCircle,
+  HiOutlineClock,
+  HiOutlineCurrencyDollar,
+  HiOutlineDocumentText,
+  HiOutlineExclamation,
+  HiOutlineInformationCircle,
+  HiOutlineShoppingBag,
+  HiOutlineTrash,
+  HiOutlineUser,
 } from "react-icons/hi";
 import { DashboardLayout } from "../components";
 import { Card } from "../components/ui";
 import type { UserRole } from "../context/AuthContext";
+import {
+  useDeleteAllMutation,
+  useDeleteOneMutation,
+  useGetNotificationsQuery,
+  useMarkAllReadMutation,
+  useMarkOneReadMutation,
+  type NotificationType,
+} from "../store/services/notificationsService";
 
-type NotificationType = "info" | "warning" | "success" | "urgent";
+// ─── Icon / colour config per type ───────────────────────────────────────────
 
-interface Notification {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  actionUrl?: string;
-}
-
-const initialNotifications: Notification[] = [
-  {
-    id: "N-001",
-    type: "urgent",
-    title: "Urgent: Job Deadline Approaching",
-    message: "JOB-001 (Print 500 brochures) is due in 2 hours. Current progress: 65%",
-    timestamp: "2026-05-01T12:00:00",
-    read: false,
-    actionUrl: "/worker/tasks",
-  },
-  {
-    id: "N-002",
-    type: "success",
-    title: "Job Completed",
-    message: "JOB-003 (Print business cards) has been marked as completed by John Worker",
-    timestamp: "2026-05-01T09:30:00",
-    read: false,
-  },
-  {
-    id: "N-003",
-    type: "info",
-    title: "New Job Assigned",
-    message: "You have been assigned a new job: JOB-008 (Print 1000 posters)",
-    timestamp: "2026-05-01T08:00:00",
-    read: false,
-    actionUrl: "/worker/tasks",
-  },
-  {
-    id: "N-004",
-    type: "warning",
-    title: "High Workload Alert",
-    message: "Worker Mike Johnson has 3 active jobs. Consider redistributing workload.",
-    timestamp: "2026-04-30T16:00:00",
-    read: true,
-  },
-  {
-    id: "N-005",
-    type: "info",
-    title: "Subtask Added",
-    message: "A new subtask was added to JOB-001: Quality check and packaging",
-    timestamp: "2026-04-30T14:00:00",
-    read: true,
-  },
-  {
-    id: "N-006",
-    type: "success",
-    title: "Daily Goal Achieved",
-    message: "Congratulations! You completed 5 jobs today.",
-    timestamp: "2026-04-30T17:00:00",
-    read: true,
-  },
-];
-
-const notificationConfig: Record<
+const typeConfig: Record<
   NotificationType,
-  { icon: any; color: string; bgColor: string; borderColor: string }
+  { icon: React.ElementType; color: string; bg: string; border: string }
 > = {
-  info: {
-    icon: HiOutlineInformationCircle,
+  CUSTOMER_CREATED: {
+    icon: HiOutlineUser,
     color: "text-blue-600",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
+    bg: "bg-blue-50",
+    border: "border-blue-200",
   },
-  warning: {
-    icon: HiOutlineExclamation,
-    color: "text-yellow-600",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-200",
-  },
-  success: {
+  CUSTOMER_CHECKIN: {
     icon: HiOutlineCheckCircle,
     color: "text-green-600",
-    bgColor: "bg-green-50",
-    borderColor: "border-green-200",
+    bg: "bg-green-50",
+    border: "border-green-200",
   },
-  urgent: {
+  PAYMENT_COLLECTED: {
+    icon: HiOutlineCurrencyDollar,
+    color: "text-emerald-600",
+    bg: "bg-emerald-50",
+    border: "border-emerald-200",
+  },
+  JOB_DELIVERED: {
+    icon: HiOutlineCheckCircle,
+    color: "text-green-700",
+    bg: "bg-green-50",
+    border: "border-green-200",
+  },
+  BOUTIQUE_STOCK_REQUEST: {
+    icon: HiOutlineExclamation,
+    color: "text-yellow-600",
+    bg: "bg-yellow-50",
+    border: "border-yellow-200",
+  },
+  BOUTIQUE_PRODUCT_ADDED: {
+    icon: HiOutlineShoppingBag,
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
+  },
+  REPORT_GENERATED: {
+    icon: HiOutlineDocumentText,
+    color: "text-indigo-600",
+    bg: "bg-indigo-50",
+    border: "border-indigo-200",
+  },
+  JOB_CREATED: {
     icon: HiOutlineClock,
-    color: "text-red-600",
-    bgColor: "bg-red-50",
-    borderColor: "border-red-200",
+    color: "text-orange-600",
+    bg: "bg-orange-50",
+    border: "border-orange-200",
+  },
+  JOB_ASSIGNED: {
+    icon: HiOutlineInformationCircle,
+    color: "text-sky-600",
+    bg: "bg-sky-50",
+    border: "border-sky-200",
+  },
+  JOB_STATUS_CHANGED: {
+    icon: HiOutlineInformationCircle,
+    color: "text-cyan-600",
+    bg: "bg-cyan-50",
+    border: "border-cyan-200",
   },
 };
+
+const fallbackConfig = {
+  icon: HiOutlineBell,
+  color: "text-custom-700",
+  bg: "bg-custom-100",
+  border: "border-custom-300",
+};
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${days}d ago`;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface NotificationsPageProps {
   userRole: UserRole;
@@ -115,54 +120,32 @@ export default function NotificationsPage({
   userRole,
   userName = "User",
 }: NotificationsPageProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [page, setPage] = useState(1);
+  const limit = 20;
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const { data, isLoading, isFetching } = useGetNotificationsQuery({
+    page,
+    limit,
+    unreadOnly: filter === "unread" ? true : undefined,
+  });
 
-  const filteredNotifications =
-    filter === "unread"
-      ? notifications.filter((n) => !n.read)
-      : notifications;
+  const [markOne] = useMarkOneReadMutation();
+  const [markAll] = useMarkAllReadMutation();
+  const [deleteOne] = useDeleteOneMutation();
+  const [deleteAll] = useDeleteAllMutation();
 
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-  };
+  const notifications = data?.notifications ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const handleMarkAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
-  };
-
-  const handleDelete = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
-  };
-
-  const handleClearAll = () => {
-    setNotifications([]);
-  };
-
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const time = new Date(timestamp);
-    const diffInMs = now.getTime() - time.getTime();
-    const diffInMins = Math.floor(diffInMs / 60000);
-    const diffInHours = Math.floor(diffInMs / 3600000);
-    const diffInDays = Math.floor(diffInMs / 86400000);
-
-    if (diffInMins < 1) return "Just now";
-    if (diffInMins < 60) return `${diffInMins}m ago`;
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${diffInDays}d ago`;
+  const handleFilterChange = (f: "all" | "unread") => {
+    setFilter(f);
+    setPage(1);
   };
 
   return (
-    <DashboardLayout
-      userRole={userRole}
-      userName={userName}
-      notificationCount={unreadCount}
-    >
+    <DashboardLayout userRole={userRole} userName={userName}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -172,15 +155,18 @@ export default function NotificationsPage({
               Notifications
             </h1>
             <p className="text-sm text-custom-700 mt-1">
-              {unreadCount > 0
+              {isLoading
+                ? "Loading…"
+                : unreadCount > 0
                 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? "s" : ""}`
                 : "You're all caught up!"}
             </p>
           </div>
+
           <div className="flex gap-2">
             {unreadCount > 0 && (
               <button
-                onClick={handleMarkAllAsRead}
+                onClick={() => markAll()}
                 className="px-4 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold"
               >
                 Mark All as Read
@@ -188,7 +174,7 @@ export default function NotificationsPage({
             )}
             {notifications.length > 0 && (
               <button
-                onClick={handleClearAll}
+                onClick={() => deleteAll()}
                 className="px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 transition-colors text-sm font-semibold"
               >
                 Clear All
@@ -199,62 +185,49 @@ export default function NotificationsPage({
 
         {/* Filter Tabs */}
         <div className="flex gap-2">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold ${
-              filter === "all"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            All ({notifications.length})
-          </button>
-          <button
-            onClick={() => setFilter("unread")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold ${
-              filter === "unread"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            Unread ({unreadCount})
-          </button>
+          {(["all", "unread"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => handleFilterChange(f)}
+              className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold capitalize ${
+                filter === f
+                  ? "bg-primary-500 text-white"
+                  : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+              }`}
+            >
+              {f === "all" ? `All (${data?.total ?? 0})` : `Unread (${unreadCount})`}
+            </button>
+          ))}
         </div>
 
-        {/* Notifications List */}
-        {filteredNotifications.length === 0 ? (
+        {/* List */}
+        {isLoading ? (
+          <Card className="!p-12 text-center text-custom-700 text-sm">Loading…</Card>
+        ) : notifications.length === 0 ? (
           <Card className="!p-12 text-center">
             <HiOutlineBell className="w-16 h-16 mx-auto text-custom-400 mb-4" />
-            <h3 className="text-lg font-bold text-secondary-100 mb-2">
-              No notifications
-            </h3>
+            <h3 className="text-lg font-bold text-secondary-100 mb-2">No notifications</h3>
             <p className="text-sm text-custom-700">
-              {filter === "unread"
-                ? "You have no unread notifications"
-                : "You're all caught up!"}
+              {filter === "unread" ? "No unread notifications" : "You're all caught up!"}
             </p>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {filteredNotifications.map((notification) => {
-              const config = notificationConfig[notification.type];
-              const Icon = config.icon;
+          <div className={`space-y-3 transition-opacity ${isFetching ? "opacity-60" : ""}`}>
+            {notifications.map((n) => {
+              const cfg = typeConfig[n.type] ?? fallbackConfig;
+              const Icon = cfg.icon;
 
               return (
                 <Card
-                  key={notification.id}
-                  className={`!p-4 ${
-                    !notification.read
-                      ? "border-l-4 border-l-primary-500"
-                      : "opacity-75"
-                  }`}
+                  key={n.id}
+                  className={`!p-4 ${!n.isRead ? "border-l-4 border-l-primary-500" : "opacity-75"}`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
                     <div
-                      className={`w-10 h-10 rounded-full ${config.bgColor} border ${config.borderColor} flex items-center justify-center flex-shrink-0`}
+                      className={`w-10 h-10 rounded-full ${cfg.bg} border ${cfg.border} flex items-center justify-center flex-shrink-0`}
                     >
-                      <Icon className={`w-5 h-5 ${config.color}`} />
+                      <Icon className={`w-5 h-5 ${cfg.color}`} />
                     </div>
 
                     {/* Content */}
@@ -262,57 +235,79 @@ export default function NotificationsPage({
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <h3
                           className={`text-sm font-bold ${
-                            !notification.read
-                              ? "text-secondary-100"
-                              : "text-custom-700"
+                            !n.isRead ? "text-secondary-100" : "text-custom-700"
                           }`}
                         >
-                          {notification.title}
+                          {n.title}
                         </h3>
                         <span className="text-xs text-custom-700 whitespace-nowrap">
-                          {getTimeAgo(notification.timestamp)}
+                          {timeAgo(n.createdAt)}
                         </span>
                       </div>
-                      <p className="text-sm text-custom-700 mb-2">
-                        {notification.message}
-                      </p>
+
+                      <p className="text-sm text-custom-700 mb-2">{n.message}</p>
+
+                      {/* Type badge */}
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-custom-100 text-custom-700 mb-2">
+                        {n.type.replace(/_/g, " ")}
+                      </span>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {!notification.read && (
+                      <div className="flex items-center gap-3">
+                        {!n.isRead && (
                           <button
-                            onClick={() => handleMarkAsRead(notification.id)}
+                            onClick={() => markOne(n.id)}
                             className="text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
                           >
                             Mark as read
                           </button>
                         )}
-                        {notification.actionUrl && (
-                          <a
-                            href={notification.actionUrl}
-                            className="text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
-                          >
-                            View →
-                          </a>
+                        {n.relatedEntityType && n.relatedEntityId && (
+                          <span className="text-xs text-custom-500">
+                            Ref: {n.relatedEntityType} #{n.relatedEntityId}
+                          </span>
                         )}
                         <button
-                          onClick={() => handleDelete(notification.id)}
+                          onClick={() => deleteOne(n.id)}
                           className="ml-auto text-xs font-semibold text-red-500 hover:text-red-600 transition-colors flex items-center gap-1"
                         >
                           <HiOutlineTrash className="w-3 h-3" />
-                          Delete
+                          Remove
                         </button>
                       </div>
                     </div>
 
-                    {/* Unread Indicator */}
-                    {!notification.read && (
+                    {/* Unread dot */}
+                    {!n.isRead && (
                       <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
                     )}
                   </div>
                 </Card>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Prev
+            </button>
+            <span className="text-sm text-custom-700">
+              {page} / {totalPages}
+            </span>
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>

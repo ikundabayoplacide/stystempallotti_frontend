@@ -27,9 +27,19 @@ export interface User {
 }
 
 export interface GetUsersParams {
-  departmentId?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
   role?: string;
+  departmentId?: string;
   isActive?: boolean;
+}
+
+export interface PaginatedUsers {
+  users: User[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
 export interface CreateUserPayload {
@@ -53,11 +63,12 @@ export interface UpdateUserPayload {
   isActive?: boolean;
 }
 
-// Generic wrapper the backend uses: { success, message, data }
+// Generic wrapper the backend uses: { success, message, data, pagination }
 interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
+  pagination?: { total: number; page: number; limit: number; totalPages: number };
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -82,14 +93,19 @@ export const usersApi = createApi({
 
   endpoints: (builder) => ({
 
-    // GET /users  (supports ?departmentId=, ?role=, ?isActive=)
-    getUsers: builder.query<User[], GetUsersParams | void>({
+    // GET /users  (paginated, supports ?page=, ?limit=, ?search=, ?role=, ?departmentId=)
+    getUsers: builder.query<PaginatedUsers, GetUsersParams | void>({
       query: (params) => ({ url: "/users", params: (params ?? {}) as Record<string, any> }),
-      transformResponse: (res: ApiResponse<User[]>) => res.data,
+      transformResponse: (res: ApiResponse<User[]>) => ({
+        users: res.data ?? [],
+        total: res.pagination?.total ?? 0,
+        page: res.pagination?.page ?? 1,
+        totalPages: res.pagination?.totalPages ?? 1,
+      }),
       providesTags: (result) =>
-        result
+        result?.users
           ? [
-              ...result.map(({ id }) => ({ type: "User" as const, id })),
+              ...result.users.map(({ id }) => ({ type: "User" as const, id })),
               { type: "User", id: "LIST" },
             ]
           : [{ type: "User", id: "LIST" }],

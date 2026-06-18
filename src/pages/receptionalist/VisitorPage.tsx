@@ -37,6 +37,7 @@ import {
   type Visit,
   type VisitType,
 } from "../../store/services/visitsService";
+import { useLazyGetNotificationStatsQuery } from "../../store/services/notificationsService";
 
 // ─── Notes cell ───────────────────────────────────────────────────────────────
 
@@ -288,6 +289,12 @@ export default function VisitorPage() {
   const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null);
 
   // ── Data ────────────────────────────────────────────────────────────────────
+  const { data: totalData } = useGetCustomersQuery({ limit: 1 });
+  const { data: bizData }   = useGetCustomersQuery({ limit: 1, type: "BUSINESS" });
+  const { data: visData }   = useGetCustomersQuery({ limit: 1, type: "VISITOR" });
+  const { data: bouData }   = useGetCustomersQuery({ limit: 1, type: "BOUTIQUE" });
+  const { data: hobData }   = useGetCustomersQuery({ limit: 1, type: "HOBE" });
+
   const { data, isLoading, isError } = useGetCustomersQuery({
     page, limit: pageSize,
     search: search || undefined,
@@ -319,6 +326,7 @@ export default function VisitorPage() {
 
   const [createCustomer, { isLoading: isCreating }] = useCreateCustomerMutation();
   const [updateCustomer, { isLoading: isUpdating }] = useUpdateCustomerMutation();
+  const [getNotifStats] = useLazyGetNotificationStatsQuery();
 
   const customers = data?.customers ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -367,7 +375,22 @@ export default function VisitorPage() {
       type: formData.type,
     };
     try {
-      await createCustomer(payload as CreateCustomerPayload).unwrap();
+      const newCustomer = await createCustomer(payload as CreateCustomerPayload).unwrap();
+      console.log('[NOTIF-DEBUG] Customer created:', { id: newCustomer.id, name: newCustomer.name, type: newCustomer.type });
+
+      // Check if notification was generated
+      try {
+        const stats = await getNotifStats().unwrap();
+        console.log('[NOTIF-DEBUG] Notification stats after customer create:', stats);
+        if (stats.latest?.length) {
+          console.log('[NOTIF-DEBUG] Latest notification:', stats.latest[0]);
+        } else {
+          console.warn('[NOTIF-DEBUG] No notifications found — backend may not have fired notify() for type:', payload.type);
+        }
+      } catch (notifErr) {
+        console.error('[NOTIF-DEBUG] Failed to fetch notification stats:', notifErr);
+      }
+
       toast.success("Customer created successfully");
       closeModal();
     } catch (e: unknown) {
@@ -459,35 +482,35 @@ export default function VisitorPage() {
             <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-2">
               <HiOutlineUsers className="w-5 h-5 text-primary-600" />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{total}</p>
+            <p className="text-2xl font-bold text-secondary-100">{totalData?.total ?? 0}</p>
             <p className="text-xs text-custom-700">Total Customers</p>
           </Card>
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center mb-2">
               <HiOutlineOfficeBuilding className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "BUSINESS").length}</p>
+            <p className="text-2xl font-bold text-secondary-100">{bizData?.total ?? 0}</p>
             <p className="text-xs text-custom-700">Business</p>
           </Card>
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center mb-2">
               <HiOutlineShoppingBag className="w-5 h-5 text-pink-600" />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "BOUTIQUE").length}</p>
+            <p className="text-2xl font-bold text-secondary-100">{bouData?.total ?? 0}</p>
             <p className="text-xs text-custom-700">Boutique</p>
           </Card>
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2">
               <HiOutlineUserGroup className="w-5 h-5 text-purple-600" />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "VISITOR").length}</p>
+            <p className="text-2xl font-bold text-secondary-100">{visData?.total ?? 0}</p>
             <p className="text-xs text-custom-700">Visit</p>
           </Card>
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center mb-2">
               <HiOutlineHome className="w-5 h-5 text-yellow-600" />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "HOBE").length}</p>
+            <p className="text-2xl font-bold text-secondary-100">{hobData?.total ?? 0}</p>
             <p className="text-xs text-custom-700">Hobe</p>
           </Card>
           <Card className="!p-4">

@@ -19,19 +19,22 @@ import { Card } from "../../components/ui";
 import {
   useGetCategoriesQuery,
   useGetProductsQuery,
-  useCreateBoutiqueRequestMutation,
   useCreateProductMutation,
   useRecordSaleMutation,
   useUpdateSaleMutation,
   useGetSalesQuery,
-  useGetMyBoutiqueRequestsQuery,
   type BoutiqueProduct,
-  type BoutiqueRequest,
   type BoutiqueSale,
   type StockStatus,
-  type BoutiqueRequestStatus,
   type PaymentMethod,
 } from "../../store/services/boutiqueService";
+import {
+  useCreateStockSortieMutation,
+  useGetMySortiesQuery,
+  useGetStockItemsQuery,
+  type StockSortie,
+  type StockItem,
+} from "../../store/services/stockService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -610,41 +613,52 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
 
 // ─── Stock Request Modal ─────────────────────────────────────────────────────
 
-interface RequestItem { product: BoutiqueProduct; quantity: number; }
+interface RequestItem { stockItem: StockItem; quantity: number; }
 
-function StockRequestModal({ products, onClose, onSuccess }: {
-  products: BoutiqueProduct[];
+function StockRequestModal({ onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [items, setItems] = useState<RequestItem[]>([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [qty, setQty] = useState("1");
-  const [notes, setNotes] = useState("");
-  const [createRequest, { isLoading }] = useCreateBoutiqueRequestMutation();
+  const [items, setItems]             = useState<RequestItem[]>([]);
+  const [selectedId, setSelectedId]   = useState("");
+  const [qty, setQty]                 = useState("1");
+  const [reason, setReason]           = useState("");
+  const [createSortie, { isLoading }] = useCreateStockSortieMutation();
+
+  // Fetch boutique-type stock items — backend filters by RECEPTIONIST role automatically
+  const { data: stockData, isLoading: stockLoading } = useGetStockItemsQuery({ type: "boutique", limit: 200 });
+  const stockItems = stockData?.data ?? [];
+  console.log("[StockRequestModal] stockItems →", stockItems.length, stockItems.map((s) => ({ id: s.id, name: s.itemName, type: s.type, stock: s.currentStock })));
 
   const addItem = () => {
-    const product = products.find((p) => p.id === selectedId);
-    if (!product) return;
-    if (items.find((i) => i.product.id === selectedId)) {
-      toast.error("Product already added"); return;
+    const stockItem = stockItems.find((s) => s.id === selectedId);
+    if (!stockItem) return;
+    if (items.find((i) => i.stockItem.id === selectedId)) {
+      toast.error("Item already added"); return;
     }
     const q = parseInt(qty);
     if (!q || q <= 0) { toast.error("Enter a valid quantity"); return; }
-    setItems((prev) => [...prev, { product, quantity: q }]);
+    setItems((prev) => [...prev, { stockItem, quantity: q }]);
     setSelectedId(""); setQty("1");
   };
 
-  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.product.id !== id));
+  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.stockItem.id !== id));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (items.length === 0) { toast.error("Add at least one product"); return; }
+    if (items.length === 0) { toast.error("Add at least one item"); return; }
+    if (!reason.trim())     { toast.error("Please provide a reason"); return; }
+
     try {
-      await createRequest({
-        notes: notes.trim() || undefined,
-        items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
-      }).unwrap();
+      await Promise.all(
+        items.map((i) =>
+          createSortie({
+            stockItemId: i.stockItem.id,
+            quantityOut: i.quantity,
+            reason: reason.trim(),
+          }).unwrap()
+        )
+      );
       toast.success("Stock request submitted successfully");
       onSuccess();
     } catch (err: any) {
@@ -652,7 +666,7 @@ function StockRequestModal({ products, onClose, onSuccess }: {
     }
   };
 
-  const availableProducts = products.filter((p) => !items.find((i) => i.product.id === p.id));
+  const available = stockItems.filter((s) => !items.find((i) => i.stockItem.id === s.id));
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -673,11 +687,15 @@ function StockRequestModal({ products, onClose, onSuccess }: {
               <select
                 value={selectedId}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                className="flex-1 px-3 py-2 rounded-xl w-64 border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
               >
-                <option value="">Select a product...</option>
-                {availableProducts.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} ({p.unit})</option>
+                <option value="">Select an item...</option>
+                {stockLoading
+                  ? <option disabled>Loading...</option>
+                  : available.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.itemName} — {s.currentStock} {s.unit} available
+                  </option>
                 ))}
               </select>
               <input
@@ -702,13 +720,13 @@ function StockRequestModal({ products, onClose, onSuccess }: {
                 <p className="text-xs font-bold text-secondary-100 uppercase tracking-wide">Items to Request ({items.length})</p>
               </div>
               {items.map((item) => (
-                <div key={item.product.id} className="flex items-center gap-3 px-4 py-3 border-b border-custom-100 last:border-0">
+                <div key={item.stockItem.id} className="flex items-center gap-3 px-4 py-3 border-b border-custom-100 last:border-0">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-secondary-100 truncate">{item.product.name}</p>
-                    <p className="text-xs text-custom-700">{item.product.unit} · SKU: {item.product.sku}</p>
+                    <p className="text-sm font-semibold text-secondary-100 truncate">{item.stockItem.itemName}</p>
+                    <p className="text-xs text-custom-700">{item.stockItem.category} · {item.stockItem.unit}</p>
                   </div>
                   <span className="text-sm font-bold text-primary-500 flex-shrink-0">× {item.quantity}</span>
-                  <button type="button" onClick={() => removeItem(item.product.id)}
+                  <button type="button" onClick={() => removeItem(item.stockItem.id)}
                     className="p-1 rounded-lg text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
                   >
                     <HiOutlineTrash className="w-4 h-4" />
@@ -718,13 +736,13 @@ function StockRequestModal({ products, onClose, onSuccess }: {
             </div>
           )}
 
-          {/* Notes */}
+          {/* Reason */}
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-2">
-              Notes <span className="text-xs font-normal text-custom-700">(optional)</span>
+              Reason *
             </label>
             <textarea
-              value={notes} onChange={(e) => setNotes(e.target.value)}
+              value={reason} onChange={(e) => setReason(e.target.value)}
               placeholder="e.g. Running low on A4 pads..."
               rows={2}
               className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors resize-none"
@@ -747,15 +765,14 @@ function StockRequestModal({ products, onClose, onSuccess }: {
 
 // ─── My Requests Modal ────────────────────────────────────────────────────────
 
-const requestStatusColors: Record<BoutiqueRequestStatus, string> = {
-  pending:   "bg-yellow-100 text-yellow-700",
-  approved:  "bg-emerald-100 text-emerald-700",
-  rejected:  "bg-red-100 text-red-700",
-  fulfilled: "bg-blue-100 text-blue-700",
+const sortieStatusColors: Record<string, string> = {
+  pending:  "bg-yellow-100 text-yellow-700",
+  approved: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-red-100 text-red-700",
 };
 
 function MyRequestsModal({ requests, onClose }: {
-  requests: BoutiqueRequest[];
+  requests: StockSortie[];
   onClose: () => void;
 }) {
   return (
@@ -780,8 +797,10 @@ function MyRequestsModal({ requests, onClose }: {
               <div key={req.id} className="rounded-xl border border-custom-300 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 bg-custom-50 border-b border-custom-200">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-mono font-bold text-primary-500">#{req.requestNumber}</span>
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${requestStatusColors[req.status]}`}>
+                    <span className="text-sm font-semibold text-secondary-100">
+                      {req.stockItem?.itemName ?? req.stockItemId}
+                    </span>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${sortieStatusColors[req.status] ?? "bg-gray-100 text-gray-600"}`}>
                       {req.status}
                     </span>
                   </div>
@@ -789,24 +808,10 @@ function MyRequestsModal({ requests, onClose }: {
                     {new Date(req.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                 </div>
-                <div className="divide-y divide-custom-100">
-                  {req.items.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between px-4 py-2.5">
-                      <span className="text-sm text-secondary-100">{item.product?.name ?? item.productId}</span>
-                      <span className="text-sm font-bold text-secondary-100">× {item.quantity}</span>
-                    </div>
-                  ))}
+                <div className="px-4 py-2.5 flex items-center gap-4 text-sm">
+                  <span className="text-custom-700">Qty: <span className="font-bold text-secondary-100">{parseFloat(req.quantityOut)}</span> {req.stockItem?.unit}</span>
+                  {req.reason && <span className="text-xs text-custom-700 truncate flex-1">"{req.reason}"</span>}
                 </div>
-                {req.notes && (
-                  <div className="px-4 py-2.5 bg-custom-50 border-t border-custom-200">
-                    <p className="text-xs text-custom-700">Note: {req.notes}</p>
-                  </div>
-                )}
-                {req.responseNotes && (
-                  <div className="px-4 py-2.5 bg-yellow-50 border-t border-yellow-100">
-                    <p className="text-xs text-yellow-700">Response: {req.responseNotes}</p>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -852,7 +857,8 @@ export default function BoutiquePage() {
     search: search.trim() || undefined,
   });
 
-  const { data: myRequests = [], refetch: refetchRequests } = useGetMyBoutiqueRequestsQuery();
+  const { data: mySortiesData, refetch: refetchRequests } = useGetMySortiesQuery({ limit: 100 });
+  const myRequests = mySortiesData?.data ?? [];
   const { data: partialData }  = useGetSalesQuery({ paymentStatus: "partial",  limit: 100 });
   const { data: overpaidData } = useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
   const pendingCount = (partialData?.sales?.length ?? 0) + (overpaidData?.sales?.length ?? 0);
@@ -917,6 +923,7 @@ export default function BoutiquePage() {
                   {myRequests.filter((r) => r.status === "pending").length}
                 </span>
               )}
+
             </button>
             <button
               onClick={() => setShowRequestModal(true)}
@@ -1208,9 +1215,8 @@ export default function BoutiquePage() {
       {/* ── Stock Request Modal ───────────────────────────────────────────────── */}
       {showRequestModal && (
         <StockRequestModal
-          products={products}
           onClose={() => setShowRequestModal(false)}
-          onSuccess={() => { setShowRequestModal(false); refetchRequests(); }}
+          onSuccess={() => { setShowRequestModal(false); refetchRequests(); refetch(); }}
         />
       )}
 

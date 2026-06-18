@@ -1,6 +1,8 @@
 import { useState } from "react";
 import {
   HiOutlineCheck,
+  HiOutlineChevronLeft,
+  HiOutlineChevronRight,
   HiOutlinePencil,
   HiOutlinePlus,
   HiOutlineSearch,
@@ -136,6 +138,8 @@ export default function UserManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -151,7 +155,20 @@ export default function UserManagementPage() {
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
 
   // ── RTK Query hooks ────────────────────────────────────────────────────────
-  const { data: users = [], isLoading, isError } = useGetUsersQuery();
+  const { data: activeData } = useGetUsersQuery({ limit: 1, isActive: true });
+  const { data: inactiveData } = useGetUsersQuery({ limit: 1, isActive: false });
+  const { data: workerData } = useGetUsersQuery({ limit: 1, role: "WORKER" });
+
+  const { data, isLoading, isError } = useGetUsersQuery({
+    page,
+    limit: PAGE_SIZE,
+    search: searchQuery || undefined,
+    role: filterRole !== "all" ? filterRole : undefined,
+    isActive: filterStatus === "active" ? true : filterStatus === "inactive" ? false : undefined,
+  });
+  const users: User[] = data?.users ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
   const { data: departments = [], isLoading: isLoadingDepts } = useGetDepartmentsQuery();
   const [createUser, { isLoading: isCreating }] = useCreateUserMutation();
   const [updateUser, { isLoading: isUpdating }] = useUpdateUserMutation();
@@ -166,20 +183,8 @@ export default function UserManagementPage() {
 
   // ── Filtering ──────────────────────────────────────────────────────────────
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesRole = filterRole === "all" || user.role === filterRole;
-    const matchesStatus =
-      filterStatus === "all" ||
-      (filterStatus === "active" && user.isActive) ||
-      (filterStatus === "inactive" && !user.isActive);
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Filtering is handled server-side
+  const filteredUsers = users;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -349,24 +354,24 @@ export default function UserManagementPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card className="!p-4">
             <p className="text-xs text-custom-700 mb-1">Total Users</p>
-            <p className="text-2xl font-bold text-secondary-100">{users.length}</p>
+            <p className="text-2xl font-bold text-secondary-100">{total}</p>
           </Card>
           <Card className="!p-4">
             <p className="text-xs text-custom-700 mb-1">Active Users</p>
             <p className="text-2xl font-bold text-green-600">
-              {users.filter((u) => u.isActive).length}
+              {activeData?.total ?? 0}
             </p>
           </Card>
           <Card className="!p-4">
             <p className="text-xs text-custom-700 mb-1">Inactive Users</p>
             <p className="text-2xl font-bold text-red-600">
-              {users.filter((u) => !u.isActive).length}
+              {inactiveData?.total ?? 0}
             </p>
           </Card>
           <Card className="!p-4">
             <p className="text-xs text-custom-700 mb-1">Workers</p>
             <p className="text-2xl font-bold text-secondary-100">
-              {users.filter((u) => u.role === "WORKER").length}
+              {workerData?.total ?? 0}
             </p>
           </Card>
         </div>
@@ -408,7 +413,7 @@ export default function UserManagementPage() {
                 ) : (
                   filteredUsers.map((user, index) => (
                     <tr key={user.id} className="hover:bg-custom-50 transition-colors">
-                      <td className="px-4">{index + 1}</td>
+                      <td className="px-4">{(page - 1) * PAGE_SIZE + index + 1}</td>
                       <td className="px-4 py-4">
                         <div>
                           <p className="text-sm font-bold text-secondary-100">{user.name}</p>
@@ -482,6 +487,31 @@ export default function UserManagementPage() {
             </table>
           </div>
         </Card>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-custom-700">
+              Page {page} of {totalPages} &mdash; {total} users
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2 rounded-lg border border-custom-300 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <HiOutlineChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-2 rounded-lg border border-custom-300 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <HiOutlineChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Create / Edit Modal ───────────────────────────────────────────── */}
         {showCreateModal && (

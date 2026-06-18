@@ -67,32 +67,34 @@ interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
+  pagination?: { total: number; page: number; limit: number; totalPages: number };
 }
 
 // Normalize whatever shape the backend sends into PaginatedCustomers
-function normalizePaginatedCustomers(raw: unknown): PaginatedCustomers {
-  // Shape A: { customers: [...], total, page, limit, totalPages }
+function normalizePaginatedCustomers(res: ApiResponse<unknown>): PaginatedCustomers {
+  const raw = res.data;
+  const pagination = res.pagination;
+  // Shape A: data is { customers: [...], total, ... }
   if (raw && typeof raw === "object" && "customers" in raw) {
     const r = raw as PaginatedCustomers;
     return {
       customers: Array.isArray(r.customers) ? r.customers : [],
-      total: r.total ?? 0,
-      page: r.page ?? 1,
-      limit: r.limit ?? 10,
-      totalPages: r.totalPages ?? 1,
+      total: pagination?.total ?? r.total ?? 0,
+      page: pagination?.page ?? r.page ?? 1,
+      limit: pagination?.limit ?? r.limit ?? 10,
+      totalPages: pagination?.totalPages ?? r.totalPages ?? 1,
     };
   }
-  // Shape B: flat array
+  // Shape B: data is a flat array, pagination is top-level
   if (Array.isArray(raw)) {
     return {
       customers: raw as Customer[],
-      total: (raw as Customer[]).length,
-      page: 1,
-      limit: (raw as Customer[]).length,
-      totalPages: 1,
+      total: pagination?.total ?? (raw as Customer[]).length,
+      page: pagination?.page ?? 1,
+      limit: pagination?.limit ?? (raw as Customer[]).length,
+      totalPages: pagination?.totalPages ?? 1,
     };
   }
-  // Fallback
   return { customers: [], total: 0, page: 1, limit: 10, totalPages: 1 };
 }
 
@@ -123,7 +125,7 @@ export const customersApi = createApi({
         params: params ?? {},
       }),
       transformResponse: (res: ApiResponse<unknown>) =>
-        normalizePaginatedCustomers(res.data),
+        normalizePaginatedCustomers(res),
       providesTags: (result) =>
         result?.customers?.length
           ? [

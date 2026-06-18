@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { HiOutlineBell, HiOutlineMenu } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
+import { useGetUnreadCountQuery } from "../store/services/notificationsService";
 import DashboardSidebar from "./DashboardSidebar";
 
 interface DashboardLayoutProps {
@@ -9,6 +10,7 @@ interface DashboardLayoutProps {
   userRole?: UserRole;
   userName?: string;
   showNotifications?: boolean;
+  /** @deprecated — badge count now comes from the API automatically */
   notificationCount?: number;
 }
 
@@ -17,11 +19,16 @@ export default function DashboardLayout({
   userRole: userRoleProp,
   userName: userNameProp,
   showNotifications = true,
-  notificationCount = 0,
 }: DashboardLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
-  const { userRole: authRole, userName: authName } = useAuth();
+  const { userRole: authRole, userName: authName, isAuthenticated } = useAuth();
+
+  // Poll unread count every 30 s; skip when not logged in
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery(undefined, {
+    skip: !isAuthenticated,
+    pollingInterval: 30_000,
+  });
 
   // Always use the authenticated user's role and name — never trust hardcoded props
   const userRole = (authRole ?? userRoleProp ?? "receptionist") as UserRole;
@@ -83,9 +90,9 @@ export default function DashboardLayout({
                 className="relative p-2 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100"
               >
                 <HiOutlineBell className="w-6 h-6" />
-                {notificationCount > 0 && (
+                {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-secondary-200 text-[10px] font-bold rounded-full flex items-center justify-center">
-                    {notificationCount > 9 ? "9+" : notificationCount}
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </button>
