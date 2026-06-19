@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
 import {
   HiOutlineArchive,
   HiOutlineBriefcase,
@@ -10,7 +9,6 @@ import {
   HiOutlineDocumentText,
   HiOutlineExclamationCircle,
   HiOutlineRefresh,
-  HiOutlineX,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -20,7 +18,7 @@ import {
   useGetMyEmployeeProfileQuery,
   type EmployeeJob,
 } from "../../store/services/employeesService";
-import { useCreateReportMutation } from "../../store/services/reportsService";
+import { GenerateReportModal } from "../../components";
 import { useGetMyMaterialRequestsQuery } from "../../store/services/materialRequestsService";
 import { useAuth } from "../../context/AuthContext";
 import { jobStatusConfig } from "../../types/JobStatus";
@@ -154,6 +152,32 @@ async function buildPdf(title: string, headers: string[], rows: string[][], summ
   pdf.save(`${title.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`);
 }
 
+// ─── PDF Action Buttons ──────────────────────────────────────────────────────
+
+function PdfButtons({ title, getExportData }: {
+  title: string;
+  getExportData: () => { headers: string[]; rows: string[][]; summary: SummaryRow[] };
+}) {
+  const [showModal, setShowModal] = useState(false);
+  const handlePdf = () => {
+    const { headers, rows, summary } = getExportData();
+    buildPdf(title, headers, rows, summary).catch((err) => alert("PDF error: " + (err as Error).message));
+  };
+  return (
+    <>
+      <button onClick={handlePdf}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
+        <HiOutlineDocumentDownload className="w-4 h-4" /> PDF
+      </button>
+      <button onClick={() => setShowModal(true)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors">
+        <HiOutlineDocumentText className="w-4 h-4" /> Generate Report
+      </button>
+      {showModal && <GenerateReportModal title={title} onClose={() => setShowModal(false)} />}
+    </>
+  );
+}
+
 // ─── Shared UI components ─────────────────────────────────────────────────────
 
 function PeriodTabs({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
@@ -177,132 +201,6 @@ function StatCard({ label, value, color = "text-secondary-100" }: {
       <p className="text-xs text-custom-700 mb-1">{label}</p>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
     </Card>
-  );
-}
-
-// ─── Generate Report Modal ────────────────────────────────────────────────────
-
-type ReportItem = { record: string; quantity: string; amount: string };
-
-function GenerateReportModal({ title, onClose }: { title: string; onClose: () => void }) {
-  const [purpose, setPurpose] = useState("");
-  const [items, setItems]     = useState<ReportItem[]>([{ record: "", quantity: "", amount: "" }]);
-  const [file, setFile]       = useState<File | null>(null);
-  const [notes, setNotes]     = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [createReport] = useCreateReportMutation();
-
-  const addItem    = () => setItems((p) => [...p, { record: "", quantity: "", amount: "" }]);
-  const removeItem = (i: number) => setItems((p) => p.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, f: keyof ReportItem, v: string) =>
-    setItems((p) => p.map((item, idx) => idx === i ? { ...item, [f]: v } : item));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await createReport({
-        title, purpose,
-        items: items.filter((it) => it.record.trim()),
-        notes: notes.trim() || undefined,
-        attachment: file ?? undefined,
-      }).unwrap();
-      toast.success("Report submitted successfully");
-      onClose();
-    } catch { toast.error("Failed to submit report"); }
-    finally { setSubmitting(false); }
-  };
-
-  const cls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-style-500 rounded-2xl shadow-xl max-w-lg w-full my-8 p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-bold text-secondary-100">Generate Report</h3>
-            <p className="text-sm text-custom-700 mt-0.5">{title}</p>
-          </div>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Purpose / Subject *</label>
-            <input required value={purpose} onChange={(e) => setPurpose(e.target.value)}
-              placeholder="e.g. Daily work summary" className={cls} />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-secondary-100">Records</label>
-              <button type="button" onClick={addItem} className="text-xs font-semibold text-primary-500 hover:text-primary-600">+ Add Row</button>
-            </div>
-            <div className="space-y-2">
-              {items.map((item, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <input value={item.record} onChange={(e) => updateItem(i, "record", e.target.value)}
-                    placeholder="Item / Record *"
-                    className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-                  <input type="number" min="0" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)}
-                    placeholder="Qty"
-                    className="w-20 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-                  <input type="number" min="0" value={item.amount} onChange={(e) => updateItem(i, "amount", e.target.value)}
-                    placeholder="Amount"
-                    className="w-28 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600"><HiOutlineX className="w-4 h-4" /></button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Attach File <span className="text-custom-700 font-normal">(optional)</span></label>
-            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-custom-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600" />
-            {file && <p className="text-xs text-emerald-600 mt-1">✓ {file.name}</p>}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Notes <span className="text-custom-700 font-normal">(optional)</span></label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-              placeholder="Optional remarks..."
-              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
-          </div>
-          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={submitting}
-              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40">
-              {submitting ? "Submitting…" : "Submit Report"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function PdfButtons({ title, getExportData }: {
-  title: string;
-  getExportData: () => { headers: string[]; rows: string[][]; summary: SummaryRow[] };
-}) {
-  const [showModal, setShowModal] = useState(false);
-  const handlePdf = () => {
-    const { headers, rows, summary } = getExportData();
-    buildPdf(title, headers, rows, summary).catch((err) => alert("PDF error: " + (err as Error).message));
-  };
-  return (
-    <>
-      <button onClick={handlePdf}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
-        <HiOutlineDocumentDownload className="w-4 h-4" /> PDF
-      </button>
-      <button onClick={() => setShowModal(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors">
-        <HiOutlineDocumentText className="w-4 h-4" /> Generate Report
-      </button>
-      {showModal && <GenerateReportModal title={title} onClose={() => setShowModal(false)} />}
-    </>
   );
 }
 

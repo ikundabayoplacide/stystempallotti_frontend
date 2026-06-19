@@ -186,31 +186,6 @@ export default function LoginPage() {
               {isLoading ? "Logging in..." : "Login"}
             </Button>
           </form>
-
-          {/* Sign up link */}
-          <p className="mt-8 text-center text-xs text-primary-200 font-[family-name:var(--font-family-primary)]">
-            New here?{" "}
-            <a
-              href="#"
-              className="
-                font-bold text-secondary-200 hover:text-yellow-400
-                transition-colors duration-200
-                focus:outline-none focus:underline
-              "
-            >
-              Sign Up
-            </a>
-          </p>
-
-          {/* Demo Credentials */}
-          {/* <div className="mt-6 p-4 rounded-xl bg-primary-800/50 border border-primary-600">
-            <p className="text-xs font-bold text-yellow-400 mb-2">Demo Credentials:</p>
-            <div className="space-y-1 text-[10px] text-primary-200">
-              <p><span className="text-yellow-400">Admin:</span> admin / director</p>
-              <p><span className="text-yellow-400">Workers:</span> worker-printing / worker-binding / worker-composition / worker-montage / worker-packaging</p>
-              <p><span className="text-yellow-400">Other:</span> reception / sales / supervisor / stock / daf</p>
-            </div>
-          </div> */}
         </Card>
       </Card>
     </div>

@@ -5,7 +5,9 @@ import {
   HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineCurrencyDollar,
+  HiOutlineDocumentText,
   HiOutlineExclamationCircle,
+  HiOutlineEye,
   HiOutlineMail,
   HiOutlineMap,
   HiOutlineOfficeBuilding,
@@ -51,13 +53,24 @@ const sectorConfig: Record<MarketSector, string> = {
   ngo:        "NGO / Non-profit",
   corporate:  "Corporate",
   retail:     "Retail",
-  other:      "Other",
+  other:      "＋ Add new",
 };
 
 const selectCls =
   "w-full px-3 py-2.5 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 " +
   "focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 " +
   "transition-colors text-sm font-[family-name:var(--font-family-primary)]";
+
+function openDocument(url: string, name?: string) {
+  const win = window.open("", "_blank");
+  if (!win) return;
+  if (url.startsWith("data:image/")) {
+    win.document.write(`<html><body style="margin:0"><img src="${url}" style="max-width:100%"/></body></html>`);
+  } else {
+    win.document.write(`<html><body style="margin:0"><iframe src="${url}" style="width:100%;height:100vh;border:none" title="${name ?? "Document"}"></iframe></body></html>`);
+  }
+  win.document.close();
+}
 
 // ─── Lead Form Modal ──────────────────────────────────────────────────────────
 
@@ -69,36 +82,54 @@ interface LeadFormProps {
 }
 
 function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
+  const knownSectors = Object.keys(sectorConfig).filter(k => k !== "other");
+  const knownStages  = Object.keys(stageConfig);
+
+  const initSector = initial?.sector ?? "prospect";
+  const initStage  = initial?.stage  ?? "prospect";
+
   const [form, setForm] = useState({
     company:        initial?.company        ?? "",
     contactPerson:  initial?.contactPerson   ?? "",
     phone:          initial?.phone          ?? "",
     email:          initial?.email          ?? "",
-    sector:         (initial?.sector        ?? "other") as MarketSector,
-    stage:          (initial?.stage         ?? "prospect") as MarketStage,
+    sector:         (knownSectors.includes(initSector) ? initSector : "other") as MarketSector,
+    customSector:   knownSectors.includes(initSector) ? "" : initSector,
+    stage:          (knownStages.includes(initStage) ? initStage : "__new__") as MarketStage | "__new__",
+    customStage:    knownStages.includes(initStage) ? "" : initStage,
     estimatedValue: initial?.estimatedValue ? String(initial.estimatedValue) : "",
     location:       initial?.location       ?? "",
     notes:          initial?.notes          ?? "",
     nextFollowUp:   initial?.nextFollowUp ? initial.nextFollowUp.slice(0, 10) : "",
   });
+  const [docFile] = useState<File | null>(null);
+  const [newDocs, setNewDocs]   = useState<File[]>([]);
   const [error, setError] = useState("");
 
   const handleSave = () => {
     if (!form.company.trim())        { setError("Company name is required.");    return; }
     if (!form.contactPerson.trim()) { setError("Contact person is required."); return; }
+    if (form.sector === "other" && !form.customSector.trim()) { setError("Please specify the sector."); return; }
+    if (form.stage === "__new__" && !form.customStage.trim()) { setError("Please specify the stage.");  return; }
     setError("");
+    const resolvedSector = (form.sector === "other" && form.customSector.trim()
+      ? form.customSector.trim() : form.sector) as MarketSector;
+    const resolvedStage = (form.stage === "__new__" && form.customStage.trim()
+      ? form.customStage.trim() : form.stage) as MarketStage;
     onSave({
       ...(initial?.id && { id: initial.id }),
       company:        form.company.trim(),
       contactPerson:  form.contactPerson.trim(),
       phone:          form.phone.trim()    || undefined,
       email:          form.email.trim()    || undefined,
-      sector:         form.sector,
-      stage:          form.stage,
+      sector:         resolvedSector,
+      stage:          resolvedStage,
       estimatedValue: parseFloat(form.estimatedValue) || undefined,
       location:       form.location.trim() || undefined,
       notes:          form.notes.trim()    || undefined,
       nextFollowUp:   form.nextFollowUp    || undefined,
+      document:       docFile ?? undefined,
+      newDocuments:   newDocs.length > 0 ? newDocs : undefined,
     });
   };
 
@@ -108,7 +139,7 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
 
   return (
     <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold text-secondary-100">
@@ -159,6 +190,14 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
                   <option key={v} value={v}>{l}</option>
                 ))}
               </select>
+              {form.sector === "other" && (
+                <input
+                  value={form.customSector}
+                  onChange={f("customSector")}
+                  placeholder="Enter sector name…"
+                  className={`${selectCls} mt-2`}
+                />
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1.5">Stage</label>
@@ -166,7 +205,16 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
                 {Object.entries(stageConfig).map(([v, c]) => (
                   <option key={v} value={v}>{c.label}</option>
                 ))}
+                <option value="__new__">＋ Add new</option>
               </select>
+              {form.stage === "__new__" && (
+                <input
+                  value={form.customStage}
+                  onChange={f("customStage")}
+                  placeholder="Enter stage name…"
+                  className={`${selectCls} mt-2`}
+                />
+              )}
             </div>
           </div>
 
@@ -195,6 +243,58 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
             <textarea value={form.notes} onChange={f("notes")} rows={3}
               placeholder="Key details, requirements, next steps…"
               className={`${selectCls} resize-none`} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1.5">Documents (PDF / Image)</label>
+
+            {/* Existing saved documents */}
+            {initial?.documents && initial.documents.length > 0 && (
+              <ul className="mb-2 space-y-1">
+                {initial.documents.map((doc) => (
+                  <li key={doc.id} className="flex items-center justify-between text-xs bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
+                    <span className="truncate text-secondary-100 font-medium">{doc.fileName}</span>
+                    <button type="button" onClick={() => openDocument(doc.fileUrl, doc.fileName)}
+                      className="p-1 hover:text-primary-500 text-custom-700 transition-colors shrink-0">
+                      <HiOutlineEye className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* New files to upload */}
+            {newDocs.length > 0 && (
+              <ul className="mb-2 space-y-1">
+                {newDocs.map((file, i) => (
+                  <li key={i} className="flex items-center justify-between text-xs bg-custom-50 border border-custom-200 rounded-lg px-3 py-1.5">
+                    <span className="truncate text-secondary-100 font-medium">{file.name}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={() => openDocument(URL.createObjectURL(file), file.name)}
+                        className="p-1 hover:text-primary-500 text-custom-700 transition-colors">
+                        <HiOutlineEye className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => setNewDocs((p) => p.filter((_, j) => j !== i))}
+                        className="p-1 hover:text-red-500 text-custom-700 transition-colors">
+                        <HiOutlineX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-custom-400 hover:border-primary-400 cursor-pointer transition-colors text-xs text-custom-700 hover:text-primary-500">
+              <HiOutlineDocumentText className="w-4 h-4 shrink-0" />
+              Add file(s)…
+              <input type="file" accept=".pdf,.png,.jpg,.jpeg" multiple className="hidden"
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files ?? []);
+                  setNewDocs((p) => [...p, ...picked]);
+                  e.target.value = "";
+                }}
+              />
+            </label>
           </div>
 
           {error && (
@@ -233,7 +333,7 @@ function LeadDetailModal({
 
   return (
     <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <Card className="!p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-xl font-bold text-secondary-100">{lead.company}</h3>
@@ -302,6 +402,25 @@ function LeadDetailModal({
             <div className="rounded-xl bg-custom-50 border border-custom-200 p-4">
               <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Notes</p>
               <p className="text-secondary-100 leading-relaxed">{lead.notes}</p>
+            </div>
+          )}
+
+          {lead.documents && lead.documents.length > 0 && (
+            <div className="rounded-xl bg-custom-50 border border-custom-200 p-4">
+              <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Documents</p>
+              <ul className="space-y-1.5">
+                {lead.documents.map((doc) => (
+                  <li key={doc.id}>
+                    <button
+                      onClick={() => openDocument(doc.fileUrl, doc.fileName)}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-custom-200 hover:bg-white transition-colors text-sm font-medium text-secondary-100 text-left"
+                    >
+                      <HiOutlineDocumentText className="w-4 h-4 text-primary-500 shrink-0" />
+                      <span className="truncate">{doc.fileName}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -667,6 +786,13 @@ export default function ProdurementPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => setViewing(lead)}
+                              className="p-1.5 rounded-lg hover:bg-blue-50 text-custom-700 hover:text-blue-600 transition-colors"
+                              title="View details"
+                            >
+                              <HiOutlineEye className="w-4 h-4" />
+                            </button>
                             <button
                               onClick={() => { setEditing(lead); setShowForm(true); }}
                               className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-700 hover:text-secondary-100 transition-colors"

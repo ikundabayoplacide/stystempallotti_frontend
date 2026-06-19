@@ -19,6 +19,10 @@ export interface ProcurementLead {
   location?: string;
   notes?: string;
   nextFollowUp?: string;
+  documentUrl?: string;
+  documentName?: string;
+  documentMimeType?: string;
+  documents?: { id: string; fileUrl: string; fileName: string; mimeType: string }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +69,8 @@ export interface CreateLeadPayload {
   location?: string;
   notes?: string;
   nextFollowUp?: string;
+  document?: File;
+  newDocuments?: File[];
 }
 
 export type UpdateLeadPayload = Partial<CreateLeadPayload> & { id: string };
@@ -139,14 +145,30 @@ export const procurementApi = createApi({
 
     // POST /procurement
     createLead: builder.mutation<ProcurementLead, CreateLeadPayload>({
-      query: (body) => ({ url: "/procurement", method: "POST", body }),
+      query: ({ document, newDocuments, ...rest }) => {
+        const form = new FormData();
+        Object.entries(rest).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) form.append(k, String(v));
+        });
+        if (document) form.append("document", document);
+        newDocuments?.forEach((f) => form.append("documents", f));
+        return { url: "/procurement", method: "POST", body: form };
+      },
       transformResponse: (res: ApiResponse<ProcurementLead>) => res.data,
       invalidatesTags: [{ type: "Lead", id: "LIST" }, { type: "Lead", id: "STATS" }],
     }),
 
     // PUT /procurement/:id
     updateLead: builder.mutation<ProcurementLead, UpdateLeadPayload>({
-      query: ({ id, ...body }) => ({ url: `/procurement/${id}`, method: "PUT", body }),
+      query: ({ id, document, newDocuments, ...rest }) => {
+        const form = new FormData();
+        Object.entries(rest).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) form.append(k, String(v));
+        });
+        if (document) form.append("document", document);
+        newDocuments?.forEach((f) => form.append("documents", f));
+        return { url: `/procurement/${id}`, method: "PUT", body: form };
+      },
       transformResponse: (res: ApiResponse<ProcurementLead>) => res.data,
       invalidatesTags: (_r, _e, { id }) => [
         { type: "Lead", id },

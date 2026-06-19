@@ -11,7 +11,7 @@ import { jobsApi } from "./services/jobsService";
 import { paymentsApi } from "./services/paymentsService";
 import { permissionsApi } from "./services/permissionsService";
 import { procurementApi } from "./services/procurementService";
-import { quotationsApi } from "./services/quotationsService";
+import { proformasApi } from "./services/proformasService";
 import { rolesApi } from "./services/rolesService";
 import { stockApi } from "./services/stockService";
 import { usersApi } from "./services/usersService";
@@ -36,7 +36,7 @@ export const store = configureStore({
     [procurementApi.reducerPath]: procurementApi.reducer,
     [boutiqueApi.reducerPath]: boutiqueApi.reducer,
     [stockApi.reducerPath]: stockApi.reducer,
-    [quotationsApi.reducerPath]: quotationsApi.reducer,
+    [proformasApi.reducerPath]: proformasApi.reducer,
     [visitsApi.reducerPath]: visitsApi.reducer,
     [permissionsApi.reducerPath]: permissionsApi.reducer,
     [rolesApi.reducerPath]: rolesApi.reducer,
@@ -60,7 +60,7 @@ export const store = configureStore({
       .concat(procurementApi.middleware)
       .concat(boutiqueApi.middleware)
       .concat(stockApi.middleware)
-      .concat(quotationsApi.middleware)
+      .concat(proformasApi.middleware)
       .concat(visitsApi.middleware)
       .concat(permissionsApi.middleware)
       .concat(rolesApi.middleware)

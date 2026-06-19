@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   HiOutlineArrowRight,
   HiOutlineCheckCircle,
   HiOutlineCurrencyDollar,
   HiOutlineDotsVertical,
   HiOutlineExclamationCircle,
-  HiOutlinePencil,
+  HiOutlineEye,
   HiOutlineSearch,
   HiOutlineX,
   HiOutlineXCircle,
@@ -16,9 +16,9 @@ import { useGetDepartmentsQuery } from "../../store/services/departmentsService"
 import {
   useApproveJobMutation,
   useAssignJobMutation,
+  useGetJobDetailsQuery,
   useGetJobsQuery,
   useRejectJobMutation,
-  useUpdateJobMutation,
   type Job,
 } from "../../store/services/jobsService";
 import { jobStatusConfig } from "../../types/JobStatus";
@@ -30,7 +30,174 @@ const priorityColor: Record<string, string> = {
   low:    "bg-green-500 text-white",
 };
 
-type ModalMode = "approve" | "reject" | "assign" | "edit";
+function Row({ label, value }: { label: string; value?: string | number | null }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-custom-700 shrink-0">{label}</span>
+      <span className="font-semibold text-secondary-100 text-right">{value}</span>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">{title}</p>
+      <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 space-y-1.5 text-sm">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
+  const { data: d, isLoading } = useGetJobDetailsQuery(jobId);
+  const items = d?.jobItems ?? [];
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Job Details</h3>
+            {d && <p className="text-xs text-custom-700 mt-0.5">{d.jobNumber} — {d.title}</p>}
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-6 h-6" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <p className="text-center text-custom-700 py-10">Loading…</p>
+        ) : !d ? (
+          <p className="text-center text-custom-700 py-10">Details not available.</p>
+        ) : (
+          <div className="space-y-5">
+
+            {/* Client */}
+            <Section title="Client">
+              <Row label="Name"    value={d.customer?.name} />
+              <Row label="Company" value={d.customer?.company} />
+              <Row label="Phone"   value={d.customer?.phone} />
+              <Row label="Email"   value={d.customer?.email} />
+            </Section>
+
+            {/* Job info */}
+            <Section title="Job Information">
+              <Row label="Job #"       value={d.jobNumber} />
+              <Row label="Title"       value={d.title} />
+              <Row label="Type"        value={d.jobType} />
+              <Row label="Quantity"    value={d.quantity} />
+              <Row label="Size"        value={d.size} />
+              <Row label="Color Mode" value={d.colorMode} />
+              <Row label="Binding"     value={d.bindingType} />
+              <Row label="Priority"    value={d.priority} />
+              <Row label="Status"      value={d.status} />
+              <Row label="Deadline"    value={d.dueDate?.split("T")[0]} />
+              <Row label="Created"     value={new Date(d.createdAt).toLocaleDateString()} />
+              {d.description && (
+                <div className="pt-1 border-t border-custom-200">
+                  <p className="text-custom-700 mb-0.5">Description</p>
+                  <p className="text-secondary-100 font-medium leading-snug">{d.description}</p>
+                </div>
+              )}
+              {d.notes && (
+                <div className="pt-1 border-t border-custom-200">
+                  <p className="text-custom-700 mb-0.5">Notes</p>
+                  <p className="text-secondary-100 font-medium leading-snug">{d.notes}</p>
+                </div>
+              )}
+            </Section>
+
+            {/* Materials — right after Job Information */}
+            <Section title="Materials Needed">
+              {!items.length ? (
+                <p className="text-custom-700 italic">No materials listed.</p>
+              ) : (
+                items.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <span className="font-semibold text-secondary-100">
+                      {item.stockItem?.itemName ?? "—"}
+                    </span>
+                    <span className="text-xs text-custom-700">
+                      {item.quantityNeeded} {item.stockItem?.unit ?? ""}{item.notes ? ` · ${item.notes}` : ""}
+                    </span>
+                  </div>
+                ))
+              )}
+            </Section>
+
+            {/* Financial */}
+            <Section title="Financial">
+              <Row label="Amount"         value={d.amount != null ? `${Number(d.amount).toLocaleString()} RWF` : null} />
+              <Row label="Payment Status" value={d.paymentStatus} />
+              <Row label="Payment Method" value={d.paymentMethod} />
+              <Row label="Receipt #"      value={d.receiptNo} />
+            </Section>
+
+            {/* Department position */}
+            <Section title="Department Position">
+              {!d.departmentPosition ? (
+                <p className="text-custom-700 italic">Not yet assigned to a department.</p>
+              ) : (
+                <>
+                  <Row label="Department"   value={d.departmentPosition.department?.name} />
+                  <Row label="State"        value={d.departmentPosition.state} />
+                  <Row label="In Production" value={d.departmentPosition.inProduction} />
+                  <Row label="Progress"     value={d.departmentPosition.progress} />
+                  {d.departmentPosition.startedAt   && <Row label="Started"   value={new Date(d.departmentPosition.startedAt).toLocaleString()} />}
+                  {d.departmentPosition.pausedAt    && <Row label="Paused"    value={new Date(d.departmentPosition.pausedAt).toLocaleString()} />}
+                  {d.departmentPosition.resumedAt   && <Row label="Resumed"   value={new Date(d.departmentPosition.resumedAt).toLocaleString()} />}
+                  {d.departmentPosition.completedAt && <Row label="Completed" value={new Date(d.departmentPosition.completedAt).toLocaleString()} />}
+                  {d.departmentPosition.supervisors?.length > 0 && (
+                    <div className="pt-1 border-t border-custom-200">
+                      <p className="text-custom-700 mb-1">Supervisors</p>
+                      <div className="space-y-1">
+                        {d.departmentPosition.supervisors.map((s) => (
+                          <div key={s.id} className="flex items-center justify-between">
+                            <span className="font-semibold text-secondary-100">{s.name}</span>
+                            <span className="text-xs text-custom-700">{s.phone}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </Section>
+
+            {/* Assigned workers */}
+            <Section title="Assigned Workers">
+              {!d.assignedWorkers?.length ? (
+                <p className="text-custom-700 italic">No workers assigned.</p>
+              ) : (
+                d.assignedWorkers.map((w) => (
+                  <div key={w.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-secondary-100">{w.fullName}</p>
+                      <p className="text-xs text-custom-700">{w.department?.name ?? "—"} · {w.phoneNumber}</p>
+                    </div>
+                    <p className="text-xs text-custom-700">{new Date(w.EmployeeJobAssignment.assignedAt).toLocaleDateString()}</p>
+                  </div>
+                ))
+              )}
+            </Section>
+
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-5 w-full px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-semibold"
+        >
+          Close
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+type ModalMode = "approve" | "reject" | "assign";
 
 export default function DAFJobApprovalPage() {
   const [search, setSearch]           = useState("");
@@ -40,25 +207,35 @@ export default function DAFJobApprovalPage() {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [rejectReason, setRejectReason]   = useState("");
   const [assignDeptId, setAssignDeptId]   = useState("");
-  const [editTitle, setEditTitle]         = useState("");
-  const [editDeadline, setEditDeadline]   = useState("");
-  const [openMenuId, setOpenMenuId]       = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId]         = useState<string | null>(null);
+  const [detailsJobId, setDetailsJobId]     = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const { data: pendingData,   isLoading: loadingPending } = useGetJobsQuery({ status: "pending",   limit: 100 });
   const { data: confirmedData }                            = useGetJobsQuery({ status: "confirmed", limit: 100 });
   const { data: rejectedData }                             = useGetJobsQuery({ status: "rejected",  limit: 100 });
+  const { data: completedData }                            = useGetJobsQuery({ status: "completed", limit: 100 });
   const { data: departments = [] }                         = useGetDepartmentsQuery();
 
   const [approveJob, { isLoading: approving }] = useApproveJobMutation();
   const [rejectJob,  { isLoading: rejecting }] = useRejectJobMutation();
   const [assignJob,  { isLoading: assigning }] = useAssignJobMutation();
-  const [updateJob,  { isLoading: updating  }] = useUpdateJobMutation();
 
   const pendingJobs   = pendingData?.jobs   ?? [];
   const approvedJobs  = confirmedData?.jobs ?? [];
   const rejectedJobs  = rejectedData?.jobs  ?? [];
-  const allJobs       = [...pendingJobs, ...approvedJobs, ...rejectedJobs];
+  const completedJobs = completedData?.jobs ?? [];
+  const allJobs       = [...pendingJobs, ...approvedJobs, ...rejectedJobs, ...completedJobs];
 
   const filtered = allJobs.filter(
     (job) =>
@@ -73,8 +250,6 @@ export default function DAFJobApprovalPage() {
     setApprovalNotes("");
     setRejectReason("");
     setAssignDeptId(job.departmentAssignedToId ?? "");
-    setEditTitle(job.title);
-    setEditDeadline(job.dueDate ?? "");
     setOpenMenuId(null);
     setShowModal(true);
   };
@@ -98,12 +273,6 @@ export default function DAFJobApprovalPage() {
     if (!selectedJob || !assignDeptId) { alert("Please select a department"); return; }
     try { await assignJob({ id: selectedJob.id, departmentAssignedToId: assignDeptId }).unwrap(); closeModal(); }
     catch { alert("Failed to assign job. Please try again."); }
-  };
-
-  const handleEdit = async () => {
-    if (!selectedJob) return;
-    try { await updateJob({ id: selectedJob.id, title: editTitle, dueDate: editDeadline || undefined }).unwrap(); closeModal(); }
-    catch { alert("Failed to update job. Please try again."); }
   };
 
   const totalPendingValue = pendingJobs.reduce((sum, j) => sum + (Number(j.amount) || 0), 0);
@@ -246,15 +415,24 @@ export default function DAFJobApprovalPage() {
                         </td>
                         <td className="px-4 py-4">
                           <div
-                            className="flex items-center justify-end"
+                            className="flex items-center justify-end gap-1"
                             ref={openMenuId === job.id ? menuRef : undefined}
                           >
+                            <button
+                              onClick={() => setDetailsJobId(job.id)}
+                              className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
+                              title="View details"
+                            >
+                              <HiOutlineEye className="w-5 h-5 text-custom-700" />
+                            </button>
+                            {isPending && (
                             <button
                               onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === job.id ? null : job.id); }}
                               className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
                             >
                               <HiOutlineDotsVertical className="w-5 h-5 text-custom-700" />
                             </button>
+                            )}
                             {openMenuId === job.id && (
                               <div className="absolute right-4 mt-1 w-44 bg-white rounded-xl shadow-lg border border-custom-200 z-50 overflow-hidden">
                                 {isPending && (
@@ -265,12 +443,6 @@ export default function DAFJobApprovalPage() {
                                     <HiOutlineCheckCircle className="w-4 h-4" /> Confirm
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => openModal(job, "edit")}
-                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-secondary-100 hover:bg-custom-50 transition-colors"
-                                >
-                                  <HiOutlinePencil className="w-4 h-4" /> Edit
-                                </button>
                                 {isPending && (
                                   <button
                                     onClick={() => openModal(job, "reject")}
@@ -292,6 +464,11 @@ export default function DAFJobApprovalPage() {
           </div>
         </Card>
 
+        {/* Job Details Modal */}
+        {detailsJobId && (
+          <JobDetailsModal jobId={detailsJobId} onClose={() => setDetailsJobId(null)} />
+        )}
+
         {/* Action Modal */}
         {showModal && selectedJob && (
           <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
@@ -302,7 +479,6 @@ export default function DAFJobApprovalPage() {
                     {modalMode === "approve" && "Confirm Job"}
                     {modalMode === "reject"  && "Reject Job"}
                     {modalMode === "assign"  && "Assign to Department"}
-                    {modalMode === "edit"    && "Edit Job"}
                   </h3>
                   <p className="text-sm text-custom-700 mt-1">{selectedJob.jobNumber} — {selectedJob.title}</p>
                 </div>
@@ -380,27 +556,6 @@ export default function DAFJobApprovalPage() {
                     className="w-full px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
                     <HiOutlineArrowRight className="w-4 h-4" />
                     {assigning ? "Assigning…" : "Assign Department"}
-                  </button>
-                </div>
-              )}
-
-              {/* Edit */}
-              {modalMode === "edit" && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-semibold text-custom-700 mb-1">Title</label>
-                    <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-custom-700 mb-1">Deadline</label>
-                    <input type="date" value={editDeadline?.split("T")[0] ?? ""} onChange={(e) => setEditDeadline(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500" />
-                  </div>
-                  <button onClick={handleEdit} disabled={updating}
-                    className="w-full px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                    <HiOutlinePencil className="w-4 h-4" />
-                    {updating ? "Saving…" : "Save Changes"}
                   </button>
                 </div>
               )}

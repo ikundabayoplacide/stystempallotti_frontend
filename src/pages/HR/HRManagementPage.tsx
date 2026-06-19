@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { HiOutlinePlus, HiOutlineSearch, HiOutlinePencil, HiOutlineTrash, HiOutlineRefresh } from "react-icons/hi";
+import { HiOutlinePlus, HiOutlineSearch, HiOutlineEye, HiOutlineRefresh, HiOutlineX } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
-import { useGetAllEmployeesQuery, useCreateEmployeeMutation, useUpdateEmployeeMutation, useDeleteEmployeeMutation, useToggleEmployeeActiveMutation } from "../../store/services/employeesService";
+import { useGetAllEmployeesQuery, useCreateEmployeeMutation, useUpdateEmployeeMutation, useToggleEmployeeActiveMutation } from "../../store/services/employeesService";
 
 export default function EmployeesPage() {
   const { userName } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
-  const [editEmployee, setEditEmployee] = useState<any>(null);
-  const [deleteEmployee, setDeleteEmployee] = useState<any>(null);
+  const [viewEmployee, setViewEmployee] = useState<any>(null);
 
   const { data, isLoading } = useGetAllEmployeesQuery({ page, limit: 10, search: search || undefined });
   const [toggleActive] = useToggleEmployeeActiveMutation();
@@ -80,11 +79,8 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setEditEmployee(emp)} className="p-1.5 rounded hover:bg-primary-50 text-custom-400 hover:text-primary-600 transition-colors">
-                          <HiOutlinePencil className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => setDeleteEmployee(emp)} className="p-1.5 rounded hover:bg-red-50 text-custom-400 hover:text-red-600 transition-colors">
-                          <HiOutlineTrash className="h-4 w-4" />
+                        <button onClick={() => setViewEmployee(emp)} className="p-1.5 rounded hover:bg-primary-50 text-custom-400 hover:text-primary-600 transition-colors">
+                          <HiOutlineEye className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -108,8 +104,7 @@ export default function EmployeesPage() {
       </div>
 
       {showCreate && <EmployeeFormModal onClose={() => setShowCreate(false)} />}
-      {editEmployee && <EmployeeFormModal employee={editEmployee} onClose={() => setEditEmployee(null)} />}
-      {deleteEmployee && <DeleteEmployeeModal employee={deleteEmployee} onClose={() => setDeleteEmployee(null)} />}
+      {viewEmployee && <EmployeeDetailsModal employee={viewEmployee} onClose={() => setViewEmployee(null)} />}
     </DashboardLayout>
   );
 }
@@ -226,39 +221,43 @@ function EmployeeFormModal({ employee, onClose }: { employee?: any; onClose: () 
   );
 }
 
-// ─── Delete Modal ─────────────────────────────────────────────────────────────
+// ─── Details Modal ───────────────────────────────────────────────────────────
 
-function DeleteEmployeeModal({ employee, onClose }: { employee: any; onClose: () => void }) {
-  const [deleteEmployee, { isLoading, error }] = useDeleteEmployeeMutation();
-
-  async function handleDelete() {
-    try {
-      await deleteEmployee(employee.id).unwrap();
-      onClose();
-    } catch { /* error shown below */ }
-  }
-
+function EmployeeDetailsModal({ employee: emp, onClose }: { employee: any; onClose: () => void }) {
+  const rows: [string, string][] = [
+    ["Full Name",      emp.fullName],
+    ["Phone",         emp.phoneNumber],
+    ["Email",         emp.email ?? "—"],
+    ["Gender",        emp.gender?.toLowerCase()],
+    ["Date of Birth", emp.dateOfBirth?.slice(0, 10) ?? "—"],
+    ["Address",       emp.address ?? "—"],
+    ["NID",           emp.nid ?? "—"],
+    ["Contract Type", emp.contractType ?? "—"],
+    ["Salary",        emp.contractSalary != null ? `${Number(emp.contractSalary).toLocaleString()} RWF` : "—"],
+    ["Hired At",      emp.hiredAt?.slice(0, 10) ?? "—"],
+    ["Status",        emp.isActive ? "Active" : "Inactive"],
+  ];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="px-6 py-4 border-b border-custom-200">
-          <h2 className="text-lg font-bold text-secondary-100">Delete Employee</h2>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-custom-200">
+          <h2 className="text-lg font-bold text-secondary-100">Employee Details</h2>
+          <button onClick={onClose} className="text-custom-400 hover:text-custom-700">
+            <HiOutlineX className="h-5 w-5" />
+          </button>
         </div>
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-custom-700">
-            Delete <span className="font-bold text-secondary-100">{employee.fullName}</span>? This cannot be undone.
-          </p>
-          {error && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {(error as any)?.data?.message ?? "Failed to delete."}
+        <div className="p-6 space-y-3">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-2 text-sm">
+              <span className="text-custom-700 shrink-0">{label}</span>
+              <span className="font-semibold text-secondary-100 text-right capitalize">{value}</span>
             </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose} className="text-sm">Cancel</Button>
-            <button onClick={handleDelete} disabled={isLoading} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50">
-              {isLoading ? "Deleting…" : "Delete"}
-            </button>
-          </div>
+          ))}
+        </div>
+        <div className="px-6 pb-6">
+          <button onClick={onClose} className="w-full px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-semibold">
+            Close
+          </button>
         </div>
       </div>
     </div>

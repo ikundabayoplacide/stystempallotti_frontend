@@ -9,7 +9,7 @@ import {
 } from "react-icons/hi";
 import { Card } from "../../components/ui";
 import { useGetJobsQuery } from "../../store/services/jobsService";
-import { useGetQuotationsQuery } from "../../store/services/quotationsService";
+import { useGetProformasQuery } from "../../store/services/proformasService";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -44,10 +44,10 @@ export default function SalesDashboard() {
     data: quotationsData,
     isLoading: quotationsLoading,
     refetch: refetchQuotations,
-  } = useGetQuotationsQuery({ limit: 5 });
+  } = useGetProformasQuery({ limit: 5 });
 
   const jobs       = jobsData?.jobs ?? [];
-  const quotations = quotationsData?.quotations ?? [];
+  const quotations = quotationsData?.proformas ?? [];
   const isLoading  = jobsLoading || quotationsLoading;
 
   // KPI derivations
@@ -193,7 +193,7 @@ export default function SalesDashboard() {
                   <div key={q.id} className="px-5 py-3 flex items-center justify-between gap-3 hover:bg-custom-50 transition-colors">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-primary-500">{q.quotationNo}</span>
+                        <span className="text-xs font-bold text-primary-500">{q.proformaNo}</span>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColor}`}>
                           {q.status}
                         </span>

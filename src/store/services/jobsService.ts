@@ -197,6 +197,40 @@ export interface PaginatedJobs {
   totalPages: number;
 }
 
+export interface JobDetails extends Job {
+  jobItems?: {
+    id: string;
+    quantityNeeded: number;
+    quantityUsed?: number | null;
+    notes?: string;
+    stockItem?: {
+      id: string;
+      itemName: string;
+      category: string;
+      unit: string;
+      currentStock: number;
+    };
+  }[];
+  departmentPosition: {
+    department: { id: string; name: string } | null;
+    supervisors: { id: string; name: string; phone: string; email: string }[];
+    state: string | null;
+    inProduction: string | null;
+    progress: string | null;
+    startedAt: string | null;
+    pausedAt: string | null;
+    resumedAt: string | null;
+    completedAt: string | null;
+  } | null;
+  assignedWorkers: {
+    id: string;
+    fullName: string;
+    phoneNumber: string;
+    department: { id: string; name: string } | null;
+    EmployeeJobAssignment: { assignedAt: string };
+  }[];
+}
+
 interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -447,6 +481,13 @@ export const jobsApi = createApi({
           : [{ type: "Job", id: "COMPLETED_PAID" }],
     }),
 
+    // GET /jobs/:id/details
+    getJobDetails: builder.query<JobDetails, string>({
+      query: (id) => `/jobs/${id}/details`,
+      transformResponse: (res: ApiResponse<JobDetails>) => res.data,
+      providesTags: (_r, _e, id) => [{ type: "Job", id }],
+    }),
+
     // DELETE /jobs/:id — ADMIN only (pending or confirmed)
     deleteJob: builder.mutation<{ success: boolean; message: string }, string>({
       query: (id) => ({ url: `/jobs/${id}`, method: "DELETE" }),
@@ -537,6 +578,7 @@ export const jobsApi = createApi({
 });
 
 export const {
+  useGetJobDetailsQuery,
   useGetJobsQuery,
   useGetNextJobNumberQuery,
   useGetJobByNumberQuery,

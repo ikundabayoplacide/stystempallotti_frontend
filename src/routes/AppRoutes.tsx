@@ -20,7 +20,7 @@ import {
 } from "../pages/admin";
 
 // Sales Officer Pages
-import { QuotationsPage, SalesPage, SalesStockPage, SalesCustomerPage, SalesReportsPage } from "../pages/sales";
+import { ProformasPage, SalesPage, SalesStockPage, SalesCustomerPage, SalesReportsPage } from "../pages/sales";
 import ProformaInvoicePage from "../pages/sales/ProformaInvoicePage";
 
 // Finance Pages
@@ -82,6 +82,7 @@ import RequestsPage from "../pages/Hobe/Requests";
 import ReportsPage from "../pages/Hobe/Reports";
 import HobeTrade from "../pages/Hobe/Trade";
 import ProdurementPage from "../pages/finance/ProdurementPage";
+import Operations from "../pages/finance/Operations";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -119,7 +120,7 @@ export default function AppRoutes() {
 
       {/* Sales Officer Routes */}
       <Route path="/sales" element={<ProtectedRoute allowedRoles={["sales"]}><SalesPage /></ProtectedRoute>} />
-      <Route path="/sales/quotations" element={<ProtectedRoute allowedRoles={["sales"]} pageId="quotations"><QuotationsPage /></ProtectedRoute>} />
+      <Route path="/sales/proformas" element={<ProtectedRoute allowedRoles={["sales"]} pageId="quotations"><ProformasPage /></ProtectedRoute>} />
       <Route path="/sales/jobs" element={<ProtectedRoute allowedRoles={["sales"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
       <Route path="/sales/performaInvoice" element={<ProtectedRoute allowedRoles={["sales"]} pageId="proforma"><ProformaInvoicePage /></ProtectedRoute>} />
       <Route path="/sales/notifications" element={<ProtectedRoute allowedRoles={["sales"]}><NotificationsPage userRole="sales" userName="Sales Officer" /></ProtectedRoute>} />
@@ -142,7 +143,7 @@ export default function AppRoutes() {
       <Route path="/finance/daf/approvals" element={<ProtectedRoute allowedRoles={["daf"]} pageId="finance-control"><DAFJobApprovalPage /></ProtectedRoute>} />
       <Route path="/finance/daf/notifications" element={<ProtectedRoute allowedRoles={["daf"]}><NotificationsPage userRole="daf" userName="DAF" /></ProtectedRoute>} />
       <Route path="/finance/daf/profile" element={<ProtectedRoute allowedRoles={["daf"]}><ProfilePage /></ProtectedRoute>} />
-      <Route path="/finance/daf/quatation" element={<ProtectedRoute allowedRoles={["daf"]}><QuotationsPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/proforma" element={<ProtectedRoute allowedRoles={["daf"]}><ProformasPage /></ProtectedRoute>} />
       <Route path="/finance/daf/procurement" element={<ProtectedRoute allowedRoles={["daf"]}><ProdurementPage /></ProtectedRoute>} />
 
 
@@ -153,7 +154,7 @@ export default function AppRoutes() {
       <Route path="/finance/accountant1/documents" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="documents"><Accountant1DocumentsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/notifications" element={<ProtectedRoute allowedRoles={["accountant"]}><NotificationsPage userRole="accountant" userName="Accountant" /></ProtectedRoute>} />
       <Route path="/finance/accountant1/profile" element={<ProtectedRoute allowedRoles={["accountant"]}><ProfilePage /></ProtectedRoute>} />
-
+    <Route path="/finance/accountant1/operations" element={<ProtectedRoute allowedRoles={["accountant"]}><Operations /></ProtectedRoute>} />
       <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant2Page /></ProtectedRoute>} />
       <Route path="/finance/accountant2/procurement" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="procurement"><Accountant2ProcurementPage /></ProtectedRoute>} />
       <Route path="/finance/accountant2/taxes" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="taxes"><Accountant2TaxesPage /></ProtectedRoute>} />

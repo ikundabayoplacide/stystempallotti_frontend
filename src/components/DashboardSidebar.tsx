@@ -72,8 +72,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/sales", icon: HiOutlineHome },
     { label: "Jobs", path: "/sales/jobs", icon: HiOutlineBriefcase, permissionKey: "jobs.view" },
     { label: "Stock", path: "/sales/stocks", icon: HiOutlineArchive, permissionKey: "stock.view" },
-    { label: "Quotations Invoice", path: "/sales/quotations", icon: HiOutlineDocumentText, permissionKey: "quotations.view" },
-    { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
+    { label: "Performa Invoice", path: "/sales/proformas", icon: HiOutlineDocumentText},
+    // { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
     {
       label: "Reports", path: "/sales/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/sales/reports", icon: HiOutlineChartBar },
@@ -99,14 +99,14 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   daf: [
     { label: "Dashboard", path: "/finance/daf", icon: HiOutlineHome },
     { label: "Job Approvals", path: "/finance/daf/approvals", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    { label: "Finance Control", path: "/finance/daf/control", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
-    { label: "HR Management", path: "/finance/daf/hr", icon: HiOutlineUsers, permissionKey: "hr.view" },
-    { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
+    // { label: "Finance Control", path: "/finance/daf/control", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
+    { label: "Employees", path: "/finance/daf/hr", icon: HiOutlineUsers, permissionKey: "hr.view" },
+    // { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
-        { label: "My Reports", path: "/finance/daf/reports/my", icon: HiOutlineDocumentText },
+        { label: "Reports", path: "/finance/daf/reports/my", icon: HiOutlineDocumentText },
       ]
     },
   ],
@@ -115,9 +115,11 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Payments", path: "/finance/accountant1/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
     { label: "Invoices", path: "/finance/accountant1/invoices", icon: HiOutlineDocumentText, permissionKey: "invoices.view" },
     { label: "Documents", path: "/finance/accountant1/documents", icon: HiOutlineClipboardList, permissionKey: "dossiers.view" },
-    { label: "E-Procurement", path: "/finance/accountant2/procurement", icon: HiOutlineCube, permissionKey: "procurement.view" },
-    { label: "Taxes", path: "/finance/accountant2/taxes", icon: HiOutlineDocumentText, permissionKey: "taxes.view" },
+    { label: "Operations", path: "/finance/accountant1/operations", icon: HiOutlineClipboardList},
+    // { label: "E-Procurement", path: "/finance/accountant2/procurement", icon: HiOutlineCube, permissionKey: "procurement.view" },
+    // { label: "Taxes", path: "/finance/accountant2/taxes", icon: HiOutlineDocumentText, permissionKey: "taxes.view" },
     { label: "Recovery", path: "/finance/accountant2/recovery", icon: HiOutlineCurrencyDollar, permissionKey: "recovery.view" },
+
   ],
   "production-manager": [
     { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },

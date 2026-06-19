@@ -1,4 +1,6 @@
 import { useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   HiOutlineCheckCircle,
   HiOutlineClock,
@@ -15,16 +17,16 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
-import type { Quotation, QuotationStatus } from "../../store/services/quotationsService";
+import type { Proforma, ProformaStatus } from "../../store/services/proformasService";
 import {
-  useGetQuotationsQuery,
-  useUpdateQuotationMutation,
-  useUpdateQuotationStatusMutation,
-} from "../../store/services/quotationsService";
+  useGetProformasQuery,
+  useUpdateProformaMutation,
+  useUpdateProformaStatusMutation,
+} from "../../store/services/proformasService";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-const statusConfig: Record<QuotationStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+const statusConfig: Record<ProformaStatus, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   draft:    { label: "Draft",    color: "text-gray-600",   bg: "bg-gray-100",   icon: HiOutlineDocumentText },
   sent:     { label: "Sent",     color: "text-blue-600",   bg: "bg-blue-100",   icon: HiOutlineClock },
   accepted: { label: "Accepted", color: "text-green-600",  bg: "bg-green-100",  icon: HiOutlineCheckCircle },
@@ -38,7 +40,7 @@ const selectCls =
   "transition-colors text-sm font-[family-name:var(--font-family-primary)]";
 
 // Resolve customer from top-level or nested in job
-function getCustomer(q: Quotation) {
+function getCustomer(q: Proforma) {
   return q.customer ?? q.job?.customer ?? null;
 }
 
@@ -46,11 +48,11 @@ function getCustomer(q: Quotation) {
 // A quotation is a proposal for negotiation — it shows items and an estimated
 // amount. Tax is NOT shown here; it will be applied at invoice stage.
 
-function printQuotation(q: Quotation) {
+function printProforma(q: Proforma) {
   const customer = getCustomer(q);
   const items = q.job?.items ?? [];
   const html = `
-    <html><head><title>${q.quotationNo}</title>
+    <html><head><title>${q.proformaNo}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
       h1 { font-size: 22px; margin-bottom: 4px; }
@@ -63,8 +65,8 @@ function printQuotation(q: Quotation) {
       .total-row td { font-weight: bold; font-size: 15px; border-top: 2px solid #111; }
       .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; background: #dbeafe; color: #1d4ed8; }
     </style></head><body>
-    <h1>${q.quotationNo}</h1>
-    <p class="note">This is a quotation / proposal. Prices are estimates subject to negotiation. Tax will be applied on final invoice.</p>
+    <h1>${q.proformaNo}</h1>
+    <p class="note">This is a performa / proposal. Prices are estimates subject to negotiation. Tax will be applied on final invoice.</p>
     <div class="meta">
       ${customer ? `<strong>${customer.name}</strong>${customer.company ? ` · ${customer.company}` : ""}${customer.phone ? ` · ${customer.phone}` : ""}<br/>` : ""}
       ${q.job ? `Job: ${q.job.jobNumber} — ${q.job.title}<br/>` : ""}
@@ -86,192 +88,202 @@ function printQuotation(q: Quotation) {
   if (win) { win.document.write(html); win.document.close(); win.print(); }
 }
 
-// ─── Download quotation as PDF ────────────────────────────────────────────────
+// ─── PDF helpers (same letterhead as ReceptionReportsPage) ───────────────────
 
-function downloadQuotation(q: Quotation) {
-  import("jspdf").then(({ jsPDF }) => {
-    const customer = getCustomer(q);
-    const items = q.job?.items ?? [];
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+const COMPANY = {
+  address: "B.P. 863 Kigali - Rwanda",
+  tin:     "TIN / T.V.A.: NO 100021520",
+  tel:     "Tel: Reception (+250) 788 313 617 / (+250) 788 304 549",
+  rc:      "No. RC: 536 / 09 / NYR",
+  email:   "E-mail: pallottipresse@yahoo.com",
+  compte:  "Compte: BK: 10000017 4372",
+  motto:   "Rapidite - Qualite - Innovation - Esprit d'Equipe",
+};
 
-    const pageW = doc.internal.pageSize.getWidth();
-    const margin = 18;
-    const contentW = pageW - margin * 2;
-    let y = 20;
+const HEADER_H   = 35;
+const FOOTER_TOP = 26;
 
-    // ── Header bar ──────────────────────────────────────────────────────────
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, pageW, 14, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("SAN Track", margin, 9.5);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("Quotation / Proposal", pageW - margin, 9.5, { align: "right" });
+function loadImageAsBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
-    y = 24;
+function drawLetterhead(pdf: any, headerBase64: string | null, title: string, subtitle: string) {
+  const pw = pdf.internal.pageSize.getWidth();
+  if (headerBase64) pdf.addImage(headerBase64, "PNG", 0, 0, pw, HEADER_H);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(12);
+  pdf.setTextColor(25, 25, 25);
+  pdf.text(title, pw / 2, HEADER_H + 10, { align: "center" });
+  if (subtitle) {
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(110, 110, 110);
+    pdf.text(subtitle, pw / 2, HEADER_H + 16, { align: "center" });
+  }
+}
 
-    // ── Quotation number + status ────────────────────────────────────────────
-    doc.setTextColor(30, 30, 30);
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text(q.quotationNo, margin, y);
+function drawFooter(pdf: any, pageNum: number, totalPages: number) {
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  const fy = ph - FOOTER_TOP;
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.3);
+  pdf.line(10, fy, pw - 10, fy);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(60, 60, 60);
+  const col1 = 12, col2 = pw / 2, col3 = pw - 12;
+  const row1 = fy + 5, row2 = fy + 10;
+  pdf.text(COMPANY.address, col1, row1);
+  pdf.text(COMPANY.tin,     col1, row2);
+  pdf.text(COMPANY.tel,     col2, row1, { align: "center" });
+  pdf.text(COMPANY.rc,      col2, row2, { align: "center" });
+  pdf.text(COMPANY.email,   col3, row1, { align: "right" });
+  pdf.text(COMPANY.compte,  col3, row2, { align: "right" });
+  pdf.setFont("helvetica", "bolditalic");
+  pdf.setFontSize(7);
+  pdf.setTextColor(0, 160, 210);
+  pdf.text(COMPANY.motto, col2, fy + 16, { align: "center" });
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(6.5);
+  pdf.setTextColor(150, 150, 150);
+  pdf.text(`Page ${pageNum} of ${totalPages}`, pw - 10, fy + 16, { align: "right" });
+}
 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Status: ${q.status.toUpperCase()}`, pageW - margin, y, { align: "right" });
-    y += 7;
+// ─── Download proforma as PDF ─────────────────────────────────────────────────
 
-    if (q.validUntil) {
-      doc.text(`Valid until: ${q.validUntil.slice(0, 10)}`, pageW - margin, y, { align: "right" });
-    }
-    doc.text(`Date: ${new Date(q.createdAt).toLocaleDateString()}`, margin, y);
-    y += 8;
+async function downloadProforma(q: Proforma) {
+  const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
+  const customer = getCustomer(q);
+  const items = q.job?.items ?? [];
+  const estimatedAmount = q.totalAmount ?? q.subtotal ?? 0;
 
-    // ── Proposal notice ──────────────────────────────────────────────────────
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(130, 130, 130);
-    doc.text(
-      "This is a quotation / proposal. Prices are estimates subject to negotiation. Tax will be applied on the final invoice.",
-      margin,
-      y,
-      { maxWidth: contentW }
-    );
-    y += 10;
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pw = pdf.internal.pageSize.getWidth();
+  const margin = 10;
 
-    // ── Divider ──────────────────────────────────────────────────────────────
-    doc.setDrawColor(220, 220, 220);
-    doc.line(margin, y, pageW - margin, y);
-    y += 8;
+  const title    = `PROFORMA INVOICE — ${q.proformaNo}`;
+  const subtitle = `Date: ${new Date(q.createdAt).toLocaleDateString("en-RW")}${q.validUntil ? `   |   Valid until: ${q.validUntil.slice(0, 10)}` : ""}   |   Status: ${q.status.toUpperCase()}`;
 
-    // ── Customer info ────────────────────────────────────────────────────────
-    if (customer) {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(30, 30, 30);
-      doc.text("PREPARED FOR", margin, y);
-      y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(customer.name, margin, y); y += 5;
-      if (customer.company) { doc.text(customer.company, margin, y); y += 5; }
-      if (customer.phone)   { doc.text(customer.phone,   margin, y); y += 5; }
-      if (customer.email)   { doc.text(customer.email,   margin, y); y += 5; }
-      y += 4;
-    }
+  drawLetterhead(pdf, headerBase64, title, subtitle);
 
-    // ── Job info ─────────────────────────────────────────────────────────────
-    if (q.job) {
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(80, 80, 80);
-      doc.text(`Job: ${q.job.jobNumber} — ${q.job.title}`, margin, y);
-      y += 8;
-    }
+  // ── Customer + Job info block ─────────────────────────────────────────────
+  let y = HEADER_H + 22;
 
-    // ── Items table ──────────────────────────────────────────────────────────
-    if (items.length > 0) {
-      doc.setFillColor(243, 244, 246);
-      doc.rect(margin, y, contentW, 7, "F");
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(80, 80, 80);
-      doc.text("ITEM",   margin + 2,               y + 5);
-      doc.text("QTY",    margin + contentW * 0.6,   y + 5, { align: "right" });
-      doc.text("UNIT",   margin + contentW * 0.75,  y + 5, { align: "right" });
-      doc.text("NOTES",  margin + contentW,          y + 5, { align: "right" });
-      y += 7;
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(30, 30, 30);
-      items.forEach((item, idx) => {
-        if (idx % 2 === 0) {
-          doc.setFillColor(249, 250, 251);
-          doc.rect(margin, y, contentW, 6.5, "F");
-        }
-        doc.setFontSize(9);
-        doc.text(item.stockItem.name,         margin + 2,              y + 4.5);
-        doc.text(String(item.quantityNeeded), margin + contentW * 0.6, y + 4.5, { align: "right" });
-        doc.text(item.stockItem.unit,         margin + contentW * 0.75,y + 4.5, { align: "right" });
-        doc.text(item.notes ?? "",            margin + contentW,       y + 4.5, { align: "right" });
-        y += 6.5;
-      });
-
-      doc.setDrawColor(220, 220, 220);
-      doc.line(margin, y, pageW - margin, y);
-      y += 8;
-    }
-
-    // ── Estimated amount ─────────────────────────────────────────────────────
-    const col1 = pageW - margin - 60;
-    const col2 = pageW - margin;
-    const estimatedAmount = q.totalAmount ?? q.subtotal ?? 0;
-
-    doc.setDrawColor(37, 99, 235);
-    doc.line(col1 - 10, y - 1, col2, y - 1);
-    y += 2;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(30, 30, 30);
-    doc.text("ESTIMATED AMOUNT:", col1, y, { align: "right" });
-    doc.text(`${estimatedAmount.toLocaleString()} RWF`, col2, y, { align: "right" });
+  if (customer || q.job) {
+    pdf.setDrawColor(0, 160, 210);
+    pdf.setLineWidth(0.4);
+    pdf.line(margin, y, pw - margin, y);
     y += 5;
 
-    // ── Tax note ─────────────────────────────────────────────────────────────
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(130, 130, 130);
-    doc.text("* Tax and final adjustments will be applied at invoice stage.", col2, y, { align: "right" });
+    if (customer) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text("CLIENT", margin, y); y += 4;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(25, 25, 25);
+      pdf.text(customer.name, margin, y); y += 4;
+      if (customer.company) { pdf.text(customer.company, margin, y); y += 4; }
+      if (customer.phone)   { pdf.text(customer.phone,   margin, y); y += 4; }
+      if (customer.email)   { pdf.text(customer.email,   margin, y); y += 4; }
+    }
+
+    if (q.job) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(80, 80, 80);
+      pdf.text(`Job: ${q.job.jobNumber} — ${q.job.title}`, pw / 2, HEADER_H + 27, { align: "center" });
+    }
+
+    pdf.setDrawColor(0, 160, 210);
+    pdf.line(margin, y + 2, pw - margin, y + 2);
     y += 8;
+  }
 
-    // ── Terms / Notes ────────────────────────────────────────────────────────
-    if (q.terms) {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(80, 80, 80);
-      doc.text("Terms & Conditions", margin, y); y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      const lines = doc.splitTextToSize(q.terms, contentW);
-      doc.text(lines, margin, y);
-      y += lines.length * 4.5 + 4;
-    }
-    if (q.notes) {
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(80, 80, 80);
-      doc.text("Notes", margin, y); y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      const lines = doc.splitTextToSize(q.notes, contentW);
-      doc.text(lines, margin, y);
-    }
+  // ── Items table ───────────────────────────────────────────────────────────
+  if (items.length > 0) {
+    autoTable(pdf, {
+      head: [["Item", "Qty", "Unit", "Notes"]],
+      body: items.map((i) => [i.stockItem.name, String(i.quantityNeeded), i.stockItem.unit, i.notes ?? ""]),
+      startY: y,
+      margin: { left: margin, right: margin, bottom: FOOTER_TOP + 6 },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [0, 160, 210], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [245, 251, 255] },
+      didDrawPage: (data: { pageNumber: number }) => {
+        if (data.pageNumber > 1) drawLetterhead(pdf, headerBase64, title, subtitle);
+        drawFooter(pdf, data.pageNumber, (pdf as any).internal.getNumberOfPages());
+      },
+    });
+    y = (pdf as any).lastAutoTable.finalY + 8;
+  }
 
-    // ── Footer ───────────────────────────────────────────────────────────────
-    const pageH = doc.internal.pageSize.getHeight();
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, pageH - 10, pageW, 10, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text("Generated by SAN Track", pageW / 2, pageH - 4, { align: "center" });
+  // ── Estimated amount summary ──────────────────────────────────────────────
+  const col1 = pw - 90, col2 = pw - margin;
+  pdf.setDrawColor(0, 160, 210);
+  pdf.setLineWidth(0.4);
+  pdf.line(col1, y - 2, col2, y - 2);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.setTextColor(40, 40, 40);
+  pdf.text("ESTIMATED AMOUNT:", col1, y + 4);
+  pdf.text(`${estimatedAmount.toLocaleString()} RWF`, col2, y + 4, { align: "right" });
+  pdf.setFont("helvetica", "italic");
+  pdf.setFontSize(7);
+  pdf.setTextColor(130, 130, 130);
+  pdf.text("* Tax and final adjustments applied at invoice stage.", col2, y + 9, { align: "right" });
+  pdf.line(col1, y + 12, col2, y + 12);
+  y += 18;
 
-    doc.save(`${q.quotationNo}.pdf`);
-  });
+  // ── Terms / Notes ─────────────────────────────────────────────────────────
+  if (q.terms) {
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(80, 80, 80);
+    pdf.text("Terms & Conditions", margin, y); y += 5;
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(60, 60, 60);
+    const lines = pdf.splitTextToSize(q.terms, pw - margin * 2);
+    pdf.text(lines, margin, y); y += lines.length * 4.5 + 4;
+  }
+  if (q.notes) {
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(80, 80, 80);
+    pdf.text("Notes", margin, y); y += 5;
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(60, 60, 60);
+    const lines = pdf.splitTextToSize(q.notes, pw - margin * 2);
+    pdf.text(lines, margin, y);
+  }
+
+  // ── Re-draw footers with final page count ────────────────────────────────
+  const totalPages = (pdf as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    pdf.setPage(i);
+    drawFooter(pdf, i, totalPages);
+  }
+
+  pdf.save(`${q.proformaNo}.pdf`);
 }
 
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
 // Only editable fields for a quotation proposal: negotiated amount, validity,
 // terms and notes. Tax is NOT part of a quotation — it goes on the invoice.
 
-function EditQuotationModal({
+function EditProformaModal({
   quotation,
   onClose,
 }: {
-  quotation: Quotation;
+  quotation: Proforma;
   onClose: () => void;
 }) {
   const [form, setForm] = useState({
@@ -280,7 +292,7 @@ function EditQuotationModal({
     notes:      quotation.notes ?? "",
     validUntil: quotation.validUntil ? quotation.validUntil.slice(0, 10) : "",
   });
-  const [updateQuotation, { isLoading }] = useUpdateQuotationMutation();
+  const [updateProforma, { isLoading }] = useUpdateProformaMutation();
   const [error, setError] = useState<string | null>(null);
 
   const items = quotation.job?.items ?? [];
@@ -288,7 +300,7 @@ function EditQuotationModal({
   const handleSave = async () => {
     setError(null);
     try {
-      await updateQuotation({
+      await updateProforma({
         id:         quotation.id,
         // send taxRate=0 and discount=0 to keep backend happy; amount drives totalAmount
         taxRate:    0,
@@ -300,7 +312,7 @@ function EditQuotationModal({
       onClose();
     } catch (e: unknown) {
       const err = e as { data?: { message?: string } };
-      setError(err?.data?.message ?? "Failed to update quotation.");
+      setError(err?.data?.message ?? "Failed to update performa.");
     }
   };
 
@@ -310,7 +322,7 @@ function EditQuotationModal({
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold text-secondary-100">Edit Quotation</h3>
-            <p className="text-xs text-custom-700 mt-0.5">{quotation.quotationNo}</p>
+            <p className="text-xs text-custom-700 mt-0.5">{quotation.proformaNo}</p>
           </div>
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
             <HiOutlineX className="w-5 h-5" />
@@ -398,17 +410,17 @@ function DetailModal({
   onClose,
   onEdit,
 }: {
-  quotation: Quotation;
+  quotation: Proforma;
   onClose: () => void;
   onEdit: () => void;
 }) {
-  const [updateStatus, { isLoading: updatingStatus }] = useUpdateQuotationStatusMutation();
+  const [updateStatus, { isLoading: updatingStatus }] = useUpdateProformaStatusMutation();
   const [error, setError] = useState<string | null>(null);
 
   const cfg = statusConfig[quotation.status];
   const Icon = cfg.icon;
 
-  const handleStatus = async (status: QuotationStatus) => {
+  const handleStatus = async (status: ProformaStatus) => {
     setError(null);
     try {
       await updateStatus({ id: quotation.id, status }).unwrap();
@@ -429,7 +441,7 @@ function DetailModal({
         {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
-            <h3 className="text-xl font-bold text-secondary-100">{quotation.quotationNo}</h3>
+            <h3 className="text-xl font-bold text-secondary-100">{quotation.proformaNo}</h3>
             {customer && (
               <p className="text-sm text-custom-700 mt-0.5">
                 {customer.name}{customer.phone ? ` · ${customer.phone}` : ""}{customer.company ? ` · ${customer.company}` : ""}
@@ -447,7 +459,7 @@ function DetailModal({
 
         {/* Proposal notice */}
         <div className="mb-4 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs">
-          This is a <strong>quotation / proposal</strong> for negotiation and client approval.
+          This is a <strong>performa / proposal</strong> for negotiation and client approval.
           Tax and final charges will be applied at the invoice stage.
         </div>
 
@@ -566,13 +578,13 @@ function DetailModal({
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => printQuotation(quotation)}
+              onClick={() => printProforma(quotation)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold"
             >
               <HiOutlinePrinter className="w-4 h-4" /> Print
             </button>
             <button
-              onClick={() => downloadQuotation(quotation)}
+              onClick={() => downloadProforma(quotation).catch(console.error)}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold"
             >
               <HiOutlineDownload className="w-4 h-4" /> Save
@@ -587,21 +599,21 @@ function DetailModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function QuotationsPage() {
+export default function ProformasPage() {
   const [search, setSearch]             = useState("");
-  const [statusFilter, setStatusFilter] = useState<QuotationStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<ProformaStatus | "all">("all");
   const [page, setPage]                 = useState(1);
-  const [selected, setSelected]         = useState<Quotation | null>(null);
-  const [editing, setEditing]           = useState<Quotation | null>(null);
+  const [selected, setSelected]         = useState<Proforma | null>(null);
+  const [editing, setEditing]           = useState<Proforma | null>(null);
 
-  const { data, isLoading, isError, refetch } = useGetQuotationsQuery({
+  const { data, isLoading, isError, refetch } = useGetProformasQuery({
     status: statusFilter !== "all" ? statusFilter : undefined,
     search: search.trim() || undefined,
     page,
     limit: 20,
   });
 
-  const quotations = data?.quotations ?? [];
+  const quotations = data?.proformas ?? [];
   const pagination = data?.pagination;
 
   const draftCount    = quotations.filter((q) => q.status === "draft").length;
@@ -617,7 +629,7 @@ export default function QuotationsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Quotations</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Performa Invoices</h1>
             <p className="text-sm text-custom-700 mt-1">
               Proposals sent to clients for negotiation and approval tax applied at invoice stage
             </p>
@@ -662,7 +674,7 @@ export default function QuotationsPage() {
               <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
               <input
                 type="text"
-                placeholder="Search by quotation #, job title, or customer…"
+                placeholder="Search by performa #, job title, or customer…"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
@@ -700,14 +712,14 @@ export default function QuotationsPage() {
         ) : isError ? (
           <Card className="!p-12 text-center">
             <HiOutlineExclamationCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">Failed to load quotations</p>
+            <p className="text-secondary-100 font-semibold">Failed to load performa invoices</p>
             <button onClick={() => refetch()} className="mt-4 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold">Retry</button>
           </Card>
         ) : quotations.length === 0 ? (
           <Card className="!p-12 text-center">
             <HiOutlineDocumentText className="w-10 h-10 text-custom-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">No quotations found</p>
-            <p className="text-sm text-custom-700 mt-1">Quotations are auto-created when a job is created</p>
+            <p className="text-secondary-100 font-semibold">No performa invoices found</p>
+            <p className="text-sm text-custom-700 mt-1">Performa invoices are auto-created when a job is created</p>
           </Card>
         ) : (
           <Card className="!p-0 overflow-hidden">
@@ -715,7 +727,7 @@ export default function QuotationsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-custom-100 border-b border-custom-300">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Quotation #</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Performa #</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Customer</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Job</th>
                     <th className="px-4 py-3 text-right text-xs font-bold text-custom-700 uppercase">Est. Amount</th>
@@ -734,7 +746,7 @@ export default function QuotationsPage() {
                     return (
                       <tr key={q.id} className="hover:bg-custom-50 transition-colors">
                         <td className="px-4 py-3">
-                          <span className="font-bold text-primary-500">{q.quotationNo}</span>
+                          <span className="font-bold text-primary-500">{q.proformaNo}</span>
                         </td>
                         <td className="px-4 py-3">
                           {customer ? (
@@ -780,14 +792,14 @@ export default function QuotationsPage() {
                               </button>
                             )}
                             <button
-                              onClick={() => printQuotation(q)}
+                              onClick={() => printProforma(q)}
                               className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-700 hover:text-secondary-100 transition-colors"
                               title="Print"
                             >
                               <HiOutlinePrinter className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => downloadQuotation(q)}
+                              onClick={() => downloadProforma(q).catch(console.error)}
                               className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-700 hover:text-secondary-100 transition-colors"
                               title="Download PDF"
                             >
@@ -848,7 +860,7 @@ export default function QuotationsPage() {
 
       {/* Edit modal */}
       {editing && (
-        <EditQuotationModal
+        <EditProformaModal
           quotation={editing}
           onClose={() => setEditing(null)}
         />

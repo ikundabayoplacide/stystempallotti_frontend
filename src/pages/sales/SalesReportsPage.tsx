@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
 import {
   HiOutlineBriefcase,
   HiOutlineChartBar,
@@ -7,7 +6,6 @@ import {
   HiOutlineDocumentText,
   HiOutlineRefresh,
   HiOutlineUsers,
-  HiOutlineX,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -15,8 +13,8 @@ import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
-import { useGetQuotationsQuery } from "../../store/services/quotationsService";
-import { useCreateReportMutation } from "../../store/services/reportsService";
+import { useGetProformasQuery } from "../../store/services/proformasService";
+import { GenerateReportModal } from "../../components";
 import {
   useGetLeadsQuery,
   useGetProcurementStatsQuery,
@@ -220,108 +218,6 @@ function PdfButtons({ title, getExportData }: {
   );
 }
 
-// ─── Generate Report Modal ────────────────────────────────────────────────────
-
-type ReportItem = { record: string; quantity: string; amount: string };
-
-function GenerateReportModal({ title, onClose }: { title: string; onClose: () => void }) {
-  const [purpose, setPurpose]   = useState("");
-  const [items, setItems]       = useState<ReportItem[]>([{ record: "", quantity: "", amount: "" }]);
-  const [file, setFile]         = useState<File | null>(null);
-  const [notes, setNotes]       = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [createReport] = useCreateReportMutation();
-
-  const addItem    = () => setItems((p) => [...p, { record: "", quantity: "", amount: "" }]);
-  const removeItem = (i: number) => setItems((p) => p.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, f: keyof ReportItem, v: string) =>
-    setItems((p) => p.map((item, idx) => idx === i ? { ...item, [f]: v } : item));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await createReport({
-        title, purpose,
-        items: items.filter((it) => it.record.trim()),
-        notes: notes.trim() || undefined,
-        attachment: file ?? undefined,
-      }).unwrap();
-      toast.success("Report submitted successfully");
-      onClose();
-    } catch { toast.error("Failed to submit report"); }
-    finally { setSubmitting(false); }
-  };
-
-  const cls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-style-500 rounded-2xl shadow-xl max-w-lg w-full my-8 p-6">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-bold text-secondary-100">Generate Report</h3>
-            <p className="text-sm text-custom-700 mt-0.5">{title}</p>
-          </div>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Purpose / Subject *</label>
-            <input required value={purpose} onChange={(e) => setPurpose(e.target.value)}
-              placeholder="e.g. Monthly sales summary" className={cls} />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-secondary-100">Records</label>
-              <button type="button" onClick={addItem} className="text-xs font-semibold text-primary-500 hover:text-primary-600">+ Add Row</button>
-            </div>
-            <div className="space-y-2">
-              {items.map((item, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <input value={item.record} onChange={(e) => updateItem(i, "record", e.target.value)}
-                    placeholder="Item / Record *"
-                    className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-                  <input type="number" min="0" value={item.quantity} onChange={(e) => updateItem(i, "quantity", e.target.value)}
-                    placeholder="Qty"
-                    className="w-20 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-                  <input type="number" min="0" value={item.amount} onChange={(e) => updateItem(i, "amount", e.target.value)}
-                    placeholder="Amount"
-                    className="w-28 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(i)} className="text-red-400 hover:text-red-600"><HiOutlineX className="w-4 h-4" /></button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Attach File <span className="text-custom-700 font-normal">(optional)</span></label>
-            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-custom-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600" />
-            {file && <p className="text-xs text-emerald-600 mt-1">✓ {file.name}</p>}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Notes <span className="text-custom-700 font-normal">(optional)</span></label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-              placeholder="Optional remarks..."
-              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
-          </div>
-          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={submitting}
-              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40">
-              {submitting ? "Submitting…" : "Submit Report"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ─── Tab 1: Jobs Report ───────────────────────────────────────────────────────
 
 const jobStatusColor: Record<string, string> = {
@@ -473,7 +369,7 @@ function JobsReport() {
   );
 }
 
-// ─── Tab 2: Quotations Report ─────────────────────────────────────────────────
+// ─── Tab 2: Proformas Report ─────────────────────────────────────────────────
 
 const qStatusColor: Record<string, string> = {
   draft:    "bg-gray-100 text-gray-700",
@@ -485,8 +381,8 @@ const qStatusColor: Record<string, string> = {
 
 function QuotationsReport() {
   const [page, setPage] = useState(1);
-  const { data, isLoading, refetch } = useGetQuotationsQuery({ limit: 200 });
-  const quotations = data?.quotations ?? [];
+  const { data, isLoading, refetch } = useGetProformasQuery({ limit: 200 });
+  const quotations = data?.proformas ?? [];
   const totalPages = Math.max(1, Math.ceil(quotations.length / PAGE_SIZE));
   const paginated  = quotations.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -496,11 +392,11 @@ function QuotationsReport() {
   const acceptedValue = accepted.reduce((s, q) => s + (Number(q.totalAmount) || 0), 0);
 
   const getExportData = () => ({
-    headers: ["Quotation #", "Customer", "Job", "Est. Amount (RWF)", "Status", "Valid Until", "Created"],
+    headers: ["Proforma #", "Customer", "Job", "Est. Amount (RWF)", "Status", "Valid Until", "Created"],
     rows: quotations.map((q) => {
       const customer = q.customer ?? q.job?.customer;
       return [
-        q.quotationNo,
+        q.proformaNo,
         customer?.name ?? "",
         q.job?.jobNumber ? `#${q.job.jobNumber}` : "",
         (Number(q.totalAmount) || 0).toLocaleString(),
@@ -510,7 +406,7 @@ function QuotationsReport() {
       ];
     }),
     summary: [
-      { label: "Total Quotations", value: String(quotations.length) },
+      { label: "Total Proformas", value: String(quotations.length) },
       { label: "Sent",             value: String(sent) },
       { label: "Draft",            value: String(draft) },
       { label: "Accepted",         value: String(accepted.length) },
@@ -519,13 +415,13 @@ function QuotationsReport() {
   });
 
   return (
-    <Section icon={HiOutlineDocumentText} title="Quotations" color="bg-indigo-100 text-indigo-600">
+    <Section icon={HiOutlineDocumentText} title="Proformas" color="bg-indigo-100 text-indigo-600">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex-1" />
         <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
           <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
         </button>
-        <PdfButtons title="Sales Quotations Report" getExportData={getExportData} />
+        <PdfButtons title="Sales Proformas Report" getExportData={getExportData} />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -540,7 +436,7 @@ function QuotationsReport() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Quotation #", "Customer", "Job", "Est. Amount", "Status", "Valid Until", "Created"].map((h) => (
+                {["Proforma #", "Customer", "Job", "Est. Amount", "Status", "Valid Until", "Created"].map((h) => (
                   <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
                 ))}
               </tr>
@@ -549,12 +445,12 @@ function QuotationsReport() {
               {isLoading ? (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td></tr>
               ) : quotations.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No quotations found</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No proformas found</td></tr>
               ) : paginated.map((q) => {
                 const customer = q.customer ?? q.job?.customer;
                 return (
                   <tr key={q.id} className="hover:bg-custom-50 transition-colors">
-                    <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">{q.quotationNo}</td>
+                    <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">{q.proformaNo}</td>
                     <td className="px-3 py-2.5">
                       <p className="text-sm text-secondary-100">{customer?.name ?? <span className="text-custom-400">—</span>}</p>
                       {customer?.phone && <p className="text-xs text-custom-700">{customer.phone}</p>}

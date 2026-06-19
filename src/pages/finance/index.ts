@@ -9,6 +9,7 @@ export { default as Accountant2Page } from "./Accountant2Page";
 export { default as Accountant2ProcurementPage } from "./Accountant2ProcurementPage";
 export { default as Accountant2RecoveryPage } from "./Accountant2RecoveryPage";
 export { default as Accountant2TaxesPage } from "./Accountant2TaxesPage";
+export {default as Operations} from "./Operations"
 
 export { default as DAFDashboard } from "./DAFDashboard";
 export { default as DAFJobApprovalPage } from "./DAFJobApprovalPage";

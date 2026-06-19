@@ -16,6 +16,7 @@ export interface Report {
   items: ReportItem[];
   notes?: string;
   attachmentUrl?: string;
+  visibleTo?: string[];
   createdAt: string;
   createdBy?: { id: string; name: string; email: string; role: string };
 }
@@ -34,6 +35,7 @@ export interface CreateReportPayload {
   items: ReportItem[];
   notes?: string;
   attachment?: File | null;
+  visibleTo?: string[];   // array of role names, e.g. ["ADMIN", "DAF"]
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -65,15 +67,28 @@ export const reportsApi = createApi({
       providesTags: [{ type: "Report", id: "MY" }],
     }),
 
+    // GET /reports/assigned — reports assigned to the current user's role (received reports)
+    getAssignedReports: builder.query<PaginatedReports, { page?: number; limit?: number } | void>({
+      query: (params) => ({ url: "/reports/assigned", params: (params ?? {}) as Record<string, any> }),
+      transformResponse: (res: any) => {
+        const reports = Array.isArray(res.data) ? res.data : (res.data?.reports ?? []);
+        const pagination = res.pagination ?? { total: reports.length, page: 1, limit: reports.length, totalPages: 1 };
+        return { reports, ...pagination };
+      },
+      providesTags: [{ type: "Report", id: "ASSIGNED" }],
+    }),
+
     // POST /reports
     createReport: builder.mutation<Report, CreateReportPayload>({
-      query: ({ title, purpose, items, notes, attachment }) => {
+      query: ({ title, purpose, items, notes, attachment, visibleTo }) => {
         const form = new FormData();
         form.append("title", title);
         form.append("purpose", purpose);
         form.append("items", JSON.stringify(items));
         if (notes) form.append("notes", notes);
         if (attachment) form.append("attachment", attachment);
+        if (visibleTo && visibleTo.length > 0)
+          form.append("visibleTo", JSON.stringify(visibleTo));
         return { url: "/reports", method: "POST", body: form };
       },
       transformResponse: (res: any) => res.data ?? res,
@@ -123,6 +138,7 @@ export const reportsApi = createApi({
 
 export const {
   useGetMyReportsQuery,
+  useGetAssignedReportsQuery,
   useCreateReportMutation,
   useGetReportsQuery,
   useGetReportByIdQuery,

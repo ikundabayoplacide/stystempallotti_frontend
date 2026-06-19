@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
 import {
   HiOutlineCash,
   HiOutlineChartBar,
@@ -9,7 +8,6 @@ import {
   HiOutlineRefresh,
   HiOutlineTruck,
   HiOutlineUsers,
-  HiOutlineX,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -19,7 +17,7 @@ import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetSalesQuery } from "../../store/services/boutiqueService";
-import { useCreateReportMutation } from "../../store/services/reportsService";
+import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -227,198 +225,6 @@ async function buildPdf(
 }
 
 // ─── Generate Report Modal ───────────────────────────────────────────────────────────
-
-type ReportItem = { record: string; quantity: string; amount: string };
-
-function GenerateReportModal({ title, onClose }: {
-  title: string;
-  onClose: () => void;
-}) {
-  const [purpose, setPurpose]   = useState("");
-  const [items, setItems]       = useState<ReportItem[]>([{ record: "", quantity: "", amount: "" }]);
-  const [pdfFile, setPdfFile]   = useState<File | null>(null);
-  const [notes, setNotes]       = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const [createReport] = useCreateReportMutation();
-
-  const addItem = () => setItems((prev) => [...prev, { record: "", quantity: "", amount: "" }]);
-  const removeItem = (i: number) => setItems((prev) => prev.filter((_, idx) => idx !== i));
-  const updateItem = (i: number, field: keyof ReportItem, value: string) =>
-    setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-
-    const filledItems = items.filter((it) => it.record.trim());
-
-    // ── Save to backend ──
-    try {
-      await createReport({
-        title,
-        purpose,
-        items: filledItems,
-        notes: notes.trim() || undefined,
-        attachment: pdfFile ?? undefined,
-      }).unwrap();
-    } catch (err) {
-      console.error("Failed to save report:", err);
-    }
-
-    // ── Generate PDF ──
-    const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pw  = pdf.internal.pageSize.getWidth();
-
-    drawLetterhead(pdf, headerBase64, title, `Generated: ${new Date().toLocaleString("en-RW")}`);
-
-    let my = HEADER_H + 20;
-    const mx = 14;
-
-    // Purpose
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.setTextColor(40, 40, 40);
-    pdf.text("Purpose / Subject:", mx, my);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(purpose, mx + 48, my);
-    my += 10;
-
-    // Items table
-    if (filledItems.length > 0) {
-      autoTable(pdf, {
-        head: [["#", "Record / Item", "Quantity", "Amount (RWF)"]],
-        body: filledItems.map((it, idx) => [
-          String(idx + 1),
-          it.record,
-          it.quantity || "—",
-          it.amount ? Number(it.amount).toLocaleString() : "—",
-        ]),
-        startY: my,
-        margin: { left: mx, right: mx, bottom: FOOTER_TOP + 6 },
-        styles: { fontSize: 8, cellPadding: 2.5 },
-        headStyles: { fillColor: [0, 160, 210], textColor: 255, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [245, 251, 255] },
-        columnStyles: { 0: { cellWidth: 10 }, 2: { cellWidth: 22 }, 3: { cellWidth: 32 } },
-      });
-      my = (pdf as any).lastAutoTable.finalY + 10;
-    }
-
-    // Notes
-    if (notes.trim()) {
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.setTextColor(40, 40, 40);
-      pdf.text("Additional Notes:", mx, my); my += 6;
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8.5);
-      pdf.text(pdf.splitTextToSize(notes, pw - mx * 2), mx, my);
-    }
-
-    drawFooter(pdf, 1, 1);
-    // pdf.save removed — report is submitted only, not downloaded
-    setSubmitting(false);
-    toast.success("Report submitted successfully");
-    onClose();
-  };
-
-  const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
-
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-style-500 rounded-2xl shadow-xl max-w-lg w-full my-8 p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-lg font-bold text-secondary-100">Generate Report</h3>
-            <p className="text-sm text-custom-700 mt-0.5">{title}</p>
-          </div>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Purpose */}
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Purpose / Subject *</label>
-            <input required value={purpose} onChange={(e) => setPurpose(e.target.value)}
-              placeholder="e.g. Monthly sales summary for management" className={inputCls} />
-          </div>
-
-          {/* Items */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-secondary-100">Records</label>
-              <button type="button" onClick={addItem}
-                className="flex items-center gap-1 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors">
-                <span className="text-base leading-none">+</span> Add Row
-              </button>
-            </div>
-            <div className="space-y-2">
-              {items.map((item, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <input
-                    value={item.record}
-                    onChange={(e) => updateItem(i, "record", e.target.value)}
-                    placeholder="Record / Item name *"
-                    className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
-                  />
-                  <input
-                    type="number" min="0"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(i, "quantity", e.target.value)}
-                    placeholder="Qty"
-                    className="w-20 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
-                  />
-                  <input
-                    type="number" min="0"
-                    value={item.amount}
-                    onChange={(e) => updateItem(i, "amount", e.target.value)}
-                    placeholder="Amount"
-                    className="w-28 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
-                  />
-                  {items.length > 1 && (
-                    <button type="button" onClick={() => removeItem(i)}
-                      className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0">
-                      <HiOutlineX className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* PDF attachment */}
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Attach PDF / File <span className="text-custom-700 font-normal">(optional)</span></label>
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
-              onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-              className="w-full text-xs text-custom-700 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600 transition-colors"
-            />
-            {pdfFile && <p className="text-xs text-emerald-600 mt-1">✓ {pdfFile.name}</p>}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Additional Notes <span className="text-custom-700 font-normal">(optional)</span></label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
-              rows={3} placeholder="Optional remarks..."
-              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
-            >Cancel</button>
-            <button type="submit" disabled={submitting}
-              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40"
-            >{submitting ? "submitting..." : "Submit"}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 // ─── PDF Action Buttons ─────────────────────────────────────────────────────────────────
 
