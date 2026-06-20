@@ -210,6 +210,7 @@ const pmColors: Record<string, string> = {
 // ─── Hobe Sales Report ────────────────────────────────────────────────────────
 
 function HobeSalesReport() {
+  const { userName } = useAuth();
   const [period, setPeriod]         = useState<Period>("month");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
@@ -221,7 +222,11 @@ function HobeSalesReport() {
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetHobeSalesQuery({ from: range.from, to: range.to, limit: 200 });
-  const sales = data?.sales ?? [];
+  // Filter to only this user's sales (API has no soldById param for hobes)
+  const allSales = data?.sales ?? [];
+  const sales = userName
+    ? allSales.filter((s) => s.soldBy?.name === userName)
+    : allSales;
 
   const totalPages = Math.max(1, Math.ceil(sales.length / PAGE_SIZE));
   const paginated  = sales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

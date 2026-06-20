@@ -330,6 +330,7 @@ function Section({ icon: Icon, title, color, children }: {
 const PAGE_SIZE = 5;
 
 function BoutiqueSalesReport() {
+  const { userId } = useAuth();
   const [period, setPeriod] = useState<Period>("month");
   const [page, setPage]     = useState(1);
   const [customFrom, setCustomFrom] = useState("");
@@ -340,7 +341,12 @@ function BoutiqueSalesReport() {
     ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
     : getDateRange(period);
 
-  const { data, isLoading, refetch } = useGetSalesQuery({ from: range.from, to: range.to, limit: 200 });
+  const { data, isLoading, refetch } = useGetSalesQuery({
+    from: range.from,
+    to: range.to,
+    limit: 200,
+    ...(userId ? { soldById: userId } : {}),
+  });
   const sales = data?.sales ?? [];
 
   const totalPages = Math.max(1, Math.ceil(sales.length / PAGE_SIZE));

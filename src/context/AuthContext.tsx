@@ -49,6 +49,7 @@ type LegacyRole =
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  userId: string | null;
   userRole: LegacyRole | null;
   userName: string | null;
   userDepartment: Department | null;
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        userId: user?.id ?? null,
         userRole,
         userName: user?.name ?? null,
         userDepartment: null,

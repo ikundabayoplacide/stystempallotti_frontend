@@ -10,12 +10,9 @@ import {
   HiOutlineChevronRight,
   HiOutlineCreditCard,
   HiOutlineDocumentText,
-  HiOutlineMinus,
   HiOutlinePhone,
-  HiOutlinePlus,
   HiOutlineRefresh,
   HiOutlineSearch,
-  HiOutlineTrash,
   HiOutlineUser,
   HiOutlineX,
 } from "react-icons/hi";
@@ -453,55 +450,39 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
 }
 
 // ─── Generate Invoice Modal ───────────────────────────────────────────────────
-
-type InvoiceLineItem = { name: string; quantity: number; unitPrice: number };
-
 function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void }) {
-  const [items, setItems] = useState<InvoiceLineItem[]>([
-    { name: job.title, quantity: job.quantity ?? 1, unitPrice: job.amount ?? 0 },
-  ]);
-  const [discountValue, setDiscountValue] = useState(0);
-  const [taxRate, setTaxRate] = useState(18);
-  const [notes, setNotes] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  // Amount paid = sum of all recorded payments
+  const amountPaid = (job.payments ?? []).reduce(
+    (sum, p) => sum + Number(p.amountPaid ?? 0),
+    0
+  );
+  const [notes, setNotes]     = useState("");
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [dueDate, setDueDate] = useState(todayStr);
 
   const [createInvoice, { isLoading, error }] = useCreateInvoiceMutation();
 
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const discountAmt = (subtotal * discountValue) / 100;
-  const taxAmt = ((subtotal - discountAmt) * taxRate) / 100;
-  const total = subtotal - discountAmt + taxAmt;
-
-  function addItem() {
-    setItems((prev) => [...prev, { name: "", quantity: 1, unitPrice: 0 }]);
-  }
-  function removeItem(idx: number) {
-    setItems((prev) => prev.filter((_, i) => i !== idx));
-  }
-  function updateItem(idx: number, field: keyof InvoiceLineItem, value: string | number) {
-    setItems((prev) => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  }
+  // No tax — total equals amount paid
+  const total = amountPaid;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (items.some((i) => !i.name.trim())) {
-      toast.error("All line items need a name");
-      return;
-    }
     try {
       const payload: CreateInvoicePayload = {
-        jobId: job.id,
+        jobId:      job.id,
         customerId: job.customer?.id ?? job.customerId,
-        lineItems: items.map((i) => ({
-          name: i.name,
-          quantity: Number(i.quantity),
-          unitPrice: Number(i.unitPrice),
-        })),
-        discountType: "PERCENTAGE",
-        discountValue: Number(discountValue),
-        taxRate: Number(taxRate),
-        notes: notes.trim() || undefined,
-        dueDate: dueDate || undefined,
+        lineItems: [
+          {
+            name:      job.title,
+            quantity:  1,
+            unitPrice: amountPaid,
+          },
+        ],
+        discountType:  "PERCENTAGE",
+        discountValue: 0,
+        taxRate:       0,
+        notes:         notes.trim() || undefined,
+        dueDate:       dueDate || undefined,
       };
       await createInvoice(payload).unwrap();
       toast.success(`Invoice generated for "${job.title}"`);
@@ -513,7 +494,7 @@ function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void 
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-2xl w-full my-8">
+      <Card className="!p-6 max-w-md w-full my-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -537,112 +518,32 @@ function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void 
             </div>
           </div>
 
-          {/* Line items */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-secondary-100">Line Items</label>
-              <button
-                type="button"
-                onClick={addItem}
-                className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline"
-              >
-                <HiOutlinePlus className="h-3.5 w-3.5" /> Add item
-              </button>
+          {/* Amount paid (read-only) */}
+          <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-custom-700">Job</span>
+              <span className="font-semibold text-secondary-100 max-w-[60%] truncate text-right">{job.title}</span>
             </div>
-            <div className="space-y-2">
-              {/* Header row */}
-              <div className="grid grid-cols-[1fr_80px_100px_32px] gap-2 px-1">
-                <span className="text-xs font-bold text-custom-500 uppercase">Name</span>
-                <span className="text-xs font-bold text-custom-500 uppercase text-center">Qty</span>
-                <span className="text-xs font-bold text-custom-500 uppercase text-right">Unit Price</span>
-                <span />
-              </div>
-              {items.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_80px_100px_32px] gap-2 items-center">
-                  <input
-                    value={item.name}
-                    onChange={(e) => updateItem(idx, "name", e.target.value)}
-                    placeholder="e.g. Offset Printing – 500 brochures"
-                    required
-                    className="px-3 py-2 rounded-lg border border-custom-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  />
-                  <input
-                    type="number"
-                    min={1}
-                    value={item.quantity}
-                    onChange={(e) => updateItem(idx, "quantity", Number(e.target.value))}
-                    className="px-2 py-2 rounded-lg border border-custom-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  />
-                  <input
-                    type="number"
-                    min={0}
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(idx, "unitPrice", Number(e.target.value))}
-                    className="px-2 py-2 rounded-lg border border-custom-300 text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary-400"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeItem(idx)}
-                    disabled={items.length === 1}
-                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 disabled:opacity-30 transition-colors"
-                  >
-                    <HiOutlineTrash className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+            <div className="flex justify-between pt-2 border-t border-custom-200">
+              <span className="font-semibold text-custom-700">Amount Paid</span>
+              <span className="font-bold text-secondary-100">{amountPaid.toLocaleString()} RWF</span>
             </div>
           </div>
 
-          {/* Discount / Tax / Due date */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Discount (%)</label>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => setDiscountValue((v) => Math.max(0, v - 1))}
-                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
-                  <HiOutlineMinus className="h-3.5 w-3.5" />
-                </button>
-                <input
-                  type="number" min={0} max={100} value={discountValue}
-                  onChange={(e) => setDiscountValue(Math.min(100, Math.max(0, Number(e.target.value))))}
-                  className="flex-1 px-3 py-2 rounded-lg border border-custom-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
-                />
-                <button type="button" onClick={() => setDiscountValue((v) => Math.min(100, v + 1))}
-                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
-                  <HiOutlinePlus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Tax / VAT (%)</label>
-              <div className="flex items-center gap-1">
-                <button type="button" onClick={() => setTaxRate((v) => Math.max(0, v - 1))}
-                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
-                  <HiOutlineMinus className="h-3.5 w-3.5" />
-                </button>
-                <input
-                  type="number" min={0} max={100} value={taxRate}
-                  onChange={(e) => setTaxRate(Math.min(100, Math.max(0, Number(e.target.value))))}
-                  className="flex-1 px-3 py-2 rounded-lg border border-custom-300 text-sm text-center focus:outline-none focus:ring-2 focus:ring-primary-400"
-                />
-                <button type="button" onClick={() => setTaxRate((v) => Math.min(100, v + 1))}
-                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
-                  <HiOutlinePlus className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Due Date</label>
-              <input
-                type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-custom-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-              />
-            </div>
+          {/* Due date */}
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Due Date</label>
+            <input
+              type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-custom-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+            />
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-1">Notes <span className="text-xs font-normal text-custom-500">(optional)</span></label>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">
+              Notes <span className="text-xs font-normal text-custom-500">(optional)</span>
+            </label>
             <textarea
               value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
               placeholder="Payment terms, special instructions…"
@@ -650,23 +551,9 @@ function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void 
             />
           </div>
 
-          {/* Totals summary */}
-          <div className="rounded-xl bg-custom-50 border border-custom-200 p-4 space-y-2 text-sm">
-            <div className="flex justify-between text-custom-700">
-              <span>Subtotal</span>
-              <span className="font-semibold text-secondary-100">{subtotal.toLocaleString()} RWF</span>
-            </div>
-            {discountValue > 0 && (
-              <div className="flex justify-between text-custom-700">
-                <span>Discount ({discountValue}%)</span>
-                <span className="font-semibold text-orange-600">− {discountAmt.toLocaleString()} RWF</span>
-              </div>
-            )}
-            <div className="flex justify-between text-custom-700">
-              <span>Tax / VAT ({taxRate}%)</span>
-              <span className="font-semibold text-secondary-100">+ {taxAmt.toLocaleString()} RWF</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-custom-300 font-bold text-base">
+          {/* Total */}
+          <div className="rounded-xl bg-custom-50 border border-custom-200 p-4 text-sm">
+            <div className="flex justify-between font-bold text-base">
               <span className="text-secondary-100">Total</span>
               <span className="text-primary-600">{total.toLocaleString()} RWF</span>
             </div>
@@ -808,6 +695,12 @@ export default function PaymentCollectionPage() {
                     Amount
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
+                    Paid
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
+                    Balance
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
@@ -822,7 +715,7 @@ export default function PaymentCollectionPage() {
                 {jobsLoading ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-4 py-8 text-center text-custom-700"
                     >
                       Loading jobs...
@@ -831,7 +724,7 @@ export default function PaymentCollectionPage() {
                 ) : jobs.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-4 py-8 text-center text-custom-700"
                     >
                       No jobs found
@@ -881,6 +774,23 @@ export default function PaymentCollectionPage() {
                             Not set
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const totalPaid = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
+                          return totalPaid > 0
+                            ? <span className="text-sm font-bold text-emerald-600">{totalPaid.toLocaleString()} RWF</span>
+                            : <span className="text-xs text-custom-400">—</span>;
+                        })()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          if (job.amount == null) return <span className="text-xs text-custom-400">—</span>;
+                          const totalPaid = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
+                          const bal = job.amount - totalPaid;
+                          if (bal <= 0) return <span className="text-xs font-bold text-emerald-600">Settled</span>;
+                          return <span className="text-sm font-bold text-red-600">{bal.toLocaleString()} RWF</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span

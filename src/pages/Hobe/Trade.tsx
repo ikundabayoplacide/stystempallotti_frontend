@@ -447,7 +447,16 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-secondary-100">{sale.hobe.nameOfHobe}</p>
                       <p className="text-xs font-mono text-custom-700">{sale.hobe.hobeNo}</p>
-                      {sale.customer && <p className="text-xs text-custom-700 mt-0.5">{sale.customer.name}{sale.customer.phone && ` · ${sale.customer.phone}`}</p>}
+                      {sale.customer ? (
+                        <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg bg-orange-100 border border-orange-200 w-fit">
+                          <span className="text-xs font-bold text-orange-700">{sale.customer.name}</span>
+                          {sale.customer.phone && (
+                            <span className="text-xs text-orange-600">· {sale.customer.phone}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-block mt-1.5 text-xs text-custom-400 italic">Walk-in customer</span>
+                      )}
                       <div className="flex gap-4 mt-2 text-xs">
                         <span className="text-custom-700">Total: <span className="font-bold text-secondary-100">{Number(sale.totalPrice).toLocaleString()} RWF</span></span>
                         <span className="text-custom-700">Paid: <span className="font-bold text-emerald-600">{Number(sale.amountPaid).toLocaleString()} RWF</span></span>
@@ -461,17 +470,32 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
                     >Collect</button>
                   </div>
                   {payingId === sale.id && (
-                    <div className="mt-3 pt-3 border-t border-orange-200 flex gap-2 items-end">
-                      <div className="flex-1">
-                        <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Received (RWF)</label>
-                        <input type="number" min={1} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className={inputCls} />
+                    <div className="mt-3 pt-3 border-t border-orange-200">
+                      {/* Customer reminder */}
+                      <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-orange-300">
+                        <span className="text-xs text-custom-700">Collecting from:</span>
+                        <span className="text-xs font-bold text-secondary-100">
+                          {sale.customer ? sale.customer.name : "Walk-in customer"}
+                        </span>
+                        {sale.customer?.phone && (
+                          <span className="text-xs text-custom-700">· {sale.customer.phone}</span>
+                        )}
+                        <span className="ml-auto text-xs font-bold text-red-600">
+                          Due: {Number(sale.balanceDue).toLocaleString()} RWF
+                        </span>
                       </div>
-                      <button onClick={() => handlePayBalance(sale)} disabled={updating}
-                        className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors"
-                      >{updating ? "Saving..." : "Confirm"}</button>
-                      <button onClick={() => setPayingId(null)}
-                        className="px-3 py-2 rounded-xl border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 transition-colors"
-                      >Cancel</button>
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Received (RWF)</label>
+                          <input type="number" min={1} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className={inputCls} />
+                        </div>
+                        <button onClick={() => handlePayBalance(sale)} disabled={updating}
+                          className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors"
+                        >{updating ? "Saving..." : "Confirm"}</button>
+                        <button onClick={() => setPayingId(null)}
+                          className="px-3 py-2 rounded-xl border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 transition-colors"
+                        >Cancel</button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -491,7 +515,17 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-secondary-100">{sale.hobe.nameOfHobe}</p>
-                      {sale.customer && <p className="text-xs text-custom-700 mt-0.5">{sale.customer.name}</p>}
+                      <p className="text-xs font-mono text-custom-700">{sale.hobe.hobeNo}</p>
+                      {sale.customer ? (
+                        <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 rounded-lg bg-blue-100 border border-blue-200 w-fit">
+                          <span className="text-xs font-bold text-blue-700">{sale.customer.name}</span>
+                          {sale.customer.phone && (
+                            <span className="text-xs text-blue-600">· {sale.customer.phone}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-block mt-1.5 text-xs text-custom-400 italic">Walk-in customer</span>
+                      )}
                       <div className="flex gap-4 mt-2 text-xs">
                         <span className="text-custom-700">Total: <span className="font-bold text-secondary-100">{Number(sale.totalPrice).toLocaleString()} RWF</span></span>
                         <span className="font-bold text-blue-600">Return: {Number(sale.changeGiven).toLocaleString()} RWF</span>

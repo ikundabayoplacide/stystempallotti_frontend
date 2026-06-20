@@ -68,6 +68,71 @@ function StepIndicator({ step }: { step: 1 | 2 | 3 | 4 }) {
   );
 }
 
+// ─── SelectOrCustom ──────────────────────────────────────────────────────────
+
+interface SelectOrCustomProps {
+  name: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+}
+
+function SelectOrCustom({ name, value, onChange, options, placeholder }: SelectOrCustomProps) {
+  const isCustom = value !== "" && !options.some((o) => o.value === value);
+  const [custom, setCustom] = useState(false);
+
+  // Sync: if parent value is a known option → show select; if unknown → show input
+  useEffect(() => {
+    setCustom(isCustom);
+  }, [isCustom]);
+
+  if (custom) {
+    return (
+      <div className="flex gap-1.5">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={`Type custom ${name}…`}
+          autoFocus
+          className={selectCls + " flex-1"}
+        />
+        <button
+          type="button"
+          title="Back to list"
+          onClick={() => { setCustom(false); onChange(""); }}
+          className="px-2.5 rounded-xl border border-custom-400 text-custom-700 hover:bg-custom-100 transition-colors text-xs font-semibold shrink-0"
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <select
+      name={name}
+      value={value}
+      onChange={(e) => {
+        if (e.target.value === "__custom__") {
+          setCustom(true);
+          onChange("");
+        } else {
+          onChange(e.target.value);
+        }
+      }}
+      className={selectCls}
+    >
+      <option value="">{placeholder ?? "Select…"}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+      <option value="__custom__">＋ Other (type your own)</option>
+    </select>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function CreateJobModal({ onClose, onCreated }: Props) {
@@ -155,6 +220,27 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
     const cost = si.stockItem.unitCost ?? 0;
     return sum + cost * si.quantityNeeded;
   }, 0);
+
+  // Track whether user has manually edited the amount
+  const [amountManuallyEdited, setAmountManuallyEdited] = useState(false);
+  const [taxRate, setTaxRate]         = useState(18);  // %
+  const [discountRate, setDiscountRate] = useState(0); // %
+
+  // Derived: apply discount then tax on top of items total
+  const discountAmt = Math.round((itemsTotal * discountRate) / 100);
+  const afterDiscount = itemsTotal - discountAmt;
+  const taxAmt = Math.round((afterDiscount * taxRate) / 100);
+  const computedTotal = afterDiscount + taxAmt;
+
+  // Auto-sync amount from computed total unless user has manually changed it
+  useEffect(() => {
+    if (!amountManuallyEdited) {
+      setForm((prev) => ({
+        ...prev,
+        amount: computedTotal > 0 ? String(computedTotal) : "",
+      }));
+    }
+  }, [computedTotal, amountManuallyEdited]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -355,17 +441,21 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Job Type</label>
-                      <select name="jobType" value={form.jobType} onChange={handleFieldChange} className={selectCls}>
-                        <option value="">Select type</option>
-                        <option value="business-card">Business Card</option>
-                        <option value="brochure">Brochure</option>
-                        <option value="flyer">Flyer</option>
-                        <option value="banner">Banner</option>
-                        <option value="booklet">Booklet</option>
-                        <option value="poster">Poster</option>
-                        <option value="envelope">Envelope</option>
-                        <option value="other">Other</option>
-                      </select>
+                      <SelectOrCustom
+                        name="jobType"
+                        value={form.jobType}
+                        onChange={(val) => setForm((p) => ({ ...p, jobType: val }))}
+                        placeholder="Select type"
+                        options={[
+                          { value: "business-card", label: "Business Card" },
+                          { value: "brochure",      label: "Brochure" },
+                          { value: "flyer",         label: "Flyer" },
+                          { value: "banner",        label: "Banner" },
+                          { value: "booklet",       label: "Booklet" },
+                          { value: "poster",        label: "Poster" },
+                          { value: "envelope",      label: "Envelope" },
+                        ]}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Quantity</label>
@@ -377,47 +467,67 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Size</label>
-                      <select name="size" value={form.size} onChange={handleFieldChange} className={selectCls}>
-                        <option value="">Select size</option>
-                        <option value="A3">A3</option>
-                        <option value="A4">A4</option>
-                        <option value="A5">A5</option>
-                        <option value="A6">A6</option>
-                        <option value="Letter">Letter</option>
-                        <option value="Custom">Custom</option>
-                      </select>
+                      <SelectOrCustom
+                        name="size"
+                        value={form.size}
+                        onChange={(val) => setForm((p) => ({ ...p, size: val }))}
+                        placeholder="Select size"
+                        options={[
+                          { value: "A3",     label: "A3" },
+                          { value: "A4",     label: "A4" },
+                          { value: "A5",     label: "A5" },
+                          { value: "A6",     label: "A6" },
+                          { value: "Letter", label: "Letter" },
+                        ]}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Color Mode</label>
-                      <select name="colorMode" value={form.colorMode} onChange={handleFieldChange} className={selectCls}>
-                        <option value="">Select color mode</option>
-                        <option value="full-color">Full Color</option>
-                        <option value="black-and-white">Black & White</option>
-                        <option value="spot-color">Spot Color</option>
-                      </select>
+                      <SelectOrCustom
+                        name="colorMode"
+                        value={form.colorMode}
+                        onChange={(val) => setForm((p) => ({ ...p, colorMode: val }))}
+                        placeholder="Select color mode"
+                        options={[
+                          { value: "full-color",      label: "Full Color" },
+                          { value: "black-and-white", label: "Black & White" },
+                          { value: "spot-color",      label: "Spot Color" },
+                        ]}
+                      />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Binding Type</label>
-                      <select name="bindingType" value={form.bindingType} onChange={handleFieldChange} className={selectCls}>
-                        <option value="">Select binding</option>
-                        <option value="none">None</option>
-                        <option value="staple">Staple</option>
-                        <option value="spiral">Spiral</option>
-                        <option value="perfect">Perfect Bind</option>
-                        <option value="hardcover">Hardcover</option>
-                      </select>
+                      <SelectOrCustom
+                        name="bindingType"
+                        value={form.bindingType}
+                        onChange={(val) => setForm((p) => ({ ...p, bindingType: val }))}
+                        placeholder="Select binding"
+                        options={[
+                          { value: "none",      label: "None" },
+                          { value: "staple",    label: "Staple" },
+                          { value: "spiral",    label: "Spiral" },
+                          { value: "perfect",   label: "Perfect Bind" },
+                          { value: "hardcover", label: "Hardcover" },
+                        ]}
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Priority</label>
-                      <select name="priority" value={form.priority} onChange={handleFieldChange} className={selectCls}>
-                        <option value="low">Low</option>
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                        <option value="urgent">Urgent</option>
-                      </select>
+                      <SelectOrCustom
+                        name="priority"
+                        value={form.priority}
+                        onChange={(val) => setForm((p) => ({ ...p, priority: val as typeof form.priority }))}
+                        placeholder="Select priority"
+                        options={[
+                          { value: "low",    label: "Low" },
+                          { value: "normal", label: "Normal" },
+                          { value: "high",   label: "High" },
+                          { value: "urgent", label: "Urgent" },
+                        ]}
+                      />
                     </div>
                   </div>
 
@@ -547,6 +657,81 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                           </button>
                         </div>
                       ))}
+
+                      {/* Pricing Adjustments — below the added items list */}
+                      {itemsTotal > 0 && (
+                        <div className="mt-3 rounded-xl border border-custom-300 bg-custom-50 p-3 space-y-3">
+                          <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Pricing Adjustments</p>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {/* Discount */}
+                            <div>
+                              <label className="block text-xs font-semibold text-secondary-100 mb-1">Discount (%)</label>
+                              <div className="flex items-center gap-1">
+                                <button type="button"
+                                  onClick={() => { setDiscountRate((v) => Math.max(0, v - 1)); setAmountManuallyEdited(false); }}
+                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+                                  <span className="text-xs font-bold leading-none">−</span>
+                                </button>
+                                <input type="number" min={0} max={100} value={discountRate}
+                                  onChange={(e) => { setDiscountRate(Math.min(100, Math.max(0, Number(e.target.value)))); setAmountManuallyEdited(false); }}
+                                  className="flex-1 px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs text-center focus:outline-none focus:border-primary-400 transition-colors"
+                                />
+                                <button type="button"
+                                  onClick={() => { setDiscountRate((v) => Math.min(100, v + 1)); setAmountManuallyEdited(false); }}
+                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+                                  <span className="text-xs font-bold leading-none">+</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Tax */}
+                            <div>
+                              <label className="block text-xs font-semibold text-secondary-100 mb-1">Tax / VAT (%)</label>
+                              <div className="flex items-center gap-1">
+                                <button type="button"
+                                  onClick={() => { setTaxRate((v) => Math.max(0, v - 1)); setAmountManuallyEdited(false); }}
+                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+                                  <span className="text-xs font-bold leading-none">−</span>
+                                </button>
+                                <input type="number" min={0} max={100} value={taxRate}
+                                  onChange={(e) => { setTaxRate(Math.min(100, Math.max(0, Number(e.target.value)))); setAmountManuallyEdited(false); }}
+                                  className="flex-1 px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs text-center focus:outline-none focus:border-primary-400 transition-colors"
+                                />
+                                <button type="button"
+                                  onClick={() => { setTaxRate((v) => Math.min(100, v + 1)); setAmountManuallyEdited(false); }}
+                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+                                  <span className="text-xs font-bold leading-none">+</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Mini breakdown */}
+                          <div className="space-y-1 pt-2 border-t border-custom-200 text-xs">
+                            <div className="flex justify-between text-custom-700">
+                              <span>Subtotal</span>
+                              <span className="font-semibold text-secondary-100">{itemsTotal.toLocaleString()} RWF</span>
+                            </div>
+                            {discountRate > 0 && (
+                              <div className="flex justify-between text-custom-700">
+                                <span>Discount ({discountRate}%)</span>
+                                <span className="font-semibold text-orange-600">− {discountAmt.toLocaleString()} RWF</span>
+                              </div>
+                            )}
+                            {taxRate > 0 && (
+                              <div className="flex justify-between text-custom-700">
+                                <span>Tax / VAT ({taxRate}%)</span>
+                                <span className="font-semibold text-secondary-100">+ {taxAmt.toLocaleString()} RWF</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-bold text-secondary-100 pt-1 border-t border-custom-200">
+                              <span>Total</span>
+                              <span className="text-primary-500">{computedTotal.toLocaleString()} RWF</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -662,9 +847,10 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       })}
                     </div>
                   )}
+
                 </div>
 
-                {/* Error */}
+                {/* Error — step 2 */}
                 {submitError && (
                   <div className="mx-6 mb-2 flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
                     <HiOutlineExclamationCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -694,8 +880,6 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
               </div>
             </div>
           )}
-
-          {/* ── Step 3: Documents ────────────────────────────────────────── */}
           {step === 3 && (
             <div className="flex flex-col flex-1 min-h-0">
               <div className="px-6 py-4 border-b border-custom-200 shrink-0">
@@ -862,9 +1046,27 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                           );
                         })}
                         {itemsTotal > 0 && (
-                          <div className="flex justify-between text-sm pt-2 border-t border-custom-300 mt-2">
-                            <span className="font-bold text-secondary-100">Total from items</span>
-                            <span className="font-bold text-primary-500">{itemsTotal.toLocaleString()} RWF</span>
+                          <div className="space-y-1 pt-2 border-t border-custom-300 mt-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-custom-700">Subtotal</span>
+                              <span className="font-semibold text-secondary-100">{itemsTotal.toLocaleString()} RWF</span>
+                            </div>
+                            {discountRate > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-custom-700">Discount ({discountRate}%)</span>
+                                <span className="font-semibold text-orange-600">− {discountAmt.toLocaleString()} RWF</span>
+                              </div>
+                            )}
+                            {taxRate > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-custom-700">Tax / VAT ({taxRate}%)</span>
+                                <span className="font-semibold text-secondary-100">+ {taxAmt.toLocaleString()} RWF</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between font-bold pt-1 border-t border-custom-200">
+                              <span className="text-secondary-100">Total</span>
+                              <span className="text-primary-500">{computedTotal.toLocaleString()} RWF</span>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -908,16 +1110,31 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       min="0"
                       step="any"
                       name="amount"
-                      value={form.amount || (itemsTotal > 0 ? String(itemsTotal) : "")}
-                      onChange={handleFieldChange}
+                      value={form.amount}
+                      onChange={(e) => {
+                        setAmountManuallyEdited(true);
+                        handleFieldChange(e);
+                      }}
                       placeholder="e.g. 25000"
                       className={selectCls}
                     />
-                    {itemsTotal > 0 && form.amount && parseFloat(form.amount) !== itemsTotal && (
-                      <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1">
-                        <HiOutlineExclamationCircle className="w-3.5 h-3.5" />
-                        Differs from items total ({itemsTotal.toLocaleString()} RWF)
-                      </p>
+                    {itemsTotal > 0 && form.amount && parseFloat(form.amount) !== computedTotal && (
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-yellow-600 flex items-center gap-1">
+                          <HiOutlineExclamationCircle className="w-3.5 h-3.5" />
+                          Differs from calculated total ({computedTotal.toLocaleString()} RWF)
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAmountManuallyEdited(false);
+                            setForm((prev) => ({ ...prev, amount: String(computedTotal) }));
+                          }}
+                          className="text-xs text-primary-500 hover:text-primary-600 font-semibold"
+                        >
+                          Reset to calculated total
+                        </button>
+                      </div>
                     )}
                   </div>
 

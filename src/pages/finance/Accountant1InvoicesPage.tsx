@@ -1,6 +1,6 @@
+import autoTable from "jspdf-autotable";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import { useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   HiOutlineBan,
   HiOutlineCheckCircle,
@@ -8,12 +8,71 @@ import {
   HiOutlineDotsVertical,
   HiOutlineDownload,
   HiOutlineEye,
-  HiOutlinePrinter,
   HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineTrash,
   HiOutlineX,
 } from "react-icons/hi";
+
+// ─── PDF Letterhead helpers (same as Reports.tsx) ─────────────────────────────
+
+const COMPANY = {
+  address: "B.P. 863 Kigali - Rwanda",
+  tin:     "TIN / T.V.A.: NO 100021520",
+  tel:     "Tel: Reception (+250) 788 313 617 / (+250) 788 304 549",
+  rc:      "No. RC: 536 / 09 / NYR",
+  email:   "E-mail: pallottipresse@yahoo.com",
+  compte:  "Compte: BK: 10000017 4372",
+  motto:   "Rapidite - Qualite - Innovation - Esprit d'Equipe",
+};
+
+const HEADER_H     = 35;
+const FOOTER_TOP   = 26;
+const BOTTOM_MARGIN = FOOTER_TOP + 6;
+
+function loadImageAsBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function pdfDrawLetterhead(pdf: jsPDF, headerBase64: string | null, title: string, subtitle: string) {
+  const pw = pdf.internal.pageSize.getWidth();
+  if (headerBase64) pdf.addImage(headerBase64, "PNG", 0, 0, pw, HEADER_H);
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(12); pdf.setTextColor(25, 25, 25);
+  pdf.text(title, pw / 2, HEADER_H + 10, { align: "center" });
+  if (subtitle) {
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(110, 110, 110);
+    pdf.text(subtitle, pw / 2, HEADER_H + 16, { align: "center" });
+  }
+}
+
+function pdfDrawFooter(pdf: jsPDF, pageNum: number, totalPages: number) {
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  const fy = ph - FOOTER_TOP;
+  pdf.setDrawColor(200, 200, 200); pdf.setLineWidth(0.3);
+  pdf.line(10, fy, pw - 10, fy);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(60, 60, 60);
+  const col1 = 12, col2 = pw / 2, col3 = pw - 12;
+  const row1 = fy + 5, row2 = fy + 10;
+  pdf.text(COMPANY.address, col1, row1);   pdf.text(COMPANY.tin, col1, row2);
+  pdf.text(COMPANY.tel, col2, row1, { align: "center" }); pdf.text(COMPANY.rc, col2, row2, { align: "center" });
+  pdf.text(COMPANY.email, col3, row1, { align: "right" }); pdf.text(COMPANY.compte, col3, row2, { align: "right" });
+  pdf.setFont("helvetica", "bolditalic"); pdf.setFontSize(7); pdf.setTextColor(0, 160, 210);
+  pdf.text(COMPANY.motto, col2, fy + 16, { align: "center" });
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(150, 150, 150);
+  pdf.text(`Page ${pageNum} of ${totalPages}`, pw - 10, fy + 16, { align: "right" });
+}
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
@@ -37,91 +96,135 @@ const PAGE_SIZE = 5;
 
 // ─── Invoice Detail Modal ─────────────────────────────────────────────────────
 
+async function downloadInvoicePdf(invoice: Invoice, statusCfg: { label: string }) {
+  const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
+  const title    = `INVOICE — ${invoice.invoiceNo}`;
+  const subtitle = `Generated: ${new Date().toLocaleString("en-RW")}`;
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pw  = pdf.internal.pageSize.getWidth();
+
+  pdfDrawLetterhead(pdf, headerBase64, title, subtitle);
+
+  // Bill-to block (left) + meta (right)
+  const customerName  = invoice.job?.customer?.name ?? invoice.customer?.name ?? "—";
+  const customerPhone = invoice.job?.customer?.phone ?? invoice.customer?.phone ?? "";
+  const jobLabel      = invoice.job
+    ? `Job #${invoice.job.jobNumber}${invoice.job.title ? ` — ${invoice.job.title}` : ""}`
+    : "";
+
+  let ly = HEADER_H + 24;
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(40, 40, 40);
+  pdf.text("BILL TO:", 12, ly);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(customerName, 32, ly);
+  if (customerPhone) { ly += 5; pdf.text(customerPhone, 32, ly); }
+  if (jobLabel)      { ly += 5; pdf.text(jobLabel,      32, ly); }
+
+  let ry = HEADER_H + 24;
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(40, 40, 40);
+  pdf.text("STATUS:",   pw - 65, ry); pdf.setFont("helvetica", "normal"); pdf.text(statusCfg.label, pw - 40, ry);
+  ry += 5;
+  pdf.setFont("helvetica", "bold"); pdf.text("CREATED:", pw - 65, ry);
+  pdf.setFont("helvetica", "normal"); pdf.text(invoice.createdAt.slice(0, 10), pw - 40, ry);
+  if (invoice.dueDate) {
+    ry += 5;
+    pdf.setFont("helvetica", "bold"); pdf.text("DUE DATE:", pw - 65, ry);
+    pdf.setFont("helvetica", "normal"); pdf.text(invoice.dueDate.slice(0, 10), pw - 40, ry);
+  }
+
+  // Line items table
+  const items = invoice.lineItems ?? invoice.items ?? [];
+  const tableRows = items.map((item) => [
+    item.name,
+    String(item.quantity ?? 0),
+    `${(item.unitPrice ?? 0).toLocaleString()} RWF`,
+    `${(item.total ?? (item as any).totalPrice ?? (item.quantity ?? 0) * (item.unitPrice ?? 0)).toLocaleString()} RWF`,
+  ]);
+
+  const tableStartY = Math.max(ly, ry) + 8;
+
+  autoTable(pdf, {
+    head:   [["Description", "Qty", "Unit Price", "Total"]],
+    body:   tableRows,
+    startY: tableStartY,
+    margin: { left: 10, right: 10, bottom: BOTTOM_MARGIN },
+    styles:           { fontSize: 8, cellPadding: 2.5 },
+    headStyles:       { fillColor: [0, 160, 210], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 251, 255] },
+    columnStyles: {
+      0: { cellWidth: "auto" },
+      1: { halign: "center", cellWidth: 18 },
+      2: { halign: "right",  cellWidth: 38 },
+      3: { halign: "right",  cellWidth: 38 },
+    },
+    didDrawPage: (data: { pageNumber: number }) => {
+      if (data.pageNumber > 1) pdfDrawLetterhead(pdf, headerBase64, title, subtitle);
+      pdfDrawFooter(pdf, data.pageNumber, (pdf as any).internal.getNumberOfPages());
+    },
+  });
+
+  // Totals summary
+  const afterTable = (pdf as any).lastAutoTable.finalY + 6;
+  const col1 = pw - 90, col2 = pw - 12;
+  pdf.setDrawColor(0, 160, 210); pdf.setLineWidth(0.4);
+  pdf.line(col1, afterTable - 2, col2, afterTable - 2);
+
+  const subtotal = items.reduce(
+    (s, i) => s + (i.total ?? (i as any).totalPrice ?? (i.quantity ?? 0) * (i.unitPrice ?? 0)), 0
+  );
+  const summaryRows: { label: string; value: string; bold?: boolean }[] = [
+    { label: "Subtotal", value: `${subtotal.toLocaleString()} RWF` },
+  ];
+  if (Number(invoice.discountAmount ?? 0) > 0)
+    summaryRows.push({ label: `Discount (${invoice.discountValue ?? 0}%)`, value: `- ${Number(invoice.discountAmount).toLocaleString()} RWF` });
+  if (Number(invoice.taxAmount ?? 0) > 0)
+    summaryRows.push({ label: `Tax / VAT (${invoice.taxRate ?? 0}%)`, value: `+ ${Number(invoice.taxAmount).toLocaleString()} RWF` });
+  summaryRows.push({ label: "TOTAL", value: `${Number(invoice.totalAmount ?? 0).toLocaleString()} RWF`, bold: true });
+
+  let sy = afterTable + 4;
+  summaryRows.forEach(({ label, value, bold }) => {
+    pdf.setFont("helvetica", bold ? "bold" : "normal");
+    pdf.setFontSize(8.5); pdf.setTextColor(40, 40, 40);
+    pdf.text(label, col1, sy); pdf.text(value, col2, sy, { align: "right" });
+    sy += 6;
+  });
+  pdf.setDrawColor(0, 160, 210); pdf.line(col1, sy, col2, sy);
+
+  if (invoice.notes) {
+    sy += 8;
+    pdf.setFont("helvetica", "italic"); pdf.setFontSize(7.5); pdf.setTextColor(100, 100, 100);
+    pdf.text(`Notes: ${invoice.notes}`, 12, sy);
+  }
+
+  // Stamp footers on all pages
+  const totalPages = (pdf as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) { pdf.setPage(i); pdfDrawFooter(pdf, i, totalPages); }
+
+  pdf.save(`${invoice.invoiceNo}_${new Date().toISOString().split("T")[0]}.pdf`);
+}
+
 function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: () => void }) {
-  const printRef = useRef<HTMLDivElement>(null);
   const [cancelInvoice, { isLoading: isCancelling }] = useCancelInvoiceMutation();
-
-  const isBusy = isCancelling;
-
-  async function handleAction(action: "cancel") {
-    try {
-      if (action === "cancel")    await cancelInvoice(invoice.id).unwrap();
-      toast.success("Invoice cancelled");
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Action failed");
-    }
-  }
-
-  function handlePrint() {
-    const content = printRef.current;
-    if (!content) return;
-    const win = window.open("", "_blank", "width=800,height=600");
-    if (!win) return;
-    win.document.write(`
-      <html><head><title>Invoice ${invoice.invoiceNo}</title>
-      <style>
-        body { font-family: sans-serif; padding: 32px; color: #111; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
-        th, td { padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left; font-size: 13px; }
-        th { background: #f9fafb; font-weight: 700; }
-        .right { text-align: right; }
-        .center { text-align: center; }
-        .total-row { font-weight: 700; font-size: 15px; }
-        .label { color: #6b7280; font-size: 12px; }
-        .section { margin-bottom: 16px; }
-        @media print { body { padding: 0; } }
-      </style></head><body>
-      ${content.innerHTML}
-      </body></html>
-    `);
-    win.document.close();
-    win.focus();
-    win.print();
-    win.close();
-  }
-
-  async function handleDownloadPDF() {
-    const content = printRef.current;
-    if (!content) return;
-    const canvas = await html2canvas(content, { scale: 2, useCORS: true });
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    const x = 10;
-    let y = 10;
-    let remaining = imgHeight;
-    let srcY = 0;
-    while (remaining > 0) {
-      const sliceHeight = Math.min(remaining, pageHeight - 20);
-      const sliceCanvas = document.createElement("canvas");
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = (sliceHeight * canvas.width) / imgWidth;
-      const ctx = sliceCanvas.getContext("2d")!;
-      ctx.drawImage(canvas, 0, srcY, canvas.width, sliceCanvas.height, 0, 0, canvas.width, sliceCanvas.height);
-      pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", x, y, imgWidth, sliceHeight);
-      srcY += sliceCanvas.height;
-      remaining -= sliceHeight;
-      if (remaining > 0) { pdf.addPage(); y = 10; }
-    }
-    pdf.save(`${invoice.invoiceNo}.pdf`);
-  }
+  const [downloading, setDownloading] = useState(false);
 
   const sc = STATUS_CONFIG[invoice.status] ?? { label: invoice.status, bg: "bg-gray-100", color: "text-gray-700" };
+
+  async function handleDownloadPDF() {
+    setDownloading(true);
+    try { await downloadInvoicePdf(invoice, sc); }
+    catch { toast.error("Failed to generate PDF"); }
+    finally { setDownloading(false); }
+  }
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
       <Card className="!p-6 max-w-2xl w-full my-8">
-        <div ref={printRef}>
+        {/* Header */}
         <div className="flex items-start justify-between mb-5">
           <div>
             <div className="flex items-center gap-3">
               <h3 className="text-xl font-bold text-secondary-100">{invoice.invoiceNo}</h3>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${sc.bg} ${sc.color}`}>
-                {sc.label}
-              </span>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${sc.bg} ${sc.color}`}>{sc.label}</span>
             </div>
             <p className="text-sm text-custom-700 mt-1">
               Job: <span className="font-semibold text-primary-600">{invoice.job?.jobNumber ?? "—"}</span>
@@ -149,10 +252,10 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
           <table className="w-full text-sm">
             <thead className="bg-custom-50 border-b border-custom-200">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-bold text-secondary-100 uppercase">Description</th>
+                <th className="px-4 py-2 text-left   text-xs font-bold text-secondary-100 uppercase">Description</th>
                 <th className="px-4 py-2 text-center text-xs font-bold text-secondary-100 uppercase">Qty</th>
-                <th className="px-4 py-2 text-right text-xs font-bold text-secondary-100 uppercase">Unit Price</th>
-                <th className="px-4 py-2 text-right text-xs font-bold text-secondary-100 uppercase">Total</th>
+                <th className="px-4 py-2 text-right  text-xs font-bold text-secondary-100 uppercase">Unit Price</th>
+                <th className="px-4 py-2 text-right  text-xs font-bold text-secondary-100 uppercase">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
@@ -161,7 +264,9 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
                   <td className="px-4 py-2.5 text-secondary-100">{item.name}</td>
                   <td className="px-4 py-2.5 text-center text-custom-700">{item.quantity ?? 0}</td>
                   <td className="px-4 py-2.5 text-right text-custom-700">{(item.unitPrice ?? 0).toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-right font-semibold text-secondary-100">{(item.total ?? (item as any).totalPrice ?? (item.quantity ?? 0) * (item.unitPrice ?? 0)).toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-secondary-100">
+                    {(item.total ?? (item as any).totalPrice ?? (item.quantity ?? 0) * (item.unitPrice ?? 0)).toLocaleString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -176,10 +281,12 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
               <span>− {Number(invoice.discountAmount ?? 0).toLocaleString()} RWF</span>
             </div>
           )}
-          <div className="flex justify-between text-custom-700">
-            <span>Tax / VAT ({invoice.taxRate ?? 0}%)</span>
-            <span>+ {Number(invoice.taxAmount ?? 0).toLocaleString()} RWF</span>
-          </div>
+          {Number(invoice.taxAmount ?? 0) > 0 && (
+            <div className="flex justify-between text-custom-700">
+              <span>Tax / VAT ({invoice.taxRate ?? 0}%)</span>
+              <span>+ {Number(invoice.taxAmount ?? 0).toLocaleString()} RWF</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold text-base pt-2 border-t border-custom-200">
             <span className="text-secondary-100">Total</span>
             <span className="text-primary-600">{Number(invoice.totalAmount ?? 0).toLocaleString()} RWF</span>
@@ -190,33 +297,38 @@ function InvoiceDetailModal({ invoice, onClose }: { invoice: Invoice; onClose: (
         <div className="flex gap-6 text-xs text-custom-500 mb-5">
           <span>Created: {invoice.createdAt.slice(0, 10)}</span>
           {invoice.dueDate && <span>Due: {invoice.dueDate.slice(0, 10)}</span>}
-          {invoice.paidAt && <span>Paid: {invoice.paidAt.slice(0, 10)}</span>}
+          {invoice.paidAt  && <span>Paid: {(invoice.paidAt as string).slice(0, 10)}</span>}
         </div>
 
         {invoice.notes && (
           <p className="text-xs text-custom-500 italic mb-5 border-t border-custom-200 pt-3">{invoice.notes}</p>
         )}
-        </div>{/* end printRef */}
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2 justify-end border-t border-custom-200 pt-4">
           <Button variant="outline" onClick={onClose}>Close</Button>
           <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-custom-300 text-custom-700 text-sm font-semibold hover:bg-custom-100 transition-colors"
-          >
-            <HiOutlinePrinter className="h-4 w-4" /> Print
-          </button>
-          <button
             onClick={handleDownloadPDF}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-300 text-blue-700 bg-blue-50 text-sm font-semibold hover:bg-blue-100 transition-colors"
+            disabled={downloading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-300 text-blue-700 bg-blue-50 text-sm font-semibold hover:bg-blue-100 transition-colors disabled:opacity-60"
           >
-            <HiOutlineDownload className="h-4 w-4" /> Download PDF
+            {downloading
+              ? <HiOutlineRefresh className="h-4 w-4 animate-spin" />
+              : <HiOutlineDownload className="h-4 w-4" />}
+            {downloading ? "Generating…" : "Download PDF"}
           </button>
-          {invoice.status === "paid" && (
+          {invoice.status !== "cancelled" && (
             <button
-              onClick={() => handleAction("cancel")}
-              disabled={isBusy}
+              onClick={async () => {
+                try {
+                  await cancelInvoice(invoice.id).unwrap();
+                  toast.success("Invoice cancelled");
+                  onClose();
+                } catch (err: any) {
+                  toast.error(err?.data?.message ?? "Action failed");
+                }
+              }}
+              disabled={isCancelling}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-300 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
             >
               {isCancelling && <HiOutlineRefresh className="h-4 w-4 animate-spin" />}
@@ -290,37 +402,52 @@ function DeleteConfirmModal({ invoice, onClose }: { invoice: Invoice; onClose: (
 
 // ─── Row Action Menu ──────────────────────────────────────────────────────────
 
-function RowMenu({onView, onDelete }: { invoice: Invoice; onView: () => void; onDelete: () => void }) {
+function RowMenu({ onView, onDelete }: { invoice: Invoice; onView: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos]   = useState({ top: 0, right: 0 });
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + window.scrollY + 4, right: window.innerWidth - r.right });
+    }
+    setOpen((v) => !v);
+  }
 
   return (
-    <div className="relative inline-block">
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={toggle}
         className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-500 hover:text-secondary-100 transition-colors"
       >
         <HiOutlineDotsVertical className="h-5 w-5" />
       </button>
       {open && (
-        <div
-          className="absolute right-0 top-8 z-30 w-36 bg-white rounded-xl shadow-lg border border-custom-200 py-1 overflow-hidden"
-          onMouseLeave={() => setOpen(false)}
-        >
-          <button
-            onClick={() => { setOpen(false); onView(); }}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-secondary-100 hover:bg-custom-50 transition-colors"
+        <>
+          {/* backdrop to close on outside click */}
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            style={{ top: pos.top, right: pos.right }}
+            className="fixed z-[9999] w-36 bg-white rounded-xl shadow-lg border border-custom-200 py-1 overflow-hidden"
           >
-            <HiOutlineEye className="h-4 w-4" /> View
-          </button>
-          <button
-            onClick={() => { setOpen(false); onDelete(); }}
-            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <HiOutlineTrash className="h-4 w-4" /> Delete
-          </button>
-        </div>
+            <button
+              onClick={() => { setOpen(false); onView(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-secondary-100 hover:bg-custom-50 transition-colors"
+            >
+              <HiOutlineEye className="h-4 w-4" /> View
+            </button>
+            <button
+              onClick={() => { setOpen(false); onDelete(); }}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <HiOutlineTrash className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        </>
       )}
-    </div>
+    </>
   );
 }
 

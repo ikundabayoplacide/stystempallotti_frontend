@@ -1,4 +1,6 @@
 import { useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
     HiOutlineCheckCircle,
     HiOutlineClock,
@@ -76,6 +78,141 @@ const initialInvoices: ProformaInvoice[] = [
     dueDate: "2026-04-30",
   },
 ];
+
+const COMPANY = {
+  address: "B.P. 863 Kigali - Rwanda",
+  tin:     "TIN / T.V.A.: NO 100021520",
+  tel:     "Tel: Reception (+250) 788 313 617 / (+250) 788 304 549",
+  rc:      "No. RC: 536 / 09 / NYR",
+  email:   "E-mail: pallottipresse@yahoo.com",
+  compte:  "Compte: BK: 10000017 4372",
+  motto:   "Rapidite - Qualite - Innovation - Esprit d'Equipe",
+};
+
+const HEADER_H   = 35;
+const FOOTER_TOP = 26;
+const TABLE_START_Y = HEADER_H + 23;
+const BOTTOM_MARGIN = FOOTER_TOP + 6;
+
+function loadImageAsBase64(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width; canvas.height = img.height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function drawLetterhead(pdf: any, headerBase64: string | null, title: string, subtitle: string) {
+  const pw = pdf.internal.pageSize.getWidth();
+  if (headerBase64) pdf.addImage(headerBase64, "PNG", 0, 0, pw, HEADER_H);
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(12); pdf.setTextColor(25, 25, 25);
+  pdf.text(title, pw / 2, HEADER_H + 10, { align: "center" });
+  if (subtitle) {
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5); pdf.setTextColor(110, 110, 110);
+    pdf.text(subtitle, pw / 2, HEADER_H + 16, { align: "center" });
+  }
+}
+
+function drawFooter(pdf: any, pageNum: number, totalPages: number) {
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  const fy = ph - FOOTER_TOP;
+  pdf.setDrawColor(200, 200, 200); pdf.setLineWidth(0.3);
+  pdf.line(10, fy, pw - 10, fy);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(60, 60, 60);
+  const col1 = 12, col2 = pw / 2, col3 = pw - 12;
+  pdf.text(COMPANY.address, col1, fy + 5);  pdf.text(COMPANY.tin,    col1, fy + 10);
+  pdf.text(COMPANY.tel,  col2, fy + 5,  { align: "center" }); pdf.text(COMPANY.rc, col2, fy + 10, { align: "center" });
+  pdf.text(COMPANY.email, col3, fy + 5, { align: "right" });  pdf.text(COMPANY.compte, col3, fy + 10, { align: "right" });
+  pdf.setFont("helvetica", "bolditalic"); pdf.setFontSize(7); pdf.setTextColor(0, 160, 210);
+  pdf.text(COMPANY.motto, col2, fy + 16, { align: "center" });
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.5); pdf.setTextColor(150, 150, 150);
+  pdf.text(`Page ${pageNum} of ${totalPages}`, pw - 10, fy + 16, { align: "right" });
+}
+
+async function downloadInvoicePdf(invoice: ProformaInvoice) {
+  const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
+  const title    = `PROFORMA INVOICE — ${invoice.id}`;
+  const subtitle = `Job: ${invoice.jobId}  |  Generated: ${new Date().toLocaleString("en-RW")}`;
+
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pw  = pdf.internal.pageSize.getWidth();
+
+  drawLetterhead(pdf, headerBase64, title, subtitle);
+
+  // Client info block
+  let y = HEADER_H + 26;
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.setTextColor(40, 40, 40);
+  pdf.text("BILL TO:", 14, y);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
+  pdf.text(invoice.client, 14, y + 6);
+  pdf.text(invoice.clientPhone, 14, y + 12);
+  if (invoice.clientEmail) pdf.text(invoice.clientEmail, 14, y + 18);
+
+  // Invoice meta (right side)
+  const metaX = pw - 14;
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(8.5);
+  pdf.text(`Invoice No: ${invoice.id}`,       metaX, y,      { align: "right" });
+  pdf.text(`Quotation:  ${invoice.quotationId}`, metaX, y + 6,  { align: "right" });
+  pdf.text(`Date:       ${invoice.createdAt}`, metaX, y + 12, { align: "right" });
+  pdf.text(`Due Date:   ${invoice.dueDate}`,   metaX, y + 18, { align: "right" });
+
+  // Items table
+  autoTable(pdf, {
+    head: [["Description", "Amount (RWF)"]],
+    body: [
+      ["Services / Job Amount",       invoice.amount + " RWF"],
+      ["Tax / VAT (18%)",             invoice.tax    + " RWF"],
+    ],
+    startY: TABLE_START_Y + 6,
+    margin: { left: 10, right: 10, bottom: BOTTOM_MARGIN },
+    styles:    { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: [0, 160, 210], textColor: 255, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [245, 251, 255] },
+    columnStyles: { 1: { halign: "right" } },
+    didDrawPage: (data: { pageNumber: number }) => {
+      if (data.pageNumber > 1) drawLetterhead(pdf, headerBase64, title, subtitle);
+      drawFooter(pdf, data.pageNumber, (pdf as any).internal.getNumberOfPages());
+    },
+  });
+
+  // Total block
+  const finalY = (pdf as any).lastAutoTable.finalY + 6;
+  const c1 = pw - 90, c2 = pw - 12;
+  pdf.setDrawColor(0, 160, 210); pdf.setLineWidth(0.4);
+  pdf.line(c1, finalY - 2, c2, finalY - 2);
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(10); pdf.setTextColor(0, 100, 180);
+  pdf.text("TOTAL DUE:",                      c1, finalY + 6);
+  pdf.text(invoice.totalAmount + " RWF",      c2, finalY + 6, { align: "right" });
+  pdf.setDrawColor(0, 160, 210);
+  pdf.line(c1, finalY + 10, c2, finalY + 10);
+
+  // Payment status
+  if (invoice.status === "paid" && invoice.paidAt) {
+    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(22, 163, 74);
+    pdf.text(`PAID on ${invoice.paidAt}${invoice.paymentMethod ? " via " + invoice.paymentMethod : ""}`,
+      pw / 2, finalY + 18, { align: "center" });
+  }
+
+  // Notes
+  if (invoice.notes) {
+    pdf.setFont("helvetica", "italic"); pdf.setFontSize(8); pdf.setTextColor(100, 100, 100);
+    pdf.text("Notes: " + invoice.notes, 14, finalY + 18);
+  }
+
+  // Finalize footers
+  const totalPages = (pdf as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) { pdf.setPage(i); drawFooter(pdf, i, totalPages); }
+
+  pdf.save(`Invoice_${invoice.id}_${invoice.createdAt}.pdf`);
+}
 
 const statusConfig: Record<InvoiceStatus, { label: string; color: string; icon: any }> = {
   draft: { label: "Draft", color: "bg-gray-100 text-gray-700", icon: HiOutlineDocumentText },
@@ -369,7 +506,7 @@ export default function ProformaInvoicePage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                alert("Download PDF functionality coming soon");
+                                downloadInvoicePdf(invoice);
                               }}
                               className="p-2 rounded-lg hover:bg-primary-100 transition-colors"
                               title="Download PDF"
@@ -648,10 +785,10 @@ export default function ProformaInvoicePage() {
                   Close
                 </button>
                 <button
-                  onClick={() => alert("Download PDF functionality coming soon")}
-                  className="flex-1 px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
+                  onClick={() => downloadInvoicePdf(selectedInvoice)}
+                  className="flex-1 px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2"
                 >
-                  <HiOutlineDownload className="w-4 h-4 inline mr-2" />
+                  <HiOutlineDownload className="w-4 h-4" />
                   Download PDF
                 </button>
               </div>

@@ -543,6 +543,12 @@ export default function PaymentCollectionPage() {
                     Amount
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
+                    Paid
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
+                    Balance
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
                     Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
@@ -557,7 +563,7 @@ export default function PaymentCollectionPage() {
                 {jobsLoading ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-4 py-8 text-center text-custom-700"
                     >
                       Loading jobs...
@@ -566,7 +572,7 @@ export default function PaymentCollectionPage() {
                 ) : jobs.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-4 py-8 text-center text-custom-700"
                     >
                       No jobs found
@@ -616,6 +622,23 @@ export default function PaymentCollectionPage() {
                             Not set
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          const totalPaid = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
+                          return totalPaid > 0
+                            ? <span className="text-sm font-bold text-emerald-600">{totalPaid.toLocaleString()} RWF</span>
+                            : <span className="text-xs text-custom-400">—</span>;
+                        })()}
+                      </td>
+                      <td className="px-4 py-3">
+                        {(() => {
+                          if (job.amount == null) return <span className="text-xs text-custom-400">—</span>;
+                          const totalPaid = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
+                          const bal = job.amount - totalPaid;
+                          if (bal <= 0) return <span className="text-xs font-bold text-emerald-600">Settled</span>;
+                          return <span className="text-sm font-bold text-red-600">{bal.toLocaleString()} RWF</span>;
+                        })()}
                       </td>
                       <td className="px-4 py-3">
                         <span
