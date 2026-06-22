@@ -1,248 +1,257 @@
 import { useState } from "react";
-import {
-    HiOutlineCheckCircle,
-    HiOutlineClipboardList,
-    HiOutlineClock,
-    HiOutlineCurrencyDollar,
-    HiOutlineDocumentText,
-    HiOutlinePlusCircle,
-    HiOutlineSearch,
-} from "react-icons/hi";
-import { Button, Card } from "../../components/ui";
+import { HiOutlineRefresh, HiOutlineChartBar, HiOutlineLibrary } from "react-icons/hi";
+import { Card } from "../../components/ui";
+import { useGetSalesQuery } from "../../store/services/boutiqueService";
+import { useGetHobeSalesQuery } from "../../store/services/hobeService";
 
-const kpis = [
-  {
-    label: "Pending Quotations",
-    value: "8",
-    icon: HiOutlineDocumentText,
-    color: "text-yellow-600",
-    bg: "bg-yellow-100",
-  },
-  {
-    label: "Approved Today",
-    value: "5",
-    icon: HiOutlineCheckCircle,
-    color: "text-green-600",
-    bg: "bg-green-100",
-  },
-  {
-    label: "Awaiting Client",
-    value: "12",
-    icon: HiOutlineClock,
-    color: "text-primary-500",
-    bg: "bg-primary-100",
-  },
-  {
-    label: "Total Value (RWF)",
-    value: "3,500,000",
-    icon: HiOutlineCurrencyDollar,
-    color: "text-primary-600",
-    bg: "bg-primary-100",
-  },
+type Period = "day" | "week" | "month" | "year";
+const PAGE_SIZE = 8;
+
+function getDateRange(period: Period) {
+  const now = new Date();
+  const to = `${now.toISOString().split("T")[0]}T23:59:59.000Z`;
+  let from: Date;
+  switch (period) {
+    case "day": from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
+    case "week": from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
+    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    default: from = new Date(now.getFullYear(), 0, 1); break;
+  }
+  return { from: from.toISOString().split("T")[0], to };
+}
+
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "day", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "year", label: "This Year" },
 ];
 
-const jobs = [
-  {
-    id: "JOB-001",
-    client: "ABC Corp",
-    service: "Offset Printing",
-    qty: 500,
-    quotation: "850,000",
-    status: "Approved",
-    createdAt: "2026-04-28",
-    deadline: "2026-05-02",
-  },
-  {
-    id: "JOB-002",
-    client: "XYZ Ltd",
-    service: "Binding",
-    qty: 200,
-    quotation: "120,000",
-    status: "Awaiting Client",
-    createdAt: "2026-04-29",
-    deadline: "2026-05-01",
-  },
-  {
-    id: "JOB-008",
-    client: "Tech Startup",
-    service: "Digital Printing",
-    qty: 1000,
-    quotation: "450,000",
-    status: "Quotation Sent",
-    createdAt: "2026-04-30",
-    deadline: "2026-05-05",
-  },
-  {
-    id: "JOB-009",
-    client: "Restaurant Chain",
-    service: "Packaging",
-    qty: 300,
-    quotation: "180,000",
-    status: "Draft",
-    createdAt: "2026-04-30",
-    deadline: "2026-05-06",
-  },
-  {
-    id: "JOB-010",
-    client: "Law Firm",
-    service: "Composition",
-    qty: 50,
-    quotation: "95,000",
-    status: "Approved",
-    createdAt: "2026-04-29",
-    deadline: "2026-05-03",
-  },
-];
+function PeriodTabs({ value, onChange }: { value: Period; onChange: (p: Period) => void }) {
+  return (
+    <div className="flex gap-1 bg-custom-100 p-1 rounded-xl w-fit">
+      {PERIODS.map((p) => (
+        <button key={p.value} onClick={() => onChange(p.value)}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            value === p.value ? "bg-primary-500 text-white shadow-sm" : "text-custom-700 hover:text-secondary-100"
+          }`}>{p.label}</button>
+      ))}
+    </div>
+  );
+}
 
-const statusColor: Record<string, string> = {
-  Draft: "bg-custom-100 text-custom-800",
-  "Quotation Sent": "bg-yellow-100 text-yellow-700",
-  "Awaiting Client": "bg-primary-100 text-primary-700",
-  Approved: "bg-green-100 text-green-700",
-  Rejected: "bg-red-100 text-red-700",
-};
+function StatCard({ label, value, sub, color = "text-secondary-100" }: { label: string; value: string | number; sub?: string; color?: string; }) {
+  return (
+    <Card className="!p-4">
+      <p className="text-xs text-custom-700 mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+      {sub && <p className="text-xs text-custom-700 mt-0.5">{sub}</p>}
+    </Card>
+  );
+}
 
-const recentActivities = [
-  { action: "Quotation approved", job: "JOB-001", client: "ABC Corp", time: "10 mins ago" },
-  { action: "Quotation sent", job: "JOB-008", client: "Tech Startup", time: "1 hour ago" },
-  { action: "Job registered", job: "JOB-009", client: "Restaurant Chain", time: "2 hours ago" },
-  { action: "Client follow-up", job: "JOB-002", client: "XYZ Ltd", time: "3 hours ago" },
-];
+function Pagination({ page, totalPages, total, onPage }: { page: number; totalPages: number; total: number; onPage: (n: number) => void; }) {
+  if (total <= PAGE_SIZE) return null;
+  return (
+    <div className="flex items-center justify-between mt-1">
+      <p className="text-xs text-custom-700">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} of {total}</p>
+      <div className="flex items-center gap-1">
+        <button onClick={() => onPage(Math.max(1, page - 1))} disabled={page === 1}
+          className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+          <button key={n} onClick={() => onPage(n)}
+            className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"}`}>{n}</button>
+        ))}
+        <button onClick={() => onPage(Math.min(totalPages, page + 1))} disabled={page === totalPages}
+          className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
+      </div>
+    </div>
+  );
+}
 
 export default function SalesDashboard() {
-  const [search, setSearch] = useState("");
-
-  const filtered = jobs.filter(
-    (j) =>
-      j.id.toLowerCase().includes(search.toLowerCase()) ||
-      j.client.toLowerCase().includes(search.toLowerCase())
-  );
+  const [active, setActive] = useState<"boutique" | "hobe">("boutique");
 
   return (
-    <div className="space-y-8 font-[family-name:var(--font-family-primary)]">
-      {/* Header */}
-      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-            Sales Officer Dashboard
-          </h1>
-          <p className="text-sm text-custom-700 mt-1">
-            Manage quotations, job registration, and client communication
-          </p>
+    <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <HiOutlineChartBar className="w-6 h-6 text-primary-500" />
+          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Sales</h1>
         </div>
-        <Button size="sm" className="flex items-center gap-2 self-start xs:self-auto">
-          <HiOutlinePlusCircle className="w-4 h-4" />
-          Register New Job
-        </Button>
+        <p className="text-sm text-custom-700">Admin view Boutique and Hobe sales overview</p>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {kpis.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="!p-4 flex flex-col gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
-              <Icon className={`w-5 h-5 ${color}`} />
-            </div>
-            <div>
-              <p className="text-xs text-custom-700">{label}</p>
-              <p className="text-xl font-bold text-secondary-100 leading-tight">{value}</p>
-            </div>
-          </Card>
-        ))}
+      <div className="flex gap-2 flex-wrap border-b border-custom-200 pb-1">
+        <button onClick={() => setActive("boutique")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-semibold transition-colors border-b-2 ${active === "boutique" ? "border-primary-500 text-primary-500 bg-primary-50" : "border-transparent text-custom-700 hover:text-secondary-100 hover:bg-custom-50"}`}>
+          <HiOutlineLibrary className={`w-4 h-4 ${active === "boutique" ? "text-primary-500" : "text-pink-500"}`} /> Boutique
+        </button>
+        <button onClick={() => setActive("hobe")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-semibold transition-colors border-b-2 ${active === "hobe" ? "border-primary-500 text-primary-500 bg-primary-50" : "border-transparent text-custom-700 hover:text-secondary-100 hover:bg-custom-50"}`}>
+          <HiOutlineLibrary className={`w-4 h-4 ${active === "hobe" ? "text-primary-500" : "text-blue-500"}`} /> Hobe
+        </button>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Jobs List */}
-        <Card className="xl:col-span-2">
-          <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-2">
-              <HiOutlineClipboardList className="w-5 h-5 text-primary-500" />
-              <h2 className="font-bold text-secondary-100">Job Quotations</h2>
-            </div>
-            {/* Search */}
-            <div className="relative w-full xs:w-64">
-              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
-              <input
-                type="text"
-                placeholder="Search job or client..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="
-                  w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300
-                  bg-style-500 text-secondary-100 text-sm
-                  placeholder:text-custom-700
-                  focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200
-                  transition-colors duration-200
-                  font-[family-name:var(--font-family-primary)]
-                "
-              />
-            </div>
-          </div>
+      <div>
+        {active === "boutique" ? <BoutiqueTab /> : <HobeTab />}
+      </div>
+    </div>
+  );
+}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-custom-300">
-                  {["Job ID", "Client", "Service", "Qty", "Quotation", "Status", "Action"].map((h) => (
-                    <th key={h} className="text-left py-2 px-3 text-xs font-semibold text-custom-700 uppercase tracking-wide whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((job) => (
-                  <tr key={job.id} className="border-b border-custom-200 hover:bg-custom-50 transition-colors">
-                    <td className="py-3 px-3 font-semibold text-primary-500 whitespace-nowrap">{job.id}</td>
-                    <td className="py-3 px-3 text-secondary-100 whitespace-nowrap">{job.client}</td>
-                    <td className="py-3 px-3 text-custom-700 whitespace-nowrap">{job.service}</td>
-                    <td className="py-3 px-3 text-custom-700">{job.qty}</td>
-                    <td className="py-3 px-3 text-secondary-100 font-semibold whitespace-nowrap">{job.quotation} RWF</td>
-                    <td className="py-3 px-3">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusColor[job.status] ?? "bg-custom-100 text-custom-800"}`}>
-                        {job.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <button className="text-xs text-primary-500 hover:text-primary-600 font-semibold transition-colors whitespace-nowrap">
-                        View Details
-                      </button>
-                    </td>
-                  </tr>
+function BoutiqueTab() {
+  const [period, setPeriod] = useState<Period>("month");
+  const [page, setPage] = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
+
+  const range = useCustom && customFrom && customTo ? { from: customFrom, to: customTo + "T23:59:59.000Z" } : getDateRange(period);
+  const { data, isLoading, refetch } = useGetSalesQuery({ from: range.from, to: range.to, limit: 500 });
+  const sales = data?.sales ?? [];
+
+  const totalPages = Math.max(1, Math.ceil(sales.length / PAGE_SIZE));
+  const paginated = sales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalQty = sales.reduce((s, r) => s + r.quantity, 0);
+  const totalPaid = sales.reduce((s, r) => s + Number(r.amountPaid), 0);
+  const totalExpected = sales.reduce((s, r) => s + Number(r.totalPrice ?? r.quantity * Number(r.unitPrice)), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
+        <div className="flex items-center gap-2 ml-auto">
+          <input type="date" value={customFrom} onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom} onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs" />
+          {useCustom && <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700">Clear</button>}
+          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <StatCard label="Transactions" value={sales.length} />
+        <StatCard label="Units Sold" value={totalQty} />
+        <StatCard label="Amount Collected" value={`${totalPaid.toLocaleString()} RWF`} color="text-emerald-600" />
+        <StatCard label="Expected Revenue" value={`${totalExpected.toLocaleString()} RWF`} color="text-secondary-100" />
+      </div>
+
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {['Product', 'Qty', 'Total', 'Paid', 'Status', 'Method', 'Customer', 'Date'].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
                 ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-custom-700 text-sm">
-                      No jobs found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+              ) : sales.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No boutique sales in this period</td></tr>
+              ) : paginated.map((s) => (
+                <tr key={s.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm font-semibold text-secondary-100">{s.product?.name}</p>
+                    <p className="text-xs font-mono text-custom-700">{s.product?.sku}</p>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{s.quantity}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{Number(s.totalPrice ?? s.quantity * Number(s.unitPrice)).toLocaleString()} RWF</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-emerald-600">{Number(s.amountPaid).toLocaleString()} RWF</td>
+                  <td className="px-3 py-2.5 text-xs">{s.paymentStatus ?? 'paid'}</td>
+                  <td className="px-3 py-2.5 text-xs">{s.paymentMethod}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{s.customer?.name ?? 'Walk-in'}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">{new Date(s.createdAt).toLocaleDateString('en-RW', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
-        {/* Recent Activities */}
-        <Card>
-          <div className="flex items-center gap-2 mb-5">
-            <HiOutlineClock className="w-5 h-5 text-primary-500" />
-            <h2 className="font-bold text-secondary-100">Recent Activities</h2>
-          </div>
-          <div className="space-y-3">
-            {recentActivities.map((activity, idx) => (
-              <div key={idx} className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                <p className="text-sm font-semibold text-secondary-100 mb-1">{activity.action}</p>
-                <p className="text-xs text-custom-700">
-                  {activity.job} - {activity.client}
-                </p>
-                <p className="text-xs text-custom-700 mt-1">{activity.time}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
+      <Pagination page={page} totalPages={totalPages} total={sales.length} onPage={setPage} />
+    </div>
+  );
+}
+
+function HobeTab() {
+  const [period, setPeriod] = useState<Period>("month");
+  const [page, setPage] = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [useCustom, setUseCustom] = useState(false);
+
+  const range = useCustom && customFrom && customTo ? { from: customFrom, to: customTo + "T23:59:59.000Z" } : getDateRange(period);
+  const { data, isLoading, refetch } = useGetHobeSalesQuery({ from: range.from, to: range.to, limit: 500 });
+  const sales = data?.sales ?? [];
+
+  const totalPages = Math.max(1, Math.ceil(sales.length / PAGE_SIZE));
+  const paginated = sales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalQty = sales.reduce((s, r) => s + r.quantity, 0);
+  const totalPaid = sales.reduce((s, r) => s + Number(r.amountPaid), 0);
+  const totalExpected = sales.reduce((s, r) => s + Number(r.totalPrice ?? 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
+        <div className="flex items-center gap-2 ml-auto">
+          <input type="date" value={customFrom} onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom} onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs" />
+          {useCustom && <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }} className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700">Clear</button>}
+          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
-      
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        <StatCard label="Transactions" value={sales.length} />
+        <StatCard label="Units Sold" value={totalQty} />
+        <StatCard label="Amount Collected" value={`${totalPaid.toLocaleString()} RWF`} color="text-emerald-600" />
+        <StatCard label="Expected Revenue" value={`${totalExpected.toLocaleString()} RWF`} color="text-secondary-100" />
+      </div>
+
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {['Hobe', 'Batch #', 'Qty', 'Total', 'Paid', 'Status', 'Method', 'Customer', 'Date'].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+              ) : sales.length === 0 ? (
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-custom-700 text-sm">No Hobe sales in this period</td></tr>
+              ) : paginated.map((s) => (
+                <tr key={s.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">{s.hobe?.nameOfHobe}</td>
+                  <td className="px-3 py-2.5 text-xs font-mono text-primary-500">{s.hobe?.hobeNo}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{s.quantity}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{Number(s.totalPrice ?? 0).toLocaleString()} RWF</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-emerald-600">{Number(s.amountPaid).toLocaleString()} RWF</td>
+                  <td className="px-3 py-2.5 text-xs">{s.paymentStatus ?? 'paid'}</td>
+                  <td className="px-3 py-2.5 text-xs">{s.paymentMethod}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{s.customer?.name ?? 'Walk-in'}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">{new Date(s.createdAt).toLocaleDateString('en-RW', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Pagination page={page} totalPages={totalPages} total={sales.length} onPage={setPage} />
     </div>
   );
 }

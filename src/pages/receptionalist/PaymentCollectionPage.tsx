@@ -24,6 +24,7 @@ import {
 } from "../../store/services/paymentsService";
 import { useAuth } from "../../context/AuthContext";
 import { useAppSelector } from "../../store/hooks";
+import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -448,6 +449,7 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
 
 export default function PaymentCollectionPage() {
   const { userRole, userName } = useAuth();
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
   const userId = useAppSelector((state) => state.auth.user?.id ?? "");
   const [jobSearch, setJobSearch] = useState("");
   const [jobPage, setJobPage] = useState(1);
@@ -478,7 +480,7 @@ export default function PaymentCollectionPage() {
     <DashboardLayout
       userRole={userRole ?? "receptionist"}
       userName={userName ?? "Reception Desk"}
-      notificationCount={0}
+      notificationCount={unreadCount}
     >
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 

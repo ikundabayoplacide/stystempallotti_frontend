@@ -15,6 +15,7 @@ import {
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
+import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
 import { Card } from "../../components/ui";
 import {
   useGetCategoriesQuery,
@@ -840,6 +841,8 @@ export default function BoutiquePage() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showPendingBalances, setShowPendingBalances] = useState(false);
 
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
+
   // ── Data fetching ──────────────────────────────────────────────────────────
   const {
     data: categories = [],
@@ -881,7 +884,7 @@ export default function BoutiquePage() {
   );
 
   return (
-    <DashboardLayout notificationCount={0}>
+    <DashboardLayout notificationCount={unreadCount}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}

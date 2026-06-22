@@ -1,5 +1,4 @@
 import {
-  HiOutlineAdjustments,
   HiOutlineArchive,
   HiOutlineBell,
   HiOutlineBriefcase,
@@ -17,7 +16,7 @@ import {
   HiOutlineViewGrid,
   HiOutlineX
 } from "react-icons/hi";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { type UserRole } from "../context/AuthContext";
 import { useAppSelector } from "../store/hooks";
@@ -50,12 +49,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase, permissionKey: "quotations.view" },
     { label: "Finance", path: "/admin/finance", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
     { label: "Stock", path: "/admin/stock", icon: HiOutlineArchive, permissionKey: "stock.view" },
-    { label: "Reports", path: "/admin/reports", icon: HiOutlineChartBar, permissionKey: "reports.view" },
-    { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText, permissionKey: "reports.view" },
-    { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
-    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid, permissionKey: "ui_permissions.view" },
-    { label: "Settings", path: "/admin/settings", icon: HiOutlineCog, permissionKey: "settings.view" },
+    // { label: "Reports", path: "/admin/reports", icon: HiOutlineChartBar, permissionKey: "reports.view" },
+    // { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
     { label: "Leave Management", path: "/admin/leave", icon: HiOutlineCalendar },
+    { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText, permissionKey: "reports.view" },
+    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid, permissionKey: "ui_permissions.view" },
+
+
   ],
   receptionist: [
     { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
@@ -63,6 +63,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
     { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
+    { label: "Procurement expenses", path: "/reception/procurement-expenses", icon: HiOutlineCalendar },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
@@ -180,6 +181,23 @@ export default function DashboardSidebar({
 }: DashboardSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const navRef = useRef<HTMLElement>(null);
+  const isUserClick = useRef(false);
+
+  // Scroll active item into view on initial mount and on programmatic navigation,
+  // but NOT when the user clicked a sidebar item (they can already see it).
+  useEffect(() => {
+    if (isUserClick.current) {
+      isUserClick.current = false;
+      return;
+    }
+    const nav = navRef.current;
+    if (!nav) return;
+    const active = nav.querySelector<HTMLElement>("[data-active='true']");
+    if (active) {
+      active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [location.pathname]);
   const { token } = useAppSelector((state) => state.auth);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(() => {
     // Auto-open dropdowns whose children match the current path on mount
@@ -324,7 +342,7 @@ export default function DashboardSidebar({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav ref={navRef} className="flex-1 overflow-y-auto p-3 space-y-1">
           {items.map((item) => {
             const isActive = location.pathname === item.path;
             const hasChildren = !!item.children?.length;
@@ -334,12 +352,15 @@ export default function DashboardSidebar({
             return (
               <div key={item.path}>
                 <button
+                  data-active={(isActive || childActive) ? "true" : undefined}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    (e.currentTarget as HTMLButtonElement).blur();
                     if (hasChildren && !isCollapsed) {
                       toggleDropdown(item.path);
                     } else {
+                      isUserClick.current = true;
                       navigate(item.path);
                       if (window.innerWidth < 1024 && !isCollapsed) onToggle();
                     }
@@ -380,7 +401,9 @@ export default function DashboardSidebar({
                       return (
                         <button
                           key={child.path}
-                          onClick={() => {
+                          onClick={(e) => {
+                            (e.currentTarget as HTMLButtonElement).blur();
+                            isUserClick.current = true;
                             navigate(child.path);
                             if (window.innerWidth < 1024 && !isCollapsed) onToggle();
                           }}
@@ -404,7 +427,7 @@ export default function DashboardSidebar({
         {/* Footer */}
         <div className="p-3 border-t border-custom-300 space-y-1">
           <button
-            onClick={() => navigate(notifPath[userRole])}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(notifPath[userRole]); }}
             className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
               location.pathname === notifPath[userRole]
                 ? "bg-primary-500 text-secondary-200"
@@ -421,7 +444,7 @@ export default function DashboardSidebar({
             )}
           </button>
           <button
-            onClick={() => navigate(settingsPath[userRole])}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(settingsPath[userRole]); }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
               location.pathname === settingsPath[userRole]
                 ? "bg-primary-500 text-secondary-200"

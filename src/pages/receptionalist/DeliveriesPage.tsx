@@ -18,6 +18,7 @@ import {
   useDeliverJobMutation,
   type Job,
 } from "../../store/services/jobsService";
+import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -147,6 +148,7 @@ function MarkDeliveredModal({ job, onClose, onSuccess }: MarkDeliveredModalProps
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DeliveriesPage() {
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
   const [search, setSearch] = useState("");
   const [deliverJob, setDeliverJob] = useState<Job | null>(null);
 
@@ -184,7 +186,7 @@ export default function DeliveriesPage() {
   };
 
   return (
-    <DashboardLayout userRole="receptionist" userName="Reception Desk" notificationCount={0}>
+    <DashboardLayout userRole="receptionist" userName="Reception Desk" notificationCount={unreadCount}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}

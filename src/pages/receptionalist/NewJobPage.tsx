@@ -6,6 +6,7 @@ import {
 import { DashboardLayout, WorkflowRulesEngine, WorkflowValidator } from "../../components";
 import { Button, Card, Input } from "../../components/ui";
 import { useWorkflowValidation } from "../../hooks/useWorkflowValidation";
+import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
 
 // Auto-generate client ID
 const generateClientId = () => {
@@ -18,6 +19,7 @@ const generateClientId = () => {
 };
 
 export default function NewJobPage() {
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
   const [generatedId, setGeneratedId] = useState("");
   const [formData, setFormData] = useState({
     clientName: "",
@@ -108,7 +110,7 @@ export default function NewJobPage() {
     <DashboardLayout
       userRole="receptionist"
       userName="Reception Desk"
-      notificationCount={6}
+      notificationCount={unreadCount}
     >
       {/* Workflow Rules Engine - runs in background */}
       {receptionistStep && (

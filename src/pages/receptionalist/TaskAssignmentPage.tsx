@@ -7,6 +7,7 @@ import {
   HiOutlineUsers
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
+import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
 import { Card } from "../../components/ui";
 import { jobStatusConfig } from "../../types/JobStatus";
 
@@ -152,6 +153,7 @@ const kanbanConfig: Record<KanbanColumn, { label: string; color: string; icon: a
 };
 
 export default function TaskAssignmentPage() {
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -228,7 +230,7 @@ export default function TaskAssignmentPage() {
     <DashboardLayout
       userRole="receptionist"
       userName="Reception Desk"
-      notificationCount={6}
+      notificationCount={unreadCount}
     >
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
         {/* Header */}

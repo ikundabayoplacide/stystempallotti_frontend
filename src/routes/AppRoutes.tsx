@@ -86,6 +86,7 @@ import Operations from "../pages/finance/Operations";
 import MyLeavePage from "../pages/shared/MyLeavePage";
 import HRLeaveManagementPage from "../pages/HR/LeaveManagementPage";
 import { AdminLeaveManagementPage } from "../pages/admin";
+import Outstands from "../pages/receptionalist/Outstands";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -122,6 +123,7 @@ export default function AppRoutes() {
       <Route path="/reception/profile" element={<ProtectedRoute allowedRoles={["receptionist"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
       <Route path="/reception/reports/my" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyReportsPage /></ProtectedRoute>} />
+      <Route path="/reception/procurement-expenses" element={<ProtectedRoute allowedRoles={["receptionist"]}><Outstands /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}
       <Route path="/sales" element={<ProtectedRoute allowedRoles={["sales"]}><SalesPage /></ProtectedRoute>} />

@@ -37,7 +37,7 @@ import {
   type Visit,
   type VisitType,
 } from "../../store/services/visitsService";
-import { useLazyGetNotificationStatsQuery } from "../../store/services/notificationsService";
+import { useLazyGetNotificationStatsQuery, useGetUnreadCountQuery } from "../../store/services/notificationsService";
 
 // ─── Notes cell ───────────────────────────────────────────────────────────────
 
@@ -277,6 +277,7 @@ const emptyForm: FormData = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function VisitorPage() {
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<CustomerType | "">("");
   const [page, setPage] = useState(1);
@@ -461,7 +462,7 @@ export default function VisitorPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <DashboardLayout notificationCount={0}>
+    <DashboardLayout notificationCount={unreadCount}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}

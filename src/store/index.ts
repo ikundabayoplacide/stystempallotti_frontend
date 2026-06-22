@@ -22,6 +22,7 @@ import { hobeApi } from "./services/hobeService";
 import { notificationsApi } from "./services/notificationsService";
 import { recoveryApi } from "./services/recoveryService";
 import { leaveApi } from "./services/leaveService";
+import { outstandsApi } from "./services/outstandsService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -50,6 +51,7 @@ export const store = configureStore({
     [notificationsApi.reducerPath]: notificationsApi.reducer,
     [recoveryApi.reducerPath]: recoveryApi.reducer,
     [leaveApi.reducerPath]: leaveApi.reducer,
+    [outstandsApi.reducerPath]: outstandsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -75,7 +77,8 @@ export const store = configureStore({
       .concat(hobeApi.middleware)
       .concat(notificationsApi.middleware)
       .concat(recoveryApi.middleware)
-      .concat(leaveApi.middleware),
+      .concat(leaveApi.middleware)
+      .concat(outstandsApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
