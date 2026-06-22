@@ -3,6 +3,7 @@ import {
   HiOutlineArchive,
   HiOutlineBell,
   HiOutlineBriefcase,
+  HiOutlineCalendar,
   HiOutlineChartBar,
   HiOutlineChevronDown,
   HiOutlineClipboardList,
@@ -54,6 +55,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
     { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid, permissionKey: "ui_permissions.view" },
     { label: "Settings", path: "/admin/settings", icon: HiOutlineCog, permissionKey: "settings.view" },
+    { label: "Leave Management", path: "/admin/leave", icon: HiOutlineCalendar },
   ],
   receptionist: [
     { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
@@ -61,6 +63,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
     { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
+    { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/reception/reports", icon: HiOutlineChartBar },
@@ -74,6 +77,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Stock", path: "/sales/stocks", icon: HiOutlineArchive, permissionKey: "stock.view" },
     { label: "Performa Invoice", path: "/sales/proformas", icon: HiOutlineDocumentText},
     // { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
+    { label: "My Leave", path: "/sales/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/sales/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/sales/reports", icon: HiOutlineChartBar },
@@ -84,11 +88,14 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   hr: [
     { label: "Dashboard", path: "/hr", icon: HiOutlineHome },
     { label: "Employees", path: "/hr/employees", icon: HiOutlineUsers },
+    { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
   ],
+
   hobe: [
     { label: "Dashboard", path: "/hobe", icon: HiOutlineHome },
     { label: "Trade", path: "/hobe/trade", icon: HiOutlineCube },
     { label: "Requests", path: "/hobe/requests", icon: HiOutlineClipboardList },
+    { label: "My Leave", path: "/hobe/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/hobe/report", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/hobe/report", icon: HiOutlineChartBar },
@@ -103,6 +110,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Employees", path: "/finance/daf/hr", icon: HiOutlineUsers, permissionKey: "hr.view" },
     // { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
+    { label: "My Leave", path: "/finance/daf/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
@@ -119,12 +127,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     // { label: "E-Procurement", path: "/finance/accountant2/procurement", icon: HiOutlineCube, permissionKey: "procurement.view" },
     // { label: "Taxes", path: "/finance/accountant2/taxes", icon: HiOutlineDocumentText, permissionKey: "taxes.view" },
     { label: "Recovery", path: "/finance/accountant2/recovery", icon: HiOutlineCurrencyDollar, permissionKey: "recovery.view" },
-
+    { label: "My Leave", path: "/finance/accountant1/leave", icon: HiOutlineCalendar },
   ],
   "production-manager": [
     { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
     { label: "Job Planning", path: "/production-manager/planning", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
+    { label: "My Leave", path: "/production-manager/leave", icon: HiOutlineCalendar },
     { label: "Reports", path: "/production-manager/reports", icon: HiOutlineChartBar, children: [
       { label: "Generate Reports", path: "/production-manager/reports", icon: HiOutlineChartBar },
       { label: "My Reports", path: "/production-manager/reports/my", icon: HiOutlineDocumentText },
@@ -135,11 +144,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Inventory", path: "/stock/inventory", icon: HiOutlineArchive, permissionKey: "stock.view" },
     { label: "Material Requests", path: "/stock/requests", icon: HiOutlineClipboardList, permissionKey: "stock.view" },
     { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers, permissionKey: "suppliers.view" },
+    { label: "My Leave", path: "/stock/leave", icon: HiOutlineCalendar },
   ],
   supervisor: [
     { label: "Dashboard", path: "/supervisor", icon: HiOutlineHome },
     { label: "Jobs", path: "/supervisor/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Employees", path: "/supervisor/employees", icon: HiOutlineUsers },
+    { label: "My Leave", path: "/supervisor/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/supervisor/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/supervisor/reports", icon: HiOutlineChartBar },
@@ -151,6 +162,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
     { label: "Task Board", path: "/worker/tasks", icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
     { label: "Material Requests", path: "/worker/materials", icon: HiOutlineArchive, permissionKey: "stock.view" },
+    { label: "My Leave", path: "/worker/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/worker/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/worker/reports", icon: HiOutlineChartBar },

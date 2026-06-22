@@ -83,6 +83,9 @@ import ReportsPage from "../pages/Hobe/Reports";
 import HobeTrade from "../pages/Hobe/Trade";
 import ProdurementPage from "../pages/finance/ProdurementPage";
 import Operations from "../pages/finance/Operations";
+import MyLeavePage from "../pages/shared/MyLeavePage";
+import HRLeaveManagementPage from "../pages/HR/LeaveManagementPage";
+import { AdminLeaveManagementPage } from "../pages/admin";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -104,6 +107,7 @@ export default function AppRoutes() {
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><SystemSettingsPage /></ProtectedRoute>} />
       <Route path="/admin/workflow" element={<ProtectedRoute allowedRoles={["admin"]}><WorkflowConfigPage /></ProtectedRoute>} />
       <Route path="/admin/ui-permissions" element={<ProtectedRoute allowedRoles={["admin"]}><UIPermissionsPage /></ProtectedRoute>} />
+      <Route path="/admin/leave" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLeaveManagementPage /></ProtectedRoute>} />
       <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={["admin"]}><NotificationsPage userRole="admin" userName="Admin" /></ProtectedRoute>} />
       <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><ProfilePage /></ProtectedRoute>} />
 
@@ -113,6 +117,7 @@ export default function AppRoutes() {
       <Route path="/reception/deliveries" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="deliveries"><DeliveriesPage /></ProtectedRoute>} />
       <Route path="/reception/payments" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="payments"><PaymentCollectionPage /></ProtectedRoute>} />
       <Route path="/reception/boutique" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="boutique"><BoutiquePage /></ProtectedRoute>} />
+      <Route path="/reception/leave" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/reception/notifications" element={<ProtectedRoute allowedRoles={["receptionist"]}><NotificationsPage userRole="receptionist" userName="Receptionist" /></ProtectedRoute>} />
       <Route path="/reception/profile" element={<ProtectedRoute allowedRoles={["receptionist"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
@@ -129,6 +134,7 @@ export default function AppRoutes() {
       <Route path="/sales/customers" element={<ProtectedRoute allowedRoles={["sales"]} pageId="customers"><SalesCustomerPage /></ProtectedRoute>} />
       <Route path="/sales/reports" element={<ProtectedRoute allowedRoles={["sales"]}><SalesReportsPage /></ProtectedRoute>} />
       <Route path="/sales/reports/my" element={<ProtectedRoute allowedRoles={["sales"]}><MyReportsPage /></ProtectedRoute>} />
+      <Route path="/sales/leave" element={<ProtectedRoute allowedRoles={["sales"]}><MyLeavePage /></ProtectedRoute>} />
 
 
 
@@ -145,6 +151,7 @@ export default function AppRoutes() {
       <Route path="/finance/daf/profile" element={<ProtectedRoute allowedRoles={["daf"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/finance/daf/proforma" element={<ProtectedRoute allowedRoles={["daf"]}><ProformasPage /></ProtectedRoute>} />
       <Route path="/finance/daf/procurement" element={<ProtectedRoute allowedRoles={["daf"]}><ProdurementPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/leave" element={<ProtectedRoute allowedRoles={["daf"]}><MyLeavePage /></ProtectedRoute>} />
 
 
       {/* Accountant Routes - Unified */}
@@ -155,6 +162,7 @@ export default function AppRoutes() {
       <Route path="/finance/accountant1/notifications" element={<ProtectedRoute allowedRoles={["accountant"]}><NotificationsPage userRole="accountant" userName="Accountant" /></ProtectedRoute>} />
       <Route path="/finance/accountant1/profile" element={<ProtectedRoute allowedRoles={["accountant"]}><ProfilePage /></ProtectedRoute>} />
     <Route path="/finance/accountant1/operations" element={<ProtectedRoute allowedRoles={["accountant"]}><Operations /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/leave" element={<ProtectedRoute allowedRoles={["accountant"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant2Page /></ProtectedRoute>} />
       <Route path="/finance/accountant2/procurement" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="procurement"><Accountant2ProcurementPage /></ProtectedRoute>} />
       <Route path="/finance/accountant2/taxes" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="taxes"><Accountant2TaxesPage /></ProtectedRoute>} />
@@ -167,6 +175,7 @@ export default function AppRoutes() {
       <Route path="/production-manager/departments" element={<ProtectedRoute allowedRoles={["production-manager"]}><DepartmentsPage /></ProtectedRoute>} />
       <Route path="/production-manager/reports" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/reports/my" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyReportsPage /></ProtectedRoute>} />
+      <Route path="/production-manager/leave" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyLeavePage /></ProtectedRoute>} />
       {/* <Route path="/production-manager/progress" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProgressPage /></ProtectedRoute>} /> */}
       <Route path="/production-manager/notifications" element={<ProtectedRoute allowedRoles={["production-manager"]}><NotificationsPage userRole="production-manager" userName="Production Manager" /></ProtectedRoute>} />
       <Route path="/production-manager/profile" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProfilePage /></ProtectedRoute>} />
@@ -176,6 +185,7 @@ export default function AppRoutes() {
       <Route path="/stock/inventory" element={<ProtectedRoute allowedRoles={["stock"]}><InventoryPage /></ProtectedRoute>} />
       <Route path="/stock/requests" element={<ProtectedRoute allowedRoles={["stock"]}><MaterialRequestsPage /></ProtectedRoute>} />
       <Route path="/stock/suppliers" element={<ProtectedRoute allowedRoles={["stock"]}><SuppliersPage /></ProtectedRoute>} />
+      <Route path="/stock/leave" element={<ProtectedRoute allowedRoles={["stock"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/stock/notifications" element={<ProtectedRoute allowedRoles={["stock"]}><NotificationsPage userRole="stock" userName="Stock Manager" /></ProtectedRoute>} />
       <Route path="/stock/profile" element={<ProtectedRoute allowedRoles={["stock"]}><ProfilePage /></ProtectedRoute>} />
 
@@ -188,6 +198,7 @@ export default function AppRoutes() {
       <Route path="/supervisor/reports" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/my" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyReportsPage /></ProtectedRoute>} />
+      <Route path="/supervisor/leave" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/supervisor/notifications" element={<ProtectedRoute allowedRoles={["supervisor"]}><NotificationsPage userRole="supervisor" userName="Supervisor" /></ProtectedRoute>} />
       <Route path="/supervisor/profile" element={<ProtectedRoute allowedRoles={["supervisor"]}><ProfilePage /></ProtectedRoute>} />
 
@@ -199,12 +210,14 @@ export default function AppRoutes() {
       <Route path="/worker/reports" element={<ProtectedRoute allowedRoles={["worker"]}><WorkerReportsPage /></ProtectedRoute>} />
       <Route path="/worker/reports/my" element={<ProtectedRoute allowedRoles={["worker"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]} pageId="material-requests"><MaterialRequestPage /></ProtectedRoute>} />
+      <Route path="/worker/leave" element={<ProtectedRoute allowedRoles={["worker"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/worker/notifications" element={<ProtectedRoute allowedRoles={["worker"]}><NotificationsPage userRole="worker" userName="Worker" /></ProtectedRoute>} />
       <Route path="/worker/profile" element={<ProtectedRoute allowedRoles={["worker"]}><ProfilePage /></ProtectedRoute>} />
 
       {/* Hobe */}
       <Route path="/hobe" element={<ProtectedRoute allowedRoles={["hobe"]}><HobePage /></ProtectedRoute>} />
       <Route path="/hobe/requests" element={<ProtectedRoute allowedRoles={["hobe"]}><RequestsPage /></ProtectedRoute>} />
+      <Route path="/hobe/leave" element={<ProtectedRoute allowedRoles={["hobe"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/hobe/trade" element={<ProtectedRoute allowedRoles={["hobe"]}><HobeTrade /></ProtectedRoute>} />
       <Route path="/hobe/report" element={<ProtectedRoute allowedRoles={["hobe"]}><ReportsPage /></ProtectedRoute>} />
       <Route path="/hobe/report/my-reports" element={<ProtectedRoute allowedRoles={["hobe"]}><MyReportsPage /></ProtectedRoute>} />
@@ -214,6 +227,7 @@ export default function AppRoutes() {
       {/* routes for HR */}
       <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={["hr"]}><EmployeesPage /></ProtectedRoute>} />
+      <Route path="/hr/leave" element={<ProtectedRoute allowedRoles={["hr"]}><HRLeaveManagementPage /></ProtectedRoute>} />
       <Route path="/hr/notifications" element={<ProtectedRoute allowedRoles={["hr"]}><NotificationsPage userRole="hr" userName="HR" /></ProtectedRoute>} />
       <Route path="/hr/profile" element={<ProtectedRoute allowedRoles={["hr"]}><ProfilePage /></ProtectedRoute>} />
       {/* Public Routes with Layout (if needed) */}

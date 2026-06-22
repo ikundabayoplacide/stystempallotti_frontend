@@ -279,7 +279,6 @@ export default function ProfilePage() {
                         { label: "Phone",        value: me?.phone || "—" },
                         { label: "Gender",       value: me?.gender || "—" },
                         { label: "Role",         value: displayRole },
-                        { label: "Account ID",   value: authUser?.id ? `#${authUser.id.slice(0, 8)}…` : "—" },
                       ].map(({ label, value }) => (
                         <div key={label} className="py-3.5 border-b border-custom-100">
                           <p className="text-[11px] font-semibold text-custom-500 uppercase tracking-wide mb-0.5">{label}</p>

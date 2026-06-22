@@ -402,7 +402,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                         <span className="text-xs text-custom-700 truncate">{selectedCustomer.email}</span>
                       </div>
                       {selectedCustomer.phone && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap -2">
                           <HiOutlinePhone className="w-4 h-4 text-custom-700 shrink-0" />
                           <span className="text-xs text-custom-700">{selectedCustomer.phone}</span>
                         </div>
