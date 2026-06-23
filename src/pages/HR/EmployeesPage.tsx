@@ -13,6 +13,7 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
+import PhoneInput from "../../components/ui/PhoneInput";
 import { useAuth } from "../../context/AuthContext";
 import {
   useGetAllEmployeesQuery,
@@ -364,8 +365,10 @@ function EmployeeFormModal({ employee, onClose }: { employee?: any; onClose: () 
               </div>
               <div>
                 <label className={labelCls}>Phone Number <span className="text-red-500">*</span></label>
-                <input type="text" value={form.phoneNumber} onChange={(e) => set("phoneNumber", e.target.value)}
-                  required placeholder="e.g. +250 788 000 000" className={inputCls} />
+                <PhoneInput
+                  value={form.phoneNumber}
+                  onChange={(val) => set("phoneNumber", val)}
+                />
               </div>
               <div>
                 <label className={labelCls}>Email</label>

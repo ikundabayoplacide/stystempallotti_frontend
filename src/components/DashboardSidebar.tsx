@@ -89,7 +89,15 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   hr: [
     { label: "Dashboard", path: "/hr", icon: HiOutlineHome },
     { label: "Employees", path: "/hr/employees", icon: HiOutlineUsers },
+    { label: "Casual Workers", path: "/hr/abanyabiraka", icon: HiOutlineUsers },
+    { label: "Payroll", path: "/hr/payroll", icon: HiOutlineCurrencyDollar },
     { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
+    {
+      label: "Reports", path: "/hr/reports", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/hr/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/hr/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
 
   hobe: [
@@ -125,10 +133,14 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Invoices", path: "/finance/accountant1/invoices", icon: HiOutlineDocumentText, permissionKey: "invoices.view" },
     { label: "Documents", path: "/finance/accountant1/documents", icon: HiOutlineClipboardList, permissionKey: "dossiers.view" },
     { label: "Operations", path: "/finance/accountant1/operations", icon: HiOutlineClipboardList},
-    // { label: "E-Procurement", path: "/finance/accountant2/procurement", icon: HiOutlineCube, permissionKey: "procurement.view" },
-    // { label: "Taxes", path: "/finance/accountant2/taxes", icon: HiOutlineDocumentText, permissionKey: "taxes.view" },
     { label: "Recovery", path: "/finance/accountant2/recovery", icon: HiOutlineCurrencyDollar, permissionKey: "recovery.view" },
     { label: "My Leave", path: "/finance/accountant1/leave", icon: HiOutlineCalendar },
+    {
+      label: "Reports", path: "/finance/accountant1/reports", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/finance/accountant1/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/finance/accountant1/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   "production-manager": [
     { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
@@ -146,6 +158,12 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Material Requests", path: "/stock/requests", icon: HiOutlineClipboardList, permissionKey: "stock.view" },
     { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers, permissionKey: "suppliers.view" },
     { label: "My Leave", path: "/stock/leave", icon: HiOutlineCalendar },
+    {
+      label: "Reports", path: "/stock/reports", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/stock/reports", icon: HiOutlineChartBar },
+        { label: "My Reports", path: "/stock/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   supervisor: [
     { label: "Dashboard", path: "/supervisor", icon: HiOutlineHome },

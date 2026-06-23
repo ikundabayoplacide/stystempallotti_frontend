@@ -2,6 +2,25 @@
 @import "@fontsource/comfortaa/600.css";
 @import "@fontsource/comfortaa/700.css";
 
+/* ── Hide Google Translate injected elements ── */
+.goog-te-banner-frame,
+.skiptranslate,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.goog-tooltip,
+.goog-tooltip-content {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+}
+body { top: 0 !important; position: static !important; }
+
+/* Hide the Google logo that appears in the translate widget */
+.VIpgJd-ZVi9od-l4eHX,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd {
+  display: none !important;
+}
+
 @font-face {
   font-family: 'stay winter';
   src: url('https://db.onlinewebfonts.com/t/9e2467cb80cea84666aecc5f1f7de8d7.eot');

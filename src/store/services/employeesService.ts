@@ -43,6 +43,7 @@ export interface Employee {
   bankAccount?: string;
   hiredAt?: string;
   departmentId?: string;
+  department?: { id: string; name: string } | null;
   userId?: string | null;
   // Legacy single-job fields (kept for backward compat)
   jobId?: string | null;

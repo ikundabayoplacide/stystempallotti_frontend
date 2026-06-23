@@ -4,109 +4,62 @@ import {
     HiOutlineClock,
     HiOutlineCurrencyDollar,
     HiOutlineDocumentText,
-    HiOutlinePlusCircle,
+    HiOutlineRefresh,
     HiOutlineSearch,
 } from "react-icons/hi";
-import { Button, Card } from "../../components/ui";
-
-const kpis = [
-  {
-    label: "Invoices Issued Today",
-    value: "12",
-    icon: HiOutlineDocumentText,
-    color: "text-primary-500",
-    bg: "bg-primary-100",
-  },
-  {
-    label: "Payments Confirmed",
-    value: "8",
-    icon: HiOutlineCheckCircle,
-    color: "text-green-600",
-    bg: "bg-green-100",
-  },
-  {
-    label: "Pending Payments",
-    value: "15",
-    icon: HiOutlineClock,
-    color: "text-yellow-600",
-    bg: "bg-yellow-100",
-  },
-  {
-    label: "Total Amount (Today)",
-    value: "3,200,000",
-    icon: HiOutlineCurrencyDollar,
-    color: "text-green-600",
-    bg: "bg-green-100",
-    suffix: "RWF",
-  },
-];
-
-const invoices = [
-  {
-    id: "INV-051",
-    jobId: "JOB-045",
-    client: "Tech Solutions Ltd",
-    amount: "950,000",
-    issued: "2026-05-04",
-    due: "2026-05-18",
-    status: "Pending Payment",
-  },
-  {
-    id: "INV-052",
-    jobId: "JOB-046",
-    client: "ABC Manufacturing",
-    amount: "450,000",
-    issued: "2026-05-04",
-    due: "2026-05-18",
-    status: "Paid",
-  },
-  {
-    id: "INV-053",
-    jobId: "JOB-047",
-    client: "Green Energy Co",
-    amount: "1,200,000",
-    issued: "2026-05-04",
-    due: "2026-05-18",
-    status: "Pending Payment",
-  },
-];
+import { Card } from "../../components/ui";
+import { useGetInvoicesQuery } from "../../store/services/invoicesService";
+import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 
 const statusColor: Record<string, string> = {
-  "Paid": "bg-green-100 text-green-700",
-  "Pending Payment": "bg-yellow-100 text-yellow-700",
-  "Overdue": "bg-red-100 text-red-700",
+  paid:      "bg-green-100 text-green-700",
+  cancelled: "bg-red-100 text-red-700",
+  pending:   "bg-yellow-100 text-yellow-700",
 };
 
 export default function Accountant1Dashboard() {
-  const [search, setSearch] = useState("");
+  const today = new Date().toISOString().split("T")[0];
 
+  const { data: invoicesData, isLoading: loadingInvoices } = useGetInvoicesQuery({ limit: 10 });
+  const { data: paymentsData, isLoading: loadingPayments } = useGetPaymentsQuery(
+    { from: today, to: today + "T23:59:59.000Z", limit: 500 }
+  );
+
+  const invoices  = invoicesData?.invoices ?? [];
+  const total     = invoicesData?.total ?? 0;
+  const payments  = paymentsData?.payments ?? [];
+
+  const paidCount    = invoices.filter((i) => i.status === "paid").length;
+  const pendingCount = invoices.filter((i) => i.status !== "paid" && i.status !== "cancelled").length;
+  const todayAmount  = payments.reduce((s, p) => s + Number(p.amountPaid), 0);
+
+  const kpis = [
+    { label: "Total Invoices",        value: total,                                          icon: HiOutlineDocumentText,  color: "text-primary-500",  bg: "bg-primary-100" },
+    { label: "Paid",                  value: paidCount,                                      icon: HiOutlineCheckCircle,   color: "text-green-600",    bg: "bg-green-100" },
+    { label: "Pending",               value: pendingCount,                                   icon: HiOutlineClock,         color: "text-yellow-600",   bg: "bg-yellow-100" },
+    { label: "Collected Today (RWF)", value: todayAmount.toLocaleString(),                   icon: HiOutlineCurrencyDollar,color: "text-green-600",    bg: "bg-green-100" },
+  ];
+
+  const [search, setSearch] = useState("");
   const filtered = invoices.filter(
     (inv) =>
-      inv.id.toLowerCase().includes(search.toLowerCase()) ||
-      inv.client.toLowerCase().includes(search.toLowerCase())
+      inv.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
+      (inv.job?.customer?.name ?? inv.customer?.name ?? "").toLowerCase().includes(search.toLowerCase())
   );
+
+  const isLoading = loadingInvoices || loadingPayments;
 
   return (
     <div className="space-y-8 font-[family-name:var(--font-family-primary)]">
       {/* Header */}
-      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-            Accountant 1 Dashboard
-          </h1>
-          <p className="text-sm text-custom-700 mt-1">
-            Invoice Management & Payment Confirmation — Monday, May 4, 2026
-          </p>
-        </div>
-        <Button size="sm" className="flex items-center gap-2 self-start xs:self-auto">
-          <HiOutlinePlusCircle className="w-4 h-4" />
-          Issue New Invoice
-        </Button>
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Accountant Dashboard</h1>
+        <p className="text-sm text-custom-700 mt-1">Invoice Management & Payment Confirmation</p>
       </div>
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {kpis.map(({ label, value, icon: Icon, color, bg, suffix }) => (
+        {kpis.map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="!p-4 flex flex-col gap-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
               <Icon className={`w-5 h-5 ${color}`} />
@@ -114,7 +67,7 @@ export default function Accountant1Dashboard() {
             <div>
               <p className="text-xs text-custom-700">{label}</p>
               <p className="text-xl font-bold text-secondary-100 leading-tight">
-                {value} {suffix && <span className="text-sm font-normal text-custom-700">{suffix}</span>}
+                {isLoading ? "—" : value}
               </p>
             </div>
           </Card>
@@ -127,6 +80,7 @@ export default function Accountant1Dashboard() {
           <div className="flex items-center gap-2">
             <HiOutlineDocumentText className="w-5 h-5 text-primary-500" />
             <h2 className="font-bold text-secondary-100">Recent Invoices</h2>
+            <span className="text-xs text-custom-500">({total} total)</span>
           </div>
           <div className="relative w-full xs:w-64">
             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
@@ -135,51 +89,50 @@ export default function Accountant1Dashboard() {
               placeholder="Search invoices..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="
-                w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300
-                bg-style-500 text-secondary-100 text-sm
-                placeholder:text-custom-700
-                focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200
-                transition-colors duration-200
-                font-[family-name:var(--font-family-primary)]
-              "
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors"
             />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-custom-300">
-                {["Invoice", "Job ID", "Client", "Amount", "Due Date", "Status", "Action"].map((h) => (
-                  <th key={h} className="text-left py-2 px-3 text-xs font-semibold text-custom-700 uppercase tracking-wide whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((inv) => (
-                <tr key={inv.id} className="border-b border-custom-200 hover:bg-custom-50 transition-colors">
-                  <td className="py-3 px-3 font-semibold text-primary-500 whitespace-nowrap">{inv.id}</td>
-                  <td className="py-3 px-3 text-custom-700 whitespace-nowrap">{inv.jobId}</td>
-                  <td className="py-3 px-3 text-secondary-100 whitespace-nowrap">{inv.client}</td>
-                  <td className="py-3 px-3 text-secondary-100 font-semibold whitespace-nowrap">{inv.amount} RWF</td>
-                  <td className="py-3 px-3 text-custom-700 whitespace-nowrap">{inv.due}</td>
-                  <td className="py-3 px-3">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusColor[inv.status]}`}>
-                      {inv.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3">
-                    <button className="text-xs text-primary-500 hover:text-primary-600 font-semibold transition-colors whitespace-nowrap">
-                      Confirm Payment
-                    </button>
-                  </td>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-custom-500">
+              <HiOutlineRefresh className="w-5 h-5 animate-spin" /> Loading…
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center text-sm text-custom-400">No invoices found.</div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-custom-300">
+                  {["Invoice", "Job", "Client", "Amount (RWF)", "Due Date", "Status"].map((h) => (
+                    <th key={h} className="text-left py-2 px-3 text-xs font-semibold text-custom-700 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((inv) => {
+                  const client = inv.job?.customer?.name ?? inv.customer?.name ?? "—";
+                  const amount = Number(inv.totalAmount).toLocaleString();
+                  const due    = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+                  return (
+                    <tr key={inv.id} className="border-b border-custom-200 hover:bg-custom-50 transition-colors">
+                      <td className="py-3 px-3 font-semibold text-primary-500 whitespace-nowrap">{inv.invoiceNo}</td>
+                      <td className="py-3 px-3 text-custom-700 whitespace-nowrap">#{inv.job?.jobNumber ?? inv.jobId?.slice(0, 8)}</td>
+                      <td className="py-3 px-3 text-secondary-100 whitespace-nowrap">{client}</td>
+                      <td className="py-3 px-3 font-semibold text-secondary-100 whitespace-nowrap">{amount}</td>
+                      <td className="py-3 px-3 text-custom-700 whitespace-nowrap">{due}</td>
+                      <td className="py-3 px-3">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${statusColor[inv.status] ?? "bg-gray-100 text-gray-600"}`}>
+                          {inv.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </Card>
     </div>

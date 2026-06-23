@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HiOutlinePlus, HiOutlineSearch, HiOutlineEye, HiOutlineRefresh, HiOutlineX } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
+import PhoneInput from "../../components/ui/PhoneInput";
 import { useAuth } from "../../context/AuthContext";
 import { useGetAllEmployeesQuery, useCreateEmployeeMutation, useUpdateEmployeeMutation, useToggleEmployeeActiveMutation } from "../../store/services/employeesService";
 
@@ -175,7 +176,13 @@ function EmployeeFormModal({ employee, onClose }: { employee?: any; onClose: () 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {field("Full Name", "fullName", "text", true)}
-            {field("Phone Number", "phoneNumber", "text", true)}
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Phone Number <span className="text-red-500">*</span></label>
+              <PhoneInput
+                value={form.phoneNumber}
+                onChange={(val) => set("phoneNumber", val)}
+              />
+            </div>
             {field("Date of Birth", "dateOfBirth", "date", true)}
             {field("Address", "address", "text", true)}
             {field("Contract Salary", "contractSalary", "number", true)}

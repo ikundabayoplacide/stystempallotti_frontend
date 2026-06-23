@@ -3,6 +3,7 @@ export { default as Accountant1DocumentsPage } from "./Accountant1DocumentsPage"
 export { default as Accountant1InvoicesPage } from "./Accountant1InvoicesPage";
 export { default as Accountant1Page } from "./Accountant1Page";
 export { default as Accountant1PaymentsPage } from "./Accountant1PaymentsPage";
+export { default as AccountantReportsPage } from "./AccountantReportsPage";
 
 export { default as Accountant2Dashboard } from "./Accountant2Dashboard";
 export { default as Accountant2Page } from "./Accountant2Page";

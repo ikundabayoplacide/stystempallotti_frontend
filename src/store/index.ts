@@ -23,6 +23,8 @@ import { notificationsApi } from "./services/notificationsService";
 import { recoveryApi } from "./services/recoveryService";
 import { leaveApi } from "./services/leaveService";
 import { outstandsApi } from "./services/outstandsService";
+import { casualWorkersApi } from "./services/casualWorkersService";
+import { payrollApi } from "./services/payrollService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -52,6 +54,8 @@ export const store = configureStore({
     [recoveryApi.reducerPath]: recoveryApi.reducer,
     [leaveApi.reducerPath]: leaveApi.reducer,
     [outstandsApi.reducerPath]: outstandsApi.reducer,
+    [casualWorkersApi.reducerPath]: casualWorkersApi.reducer,
+    [payrollApi.reducerPath]: payrollApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -78,7 +82,9 @@ export const store = configureStore({
       .concat(notificationsApi.middleware)
       .concat(recoveryApi.middleware)
       .concat(leaveApi.middleware)
-      .concat(outstandsApi.middleware),
+      .concat(outstandsApi.middleware)
+      .concat(casualWorkersApi.middleware)
+      .concat(payrollApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

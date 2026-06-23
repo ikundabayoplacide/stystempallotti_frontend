@@ -8,6 +8,7 @@ import {
 } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { useAuth, type UserRole } from "../context/AuthContext";
+import { useLanguage, type Language } from "../context/LanguageContext";
 import { useGetUnreadCountQuery } from "../store/services/notificationsService";
 import DashboardSidebar from "./DashboardSidebar";
 
@@ -56,9 +57,22 @@ export default function DashboardLayout({
 }: DashboardLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const langRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { userRole: authRole, userName: authName, isAuthenticated, logout } = useAuth();
+  const { language, setLanguage } = useLanguage();
+
+  const LANGUAGES: { code: Language; label: string; flag: string }[] = [
+    { code: 'en', label: 'English',    flag: '🇬🇧' },
+    { code: 'rw', label: 'Kinyarwanda', flag: '🇷🇼' },
+    { code: 'fr', label: 'Français',   flag: '🇫🇷' },
+    { code: 'sw', label: 'Kiswahili',  flag: '🇰🇪' },
+    { code: 'ar', label: 'العربية',    flag: '🇸🇦' },
+  ];
+
+  const currentLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
 
   const { data: unreadCount = 0 } = useGetUnreadCountQuery(undefined, {
     skip: !isAuthenticated,
@@ -68,11 +82,14 @@ export default function DashboardLayout({
   const userRole = (authRole ?? userRoleProp ?? "receptionist") as UserRole;
   const userName = authName ?? userNameProp ?? "User";
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -109,6 +126,38 @@ export default function DashboardLayout({
 
           {/* Right side */}
           <div className="flex items-center gap-2">
+            {/* Language switcher */}
+            <div className="relative" ref={langRef}>
+              <button
+                onClick={() => setLangOpen((v) => !v)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm font-medium"
+                aria-label="Change language"
+              >
+                <span className="hidden sm:inline">{currentLang.flag} {currentLang.label}</span>
+                <span className="sm:hidden">{currentLang.flag}</span>
+              </button>
+
+              {langOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-style-600 border border-custom-300 rounded-2xl shadow-xl z-50 overflow-hidden p-1.5 space-y-0.5">
+                  {LANGUAGES.map((l) => (
+                    <button
+                      key={l.code}
+                      onClick={() => { setLanguage(l.code); setLangOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors ${
+                        language === l.code
+                          ? 'bg-primary-50 text-primary-600 font-semibold'
+                          : 'text-secondary-100 hover:bg-custom-100'
+                      }`}
+                    >
+                      <span className="text-base">{l.flag}</span>
+                      {l.label}
+                      {language === l.code && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-500" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Bell */}
             {showNotifications && (
               <button
@@ -152,19 +201,6 @@ export default function DashboardLayout({
                     >
                       <HiOutlineUser className="w-4 h-4 text-custom-700" />
                       Profile & Password
-                    </button>
-
-                    <button
-                      onClick={() => { setDropdownOpen(false); navigate(notificationPaths[userRole]); }}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors"
-                    >
-                      <HiOutlineBell className="w-4 h-4 text-custom-700" />
-                      Notifications
-                      {unreadCount > 0 && (
-                        <span className="ml-auto w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                          {unreadCount > 9 ? "9+" : unreadCount}
-                        </span>
-                      )}
                     </button>
 
                     <button

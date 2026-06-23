@@ -7,12 +7,14 @@ import {
   HiOutlineClock,
   HiOutlineOfficeBuilding,
   HiOutlineArrowRight,
+  HiOutlineCurrencyDollar,
 } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
+import { useGetPayrollsQuery } from "../../store/services/payrollService";
 
 export default function HRPage() {
   const { userName } = useAuth();
@@ -20,6 +22,14 @@ export default function HRPage() {
 
   const { data, isLoading } = useGetAllEmployeesQuery({ limit: 1000 });
   const employees = data?.data ?? [];
+
+  const currentPeriod = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; })();
+  const { data: payrollData } = useGetPayrollsQuery({ period: currentPeriod, limit: 500 });
+  const payrolls = payrollData?.data ?? [];
+  const payrollDraft = payrolls.filter(p => p.status === "draft").length;
+  const payrollApproved = payrolls.filter(p => p.status === "approved").length;
+  const payrollPaid = payrolls.filter(p => p.status === "paid").length;
+  const totalNetThisMonth = payrolls.filter(p => p.status !== "draft").reduce((s, p) => s + Number(p.netSalary), 0);
 
   const stats = useMemo(() => {
     const active = employees.filter((e) => e.isActive).length;
@@ -154,6 +164,33 @@ export default function HRPage() {
             </div>
           </Card>
         </div>
+
+        {/* Payroll Summary */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <HiOutlineCurrencyDollar className="h-5 w-5 text-primary-500" />
+              <h2 className="font-bold text-secondary-100">Payroll — {currentPeriod}</h2>
+            </div>
+            <button onClick={() => navigate("/hr/payroll")}
+              className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:underline">
+              Manage <HiOutlineArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Draft", value: payrollDraft, color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+              { label: "Approved", value: payrollApproved, color: "bg-blue-50 text-blue-700 border-blue-200" },
+              { label: "Paid", value: payrollPaid, color: "bg-green-50 text-green-700 border-green-200" },
+              { label: "Net (approved+paid)", value: `${totalNetThisMonth.toLocaleString()} RWF`, color: "bg-purple-50 text-purple-700 border-purple-200" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className={`rounded-xl border px-4 py-3 ${color}`}>
+                <p className="text-xs font-semibold opacity-70">{label}</p>
+                <p className="text-xl font-bold mt-1">{value}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
 
         {/* Recent Employees */}
         <Card className="!p-0 overflow-hidden">
