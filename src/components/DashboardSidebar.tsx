@@ -63,7 +63,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
     { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
-    { label: "Procurement expenses", path: "/reception/procurement-expenses", icon: HiOutlineCalendar },
+    { label: "Expenses", path: "/reception/expenses", icon: HiOutlineCalendar },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
