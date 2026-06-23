@@ -201,6 +201,7 @@ type ModalMode = "approve" | "reject" | "assign";
 
 export default function DAFJobApprovalPage() {
   const [search, setSearch]           = useState("");
+  const [page, setPage]               = useState(1);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [modalMode, setModalMode]     = useState<ModalMode>("approve");
   const [showModal, setShowModal]     = useState(false);
@@ -243,6 +244,10 @@ export default function DAFJobApprovalPage() {
       job.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
       job.title?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const PAGE_SIZE  = 5;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const openModal = (job: Job, mode: ModalMode) => {
     setSelectedJob(job);
@@ -348,7 +353,7 @@ export default function DAFJobApprovalPage() {
                   type="text"
                   placeholder="Search jobs..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200"
                 />
               </div>
@@ -374,7 +379,7 @@ export default function DAFJobApprovalPage() {
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700">No jobs found</td></tr>
                 ) : (
-                  filtered.map((job) => {
+                  paginated.map((job) => {
                     const statusCfg = jobStatusConfig[job.status];
                     const isPending = job.status === "pending";
                     return (
@@ -388,6 +393,9 @@ export default function DAFJobApprovalPage() {
                         <td className="px-4 py-4">
                           <span className="text-sm font-semibold text-secondary-100 block">{job.title}</span>
                           <span className="text-xs text-custom-700">{job.customer?.name ?? "—"}</span>
+                          {job.customer?.phone && (
+                            <span className="text-xs text-custom-500 block">{job.customer.phone}</span>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <span className="text-sm font-bold text-secondary-100">
@@ -463,6 +471,48 @@ export default function DAFJobApprovalPage() {
             </table>
           </div>
         </Card>
+
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-custom-700">
+              Showing{" "}
+              <span className="font-semibold text-secondary-100">
+                {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}
+              </span>{" "}
+              of <span className="font-semibold text-secondary-100">{filtered.length}</span> jobs
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setPage(n)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                    n === page
+                      ? "bg-primary-500 text-white"
+                      : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Job Details Modal */}
         {detailsJobId && (

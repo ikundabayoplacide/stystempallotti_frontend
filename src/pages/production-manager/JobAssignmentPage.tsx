@@ -5,6 +5,7 @@ import {
   HiOutlineClock,
   HiOutlineDotsVertical,
   HiOutlineExclamationCircle,
+  HiOutlineEye,
   HiOutlinePencil,
   HiOutlineRefresh,
   HiOutlineSearch,
@@ -20,6 +21,7 @@ import {
   useApproveJobMutation,
   useAssignJobMutation,
   useCompleteJobMutation,
+  useGetJobDetailsQuery,
   useGetJobsQuery,
   useReassignJobMutation,
   useRejectJobMutation,
@@ -95,6 +97,159 @@ const PAGE_SIZE = 5;
 
 type ModalType = "assign" | "approve" | "reject" | "edit" | "complete" | null;
 
+// ─── Job Details Modal ────────────────────────────────────────────────────────
+
+function RowDetail({ label, value }: { label: string; value?: string | number | null }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="flex justify-between gap-2">
+      <span className="text-custom-700 shrink-0">{label}</span>
+      <span className="font-semibold text-secondary-100 text-right">{value}</span>
+    </div>
+  );
+}
+
+function SectionDetail({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">{title}</p>
+      <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 space-y-1.5 text-sm">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
+  const { data: d, isLoading } = useGetJobDetailsQuery(jobId);
+  const items = d?.jobItems ?? [];
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Job Details</h3>
+            {d && <p className="text-xs text-custom-700 mt-0.5">{d.jobNumber} — {d.title}</p>}
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-6 h-6" />
+          </button>
+        </div>
+
+        {isLoading ? (
+          <p className="text-center text-custom-700 py-10">Loading…</p>
+        ) : !d ? (
+          <p className="text-center text-custom-700 py-10">Details not available.</p>
+        ) : (
+          <div className="space-y-5">
+            <SectionDetail title="Client">
+              <RowDetail label="Name"    value={d.customer?.name} />
+              <RowDetail label="Company" value={d.customer?.company} />
+              <RowDetail label="Phone"   value={d.customer?.phone} />
+              <RowDetail label="Email"   value={d.customer?.email} />
+            </SectionDetail>
+
+            <SectionDetail title="Job Information">
+              <RowDetail label="Job #"       value={d.jobNumber} />
+              <RowDetail label="Title"       value={d.title} />
+              <RowDetail label="Type"        value={d.jobType} />
+              <RowDetail label="Quantity"    value={d.quantity} />
+              <RowDetail label="Size"        value={d.size} />
+              <RowDetail label="Color Mode"  value={d.colorMode} />
+              <RowDetail label="Binding"     value={d.bindingType} />
+              <RowDetail label="Priority"    value={d.priority} />
+              <RowDetail label="Status"      value={d.status} />
+              <RowDetail label="Deadline"    value={d.dueDate?.split("T")[0]} />
+              <RowDetail label="Created"     value={new Date(d.createdAt).toLocaleDateString()} />
+              {d.description && (
+                <div className="pt-1 border-t border-custom-200">
+                  <p className="text-custom-700 mb-0.5">Description</p>
+                  <p className="text-secondary-100 font-medium leading-snug">{d.description}</p>
+                </div>
+              )}
+              {d.notes && (
+                <div className="pt-1 border-t border-custom-200">
+                  <p className="text-custom-700 mb-0.5">Notes</p>
+                  <p className="text-secondary-100 font-medium leading-snug">{d.notes}</p>
+                </div>
+              )}
+            </SectionDetail>
+
+            <SectionDetail title="Materials Needed">
+              {!items.length ? (
+                <p className="text-custom-700 italic">No materials listed.</p>
+              ) : items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between">
+                  <span className="font-semibold text-secondary-100">{item.stockItem?.itemName ?? "—"}</span>
+                  <span className="text-xs text-custom-700">
+                    {item.quantityNeeded} {item.stockItem?.unit ?? ""}{item.notes ? ` · ${item.notes}` : ""}
+                  </span>
+                </div>
+              ))}
+            </SectionDetail>
+
+            <SectionDetail title="Financial">
+              <RowDetail label="Amount"         value={d.amount != null ? `${Number(d.amount).toLocaleString()} RWF` : null} />
+              <RowDetail label="Payment Status" value={d.paymentStatus} />
+              <RowDetail label="Payment Method" value={d.paymentMethod} />
+              <RowDetail label="Receipt #"      value={d.receiptNo} />
+            </SectionDetail>
+
+            <SectionDetail title="Department Position">
+              {!d.departmentPosition ? (
+                <p className="text-custom-700 italic">Not yet assigned to a department.</p>
+              ) : (
+                <>
+                  <RowDetail label="Department"    value={d.departmentPosition.department?.name} />
+                  <RowDetail label="State"         value={d.departmentPosition.state} />
+                  <RowDetail label="In Production" value={d.departmentPosition.inProduction} />
+                  <RowDetail label="Progress"      value={d.departmentPosition.progress} />
+                  {d.departmentPosition.startedAt   && <RowDetail label="Started"   value={new Date(d.departmentPosition.startedAt).toLocaleString()} />}
+                  {d.departmentPosition.completedAt && <RowDetail label="Completed" value={new Date(d.departmentPosition.completedAt).toLocaleString()} />}
+                  {d.departmentPosition.supervisors?.length > 0 && (
+                    <div className="pt-1 border-t border-custom-200">
+                      <p className="text-custom-700 mb-1">Supervisors</p>
+                      <div className="space-y-1">
+                        {d.departmentPosition.supervisors.map((s) => (
+                          <div key={s.id} className="flex items-center justify-between">
+                            <span className="font-semibold text-secondary-100">{s.name}</span>
+                            <span className="text-xs text-custom-700">{s.phone}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </SectionDetail>
+
+            <SectionDetail title="Assigned Workers">
+              {!d.assignedWorkers?.length ? (
+                <p className="text-custom-700 italic">No workers assigned.</p>
+              ) : d.assignedWorkers.map((w) => (
+                <div key={w.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-secondary-100">{w.fullName}</p>
+                    <p className="text-xs text-custom-700">{w.department?.name ?? "—"} · {w.phoneNumber}</p>
+                  </div>
+                  <p className="text-xs text-custom-700">{new Date(w.EmployeeJobAssignment.assignedAt).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </SectionDetail>
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-5 w-full px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
+        >
+          Close
+        </button>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Three-dot Action Menu ────────────────────────────────────────────────────
 
 function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, job: Job) => void }) {
@@ -161,6 +316,7 @@ export default function JobAssignmentPage() {
   const [page, setPage]                 = useState(1);
   const [modalType, setModalType]       = useState<ModalType>(null);
   const [activeJob, setActiveJob]       = useState<Job | null>(null);
+  const [detailsJobId, setDetailsJobId] = useState<string | null>(null);
   const [deptId, setDeptId]             = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [editTitle, setEditTitle]       = useState("");
@@ -407,7 +563,16 @@ export default function JobAssignmentPage() {
                           <span className="text-sm text-custom-700">{job.dueDate ? job.dueDate.split("T")[0] : "—"}</span>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <ActionMenu job={job} onAction={openModal} />
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setDetailsJobId(job.id)}
+                              className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-500 hover:text-secondary-100 transition-colors"
+                              title="View details"
+                            >
+                              <HiOutlineEye className="h-5 w-5" />
+                            </button>
+                            <ActionMenu job={job} onAction={openModal} />
+                          </div>
                         </td>
                       </tr>
                     );
@@ -444,7 +609,12 @@ export default function JobAssignmentPage() {
           )}
         </Card>
 
-        {/* ── Modals ── */}
+        {/* Job Details Modal */}
+        {detailsJobId && (
+          <JobDetailsModal jobId={detailsJobId} onClose={() => setDetailsJobId(null)} />
+        )}
+
+        {/* ── Action Modals ── */}
         {modalType && activeJob && (
           <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
             <Card className="!p-6 max-w-md w-full">

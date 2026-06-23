@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   HiOutlineDocumentText,
   HiOutlineChevronDown,
@@ -6,6 +6,7 @@ import {
   HiOutlinePaperClip,
   HiOutlineInbox,
   HiOutlineRefresh,
+  HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
@@ -47,6 +48,9 @@ function ReportCard({
               <p className="text-xs text-primary-500 mt-0.5 font-semibold">
                 From: {report.createdBy.name}
                 <span className="text-custom-700 font-normal ml-1">({report.createdBy.role})</span>
+                {report.createdBy.phone && (
+                  <span className="text-custom-700 font-normal ml-1">· {report.createdBy.phone}</span>
+                )}
               </p>
             )}
           </div>
@@ -213,37 +217,163 @@ function MyReports() {
 // ─── Tab: Received Reports ────────────────────────────────────────────────────
 
 function ReceivedReports() {
-  const [page, setPage]         = useState(1);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded]     = useState<string | null>(null);
+  const [page, setPage]             = useState(1);
+  const [search, setSearch]         = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [dateFrom, setDateFrom]     = useState("");
+  const [dateTo, setDateTo]         = useState("");
 
-  const { data, isLoading, refetch } = useGetAssignedReportsQuery({ page, limit: PAGE_SIZE });
+  // Fetch a large batch so all client-side filters work without extra round-trips
+  const { data, isLoading, refetch } = useGetAssignedReportsQuery({ page: 1, limit: 500 });
+  const allReports = data?.reports ?? [];
 
-  const reports    = data?.reports    ?? [];
-  const total      = data?.total      ?? 0;
-  const totalPages = data?.totalPages ?? 1;
+  // Collect unique sender roles from what was received
+  const senderRoles = useMemo(() => {
+    const roles = new Set<string>();
+    allReports.forEach((r) => { if (r.createdBy?.role) roles.add(r.createdBy.role); });
+    return [...roles].sort();
+  }, [allReports]);
+
+  // Apply filters
+  const filtered = useMemo(() => {
+    const q    = search.trim().toLowerCase();
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to   = dateTo   ? new Date(dateTo + "T23:59:59.999Z") : null;
+    return allReports.filter((r) => {
+      if (roleFilter && r.createdBy?.role !== roleFilter) return false;
+      const d = new Date(r.createdAt);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      if (q) {
+        const hay = [r.title, r.purpose, r.createdBy?.name ?? "", r.createdBy?.role ?? ""]
+          .join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allReports, roleFilter, dateFrom, dateTo, search]);
+
+  const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasFilters  = !!(search || roleFilter || dateFrom || dateTo);
+
+  const clearFilters = () => {
+    setSearch(""); setRoleFilter(""); setDateFrom(""); setDateTo(""); setPage(1);
+  };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-custom-700">
-          <span className="font-semibold text-secondary-100">{total}</span> report{total !== 1 ? "s" : ""} received
-        </p>
-        <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
-          <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
-        </button>
+      {/* ── Filter bar ── */}
+      <div className="flex flex-wrap items-end gap-3 p-4 bg-custom-50 rounded-xl border border-custom-200">
+        {/* Search */}
+        <div className="flex-1 min-w-44">
+          <label className="block text-xs font-semibold text-secondary-100 mb-1">Search</label>
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Title, purpose, sender…"
+            className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-400 focus:outline-none focus:border-primary-400 transition-colors"
+          />
+        </div>
+
+        {/* Role filter */}
+        <div className="min-w-36">
+          <label className="block text-xs font-semibold text-secondary-100 mb-1">Sender Role</label>
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+          >
+            <option value="">All roles</option>
+            {senderRoles.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Date from */}
+        <div>
+          <label className="block text-xs font-semibold text-secondary-100 mb-1">From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+            className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+          />
+        </div>
+
+        {/* Date to */}
+        <div>
+          <label className="block text-xs font-semibold text-secondary-100 mb-1">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom}
+            onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+            className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 pb-0.5">
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors"
+            >
+              <HiOutlineX className="w-3.5 h-3.5" /> Clear
+            </button>
+          )}
+          <button
+            onClick={() => refetch()}
+            className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors"
+          >
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
       </div>
 
+      {/* Count line */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs text-custom-700">
+          <span className="font-semibold text-secondary-100">{filtered.length}</span>
+          {hasFilters ? " matching" : ""} report{filtered.length !== 1 ? "s" : ""}
+          {hasFilters && filtered.length !== allReports.length && (
+            <span className="text-custom-400"> of {allReports.length} total</span>
+          )}
+        </p>
+        {roleFilter && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 font-semibold">
+            {roleFilter}
+          </span>
+        )}
+      </div>
+
+      {/* List */}
       {isLoading ? (
         <Card className="!p-6 text-center text-custom-700 text-sm">Loading…</Card>
-      ) : reports.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <Card className="!p-10 text-center">
           <HiOutlineInbox className="w-10 h-10 text-custom-400 mx-auto mb-3" />
-          <p className="text-secondary-100 font-semibold">No received reports</p>
-          <p className="text-sm text-custom-700 mt-1">Reports shared with your role will appear here.</p>
+          <p className="text-secondary-100 font-semibold">
+            {hasFilters ? "No reports match the filters" : "No received reports"}
+          </p>
+          <p className="text-sm text-custom-700 mt-1">
+            {hasFilters
+              ? "Try adjusting the date range, role, or search term."
+              : "Reports shared with your role will appear here."}
+          </p>
+          {hasFilters && (
+            <button onClick={clearFilters}
+              className="mt-3 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">
+              Clear filters
+            </button>
+          )}
         </Card>
       ) : (
         <div className="space-y-3">
-          {reports.map((r) => (
+          {paginated.map((r) => (
             <ReportCard
               key={r.id}
               report={r}
@@ -255,9 +385,12 @@ function ReceivedReports() {
         </div>
       )}
 
-      {totalPages > 1 && (
+      {/* Pagination */}
+      {filtered.length > PAGE_SIZE && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-custom-700">Page {page} of {totalPages}</p>
+          <p className="text-xs text-custom-700">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </p>
           <div className="flex gap-2">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
               className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">

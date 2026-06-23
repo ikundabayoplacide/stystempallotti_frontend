@@ -9,4 +9,5 @@ export { default as ProductionPage } from './ProductionPage';
 export { default as ReportsPage } from './ReportsPage';
 export { default as SupervisorPage } from './SupervisorPage';
 export { default as SupervisorReviewReportsPage } from './SupervisorReviewReportsPage';
+export { default as MachinesPage } from './MachinesPage';
 

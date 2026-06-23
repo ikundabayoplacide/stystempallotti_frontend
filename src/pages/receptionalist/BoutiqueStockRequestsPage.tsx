@@ -14,13 +14,11 @@ import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import {
-  useGetGeneralStockItemsQuery,
-  useCreateGeneralStockSortieMutation,
-  useGetMyGeneralStockSortiesQuery,
-  type GeneralStockItem,
-} from "../../store/services/generalStockService";
-
-// ─── Status colors ────────────────────────────────────────────────────────────
+  useGetBoutiqueStockItemsQuery,
+  useCreateBoutiqueStockSortieMutation,
+  useGetMyBoutiqueStockSortiesQuery,
+  type BoutiqueStockItem,
+} from "../../store/services/boutiqueStockService";
 
 const sortieStatusColors: Record<string, string> = {
   pending:  "bg-yellow-100 text-yellow-700",
@@ -28,12 +26,10 @@ const sortieStatusColors: Record<string, string> = {
   rejected: "bg-red-100 text-red-700",
 };
 
-// ─── Request Modal ────────────────────────────────────────────────────────────
-
-interface RequestItem { stockItem: GeneralStockItem; quantity: number }
+interface RequestItem { stockItem: BoutiqueStockItem; quantity: number }
 
 function RequestModal({ items: stockItems, onClose, onSuccess }: {
-  items: GeneralStockItem[];
+  items: BoutiqueStockItem[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -41,7 +37,7 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
   const [selectedId, setSelectedId] = useState("");
   const [qty, setQty]               = useState("1");
   const [reason, setReason]         = useState("");
-  const [createSortie, { isLoading }] = useCreateGeneralStockSortieMutation();
+  const [createSortie, { isLoading }] = useCreateBoutiqueStockSortieMutation();
 
   const available = stockItems.filter((h) => !items.find((i) => i.stockItem.id === h.id));
 
@@ -74,14 +70,13 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
     }
   };
 
-
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
       <Card className="!p-6 max-w-xl w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-xl font-bold text-secondary-100">Request Stock</h3>
-            <p className="text-sm text-custom-700 mt-0.5">Select general items and quantities to request</p>
+            <h3 className="text-xl font-bold text-secondary-100">Request Boutique Stock</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Select items and quantities to request from boutique stock</p>
           </div>
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
             <HiOutlineX className="w-6 h-6" />
@@ -92,7 +87,9 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
           <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-3">
             <p className="text-sm font-semibold text-secondary-100">Add Item</p>
             <div className="flex gap-2">
-              <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+              <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              >
                 <option value="">Select a stock item...</option>
                 {available.map((h) => (
                   <option key={h.id} value={h.id}>
@@ -135,13 +132,16 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
 
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-2">Reason *</label>
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Running low on stock..." rows={2}
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g. Need items for boutique restocking..." rows={2}
               className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors resize-none"
             />
           </div>
 
           <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+            >Cancel</button>
             <button type="submit" disabled={isLoading || items.length === 0}
               className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
             >{isLoading ? "Submitting..." : "Submit Request"}</button>
@@ -154,15 +154,15 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function RequestsPage() {
+export default function BoutiqueStockRequestsPage() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch]       = useState("");
 
   const { data: stockData, isLoading: stockLoading, refetch: refetchStock } =
-    useGetGeneralStockItemsQuery({ limit: 200 });
+    useGetBoutiqueStockItemsQuery({ limit: 200 });
 
   const { data: sortiesData, isLoading: sortiesLoading, refetch: refetchSorties } =
-    useGetMyGeneralStockSortiesQuery({ limit: 100 });
+    useGetMyBoutiqueStockSortiesQuery({ limit: 100 });
 
   const allItems = stockData?.data ?? [];
   const filteredItems = allItems.filter((item) => {
@@ -182,12 +182,12 @@ export default function RequestsPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-              <HiOutlineClipboardList className="w-5 h-5 text-orange-600" />
+            <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
+              <HiOutlineClipboardList className="w-5 h-5 text-pink-600" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Stock Requests</h1>
-              <p className="text-sm text-custom-700 mt-0.5">Request items from general stock</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Boutique Stock Requests</h1>
+              <p className="text-sm text-custom-700 mt-0.5">Request items from boutique stock management</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -223,10 +223,10 @@ export default function RequestsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* Available items */}
+          {/* Available boutique stock items */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-secondary-100 uppercase tracking-wide">Available Items in General Stock</h2>
+              <h2 className="text-sm font-bold text-secondary-100 uppercase tracking-wide">Available Boutique Stock Items</h2>
               <span className="text-xs text-custom-700">{filteredItems.length} items</span>
             </div>
             <div className="relative">
@@ -248,8 +248,8 @@ export default function RequestsPage() {
             ) : filteredItems.length === 0 ? (
               <Card className="!p-8 text-center">
                 <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
-                <p className="text-sm text-secondary-100 font-semibold">No items in general stock</p>
-                <p className="text-xs text-custom-700 mt-1">Ask the stock manager to add items</p>
+                <p className="text-sm text-secondary-100 font-semibold">No boutique stock items available</p>
+                <p className="text-xs text-custom-700 mt-1">Ask the stock manager to add boutique items</p>
               </Card>
             ) : (
               <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">

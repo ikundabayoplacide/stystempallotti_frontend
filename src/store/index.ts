@@ -25,6 +25,10 @@ import { leaveApi } from "./services/leaveService";
 import { outstandsApi } from "./services/outstandsService";
 import { casualWorkersApi } from "./services/casualWorkersService";
 import { payrollApi } from "./services/payrollService";
+import { boutiqueStockApi } from "./services/boutiqueStockService";
+import { generalStockApi } from "./services/generalStockService";
+import { bindingStockApi } from "./services/bindingStockService";
+import { machinesApi } from "./services/machinesService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -56,6 +60,10 @@ export const store = configureStore({
     [outstandsApi.reducerPath]: outstandsApi.reducer,
     [casualWorkersApi.reducerPath]: casualWorkersApi.reducer,
     [payrollApi.reducerPath]: payrollApi.reducer,
+    [boutiqueStockApi.reducerPath]: boutiqueStockApi.reducer,
+    [generalStockApi.reducerPath]: generalStockApi.reducer,
+    [bindingStockApi.reducerPath]: bindingStockApi.reducer,
+    [machinesApi.reducerPath]: machinesApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -84,7 +92,11 @@ export const store = configureStore({
       .concat(leaveApi.middleware)
       .concat(outstandsApi.middleware)
       .concat(casualWorkersApi.middleware)
-      .concat(payrollApi.middleware),
+      .concat(payrollApi.middleware)
+      .concat(boutiqueStockApi.middleware)
+      .concat(generalStockApi.middleware)
+      .concat(bindingStockApi.middleware)
+      .concat(machinesApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

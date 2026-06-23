@@ -512,7 +512,7 @@ export default function VisitorPage() {
               <HiOutlineHome className="w-5 h-5 text-yellow-600" />
             </div>
             <p className="text-2xl font-bold text-secondary-100">{hobData?.total ?? 0}</p>
-            <p className="text-xs text-custom-700">Hobe</p>
+            <p className="text-xs text-custom-700" translate="no">Hobe</p>
           </Card>
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2">
@@ -538,7 +538,7 @@ export default function VisitorPage() {
               <option value="BUSINESS">Business</option>
               <option value="VISITOR">Visit</option>
               <option value="BOUTIQUE">Boutique</option>
-              <option value="HOBE">Hobe</option>
+              <option value="HOBE" translate="no">Hobe</option>
             </select>
           </div>
         </Card>
@@ -606,7 +606,7 @@ export default function VisitorPage() {
                           ) : <span className="text-xs text-custom-400">—</span>}
                         </td>
                         <td className="px-4 py-4">
-                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${typeColor[customer.type]}`}>
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${typeColor[customer.type]} ${customer.type === 'HOBE' ? 'notranslate' : ''}`}>
                             {typeLabel[customer.type]}
                           </span>
                         </td>
@@ -700,7 +700,7 @@ export default function VisitorPage() {
                     <option value="BUSINESS">Business</option>
                     <option value="VISITOR">Visit</option>
                     <option value="BOUTIQUE">Boutique</option>
-                    <option value="HOBE">Hobe</option>
+                    <option value="HOBE" translate="no">Hobe</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">

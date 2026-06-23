@@ -14,6 +14,8 @@ export interface MaterialRequest {
   jobId: string;
   job?: { id: string; jobNumber: string; title: string };
   employeeId: string;
+  employee?: { id: string; fullName: string; phoneNumber?: string; role?: string };
+  responder?: { id: string; fullName: string; role?: string };
   notes?: string;
   status: "pending" | "approved" | "rejected";
   responseNotes?: string;
@@ -50,6 +52,23 @@ export const materialRequestsApi = createApi({
 
   endpoints: (builder) => ({
 
+    // GET /material-requests — ADMIN, SUPERVISOR, STOCK
+    getAllMaterialRequests: builder.query<MaterialRequest[], { status?: string } | void>({
+      query: (params) => ({ url: "/material-requests", params: params ?? {} }),
+      transformResponse: (res: ApiResponse<MaterialRequest[]>) => res.data ?? [],
+      providesTags: (result) =>
+        result
+          ? [...result.map(({ id }) => ({ type: "MaterialRequest" as const, id })), { type: "MaterialRequest", id: "LIST" }]
+          : [{ type: "MaterialRequest", id: "LIST" }],
+    }),
+
+    // GET /material-requests/:id — ADMIN, SUPERVISOR, STOCK
+    getMaterialRequestById: builder.query<MaterialRequest, string>({
+      query: (id) => `/material-requests/${id}`,
+      transformResponse: (res: ApiResponse<MaterialRequest>) => res.data,
+      providesTags: (_r, _e, id) => [{ type: "MaterialRequest", id }],
+    }),
+
     // GET /material-requests/my  — worker's own requests
     getMyMaterialRequests: builder.query<MaterialRequest[], void>({
       query: () => "/material-requests/my",
@@ -72,7 +91,11 @@ export const materialRequestsApi = createApi({
         body: { responseNotes },
       }),
       transformResponse: (res: ApiResponse<MaterialRequest>) => res.data,
-      invalidatesTags: [{ type: "MaterialRequest", id: "MY" }],
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "MaterialRequest", id },
+        { type: "MaterialRequest", id: "LIST" },
+        { type: "MaterialRequest", id: "MY" },
+      ],
     }),
 
     // PATCH /material-requests/:id/reject
@@ -83,12 +106,18 @@ export const materialRequestsApi = createApi({
         body: { responseNotes },
       }),
       transformResponse: (res: ApiResponse<MaterialRequest>) => res.data,
-      invalidatesTags: [{ type: "MaterialRequest", id: "MY" }],
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "MaterialRequest", id },
+        { type: "MaterialRequest", id: "LIST" },
+        { type: "MaterialRequest", id: "MY" },
+      ],
     }),
   }),
 });
 
 export const {
+  useGetAllMaterialRequestsQuery,
+  useGetMaterialRequestByIdQuery,
   useGetMyMaterialRequestsQuery,
   useCreateMaterialRequestMutation,
   useApproveMaterialRequestMutation,

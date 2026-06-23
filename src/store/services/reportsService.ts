@@ -18,7 +18,7 @@ export interface Report {
   attachmentUrl?: string;
   visibleTo?: string[];
   createdAt: string;
-  createdBy?: { id: string; name: string; email: string; role: string };
+  createdBy?: { id: string; name: string; email: string; role: string; phone?: string };
 }
 
 export interface PaginatedReports {

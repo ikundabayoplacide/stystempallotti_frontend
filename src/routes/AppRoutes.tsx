@@ -47,7 +47,7 @@ import { DepartmentsPage, JobAssignmentPage, ProductionManagerPage, ProductionMa
 // Production Department Pages
 
 // Stock Pages
-import { InventoryPage, MaterialRequestsPage, SuppliersPage, StockReportsPage } from "../pages/stock";
+import { InventoryPage, MaterialRequestsPage, SuppliersPage, StockReportsPage, BoutiqueStockPage, GeneralStockPage } from "../pages/stock";
 import StockPage from "../pages/stock/StockPage";
 
 // Supervisor Pages
@@ -67,9 +67,12 @@ import {
   BoutiquePage,
   PaymentCollectionPage,
   ReceptionPage,
+  BoutiqueStockRequestsPage,
   // TaskAssignmentPage,
 } from "../pages/receptionalist";
 import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, JobAssignmentPage as SupervisorJobAssignmentPage, DepartmentEmployeesPage } from "../pages/supervisor";
+import BindingStockPage from "../pages/supervisor/BindingStockPage";
+import MachinesPage, { MachinesContent as AdminMachinesPage } from "../pages/supervisor/MachinesPage";
 import { MaterialRequestPage } from "../pages/worker";
 import CustomerPage from "../pages/admin/customaPage";
 import VisitorPage from "../pages/receptionalist/VisitorPage";
@@ -91,6 +94,7 @@ import { AdminLeaveManagementPage } from "../pages/admin";
 import Outstands from "../pages/receptionalist/Outstands";
 import Abanyabiraka from "../pages/HR/abanyabiraka";
 import PayrollPage from "../pages/HR/PayrollPage";
+import GeneralStockPageOnPm from "../pages/production-manager/GeneralStockPage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -113,6 +117,8 @@ export default function AppRoutes() {
       <Route path="/admin/workflow" element={<ProtectedRoute allowedRoles={["admin"]}><WorkflowConfigPage /></ProtectedRoute>} />
       <Route path="/admin/ui-permissions" element={<ProtectedRoute allowedRoles={["admin"]}><UIPermissionsPage /></ProtectedRoute>} />
       <Route path="/admin/leave" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLeaveManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/machines" element={<ProtectedRoute allowedRoles={["admin"]}><AdminMachinesPage /></ProtectedRoute>} />
+      <Route path="/admin/abanyabiraka" element={<ProtectedRoute allowedRoles={["admin"]}><Abanyabiraka /></ProtectedRoute>} />
       <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={["admin"]}><NotificationsPage userRole="admin" userName="Admin" /></ProtectedRoute>} />
       <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><ProfilePage /></ProtectedRoute>} />
 
@@ -128,6 +134,7 @@ export default function AppRoutes() {
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
       <Route path="/reception/reports/my" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/reception/expenses" element={<ProtectedRoute allowedRoles={["receptionist"]}><Outstands /></ProtectedRoute>} />
+      <Route path="/reception/boutique-stock" element={<ProtectedRoute allowedRoles={["receptionist"]}><BoutiqueStockRequestsPage /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}
       <Route path="/sales" element={<ProtectedRoute allowedRoles={["sales"]}><SalesPage /></ProtectedRoute>} />
@@ -181,6 +188,7 @@ export default function AppRoutes() {
       <Route path="/production-manager" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerPage /></ProtectedRoute>} />
       <Route path="/production-manager/planning" element={<ProtectedRoute allowedRoles={["production-manager"]}><JobAssignmentPage /></ProtectedRoute>} />
       <Route path="/production-manager/departments" element={<ProtectedRoute allowedRoles={["production-manager"]}><DepartmentsPage /></ProtectedRoute>} />
+      <Route path="/production-manager/general-stock" element={<ProtectedRoute allowedRoles={["production-manager"]}><GeneralStockPageOnPm /></ProtectedRoute>} />
       <Route path="/production-manager/reports" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/reports/my" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/leave" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyLeavePage /></ProtectedRoute>} />
@@ -198,6 +206,8 @@ export default function AppRoutes() {
       <Route path="/stock/profile" element={<ProtectedRoute allowedRoles={["stock"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/stock/reports" element={<ProtectedRoute allowedRoles={["stock"]}><StockReportsPage /></ProtectedRoute>} />
       <Route path="/stock/reports/my" element={<ProtectedRoute allowedRoles={["stock"]}><MyReportsPage /></ProtectedRoute>} />
+      <Route path="/stock/boutique-stock" element={<ProtectedRoute allowedRoles={["stock"]}><BoutiqueStockPage /></ProtectedRoute>} />
+      <Route path="/stock/general-stock" element={<ProtectedRoute allowedRoles={["stock"]}><GeneralStockPage /></ProtectedRoute>} />
 
       {/* Supervisor Routes */}
       <Route path="/supervisor" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorPage /></ProtectedRoute>} />
@@ -209,6 +219,8 @@ export default function AppRoutes() {
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/my" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/leave" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/supervisor/binding-stock" element={<ProtectedRoute allowedRoles={["supervisor"]}><BindingStockPage /></ProtectedRoute>} />
+      <Route path="/supervisor/machines" element={<ProtectedRoute allowedRoles={["supervisor"]}><MachinesPage /></ProtectedRoute>} />
       <Route path="/supervisor/notifications" element={<ProtectedRoute allowedRoles={["supervisor"]}><NotificationsPage userRole="supervisor" userName="Supervisor" /></ProtectedRoute>} />
       <Route path="/supervisor/profile" element={<ProtectedRoute allowedRoles={["supervisor"]}><ProfilePage /></ProtectedRoute>} />
 

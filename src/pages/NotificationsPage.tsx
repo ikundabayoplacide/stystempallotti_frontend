@@ -148,9 +148,15 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     REPORT_GENERATED: "/production-manager/reports",
   },
   supervisor: {
+    JOB_CREATED: "/supervisor/jobs",
     JOB_ASSIGNED: "/supervisor/jobs",
     JOB_STATUS_CHANGED: "/supervisor/jobs",
+    JOB_DONE: "/supervisor/jobs",
+    JOB_COMPLETED: "/supervisor/jobs",
+    JOB_DELIVERED: "/supervisor/jobs",
+    JOB_DAF_ACTION: "/supervisor/jobs",
     PROGRESS_COMPLETED: "/supervisor/jobs",
+    EMPLOYEE_CREATED: "/supervisor/employees",
     REPORT_GENERATED: "/supervisor/reports",
   },
   stock: {
@@ -158,6 +164,13 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     STOCK_SORTIE_REQUEST: "/stock/requests",
     STOCK_SORTIE_APPROVED: "/stock/requests",
     STOCK_SORTIE_REJECTED: "/stock/requests",
+    JOB_CREATED: "/stock/requests",
+    JOB_ASSIGNED: "/stock/requests",
+    JOB_STATUS_CHANGED: "/stock/inventory",
+    JOB_DONE: "/stock/inventory",
+    JOB_COMPLETED: "/stock/inventory",
+    BOUTIQUE_PRODUCT_ADDED: "/stock/inventory",
+    EMPLOYEE_CREATED: "/stock/inventory",
     REPORT_GENERATED: "/stock/reports",
   },
   hobe: {
@@ -169,11 +182,37 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     JOB_CREATED: "/hobe/trade",
     JOB_STATUS_CHANGED: "/hobe/trade",
   },
+  worker: {
+    JOB_ASSIGNED: "/worker/tasks",
+    JOB_STATUS_CHANGED: "/worker/tasks",
+    JOB_CREATED: "/worker/tasks",
+    JOB_DONE: "/worker/tasks",
+    JOB_COMPLETED: "/worker/tasks",
+    PROGRESS_COMPLETED: "/worker/tasks",
+    STOCK_SORTIE_APPROVED: "/worker/materials",
+    STOCK_SORTIE_REJECTED: "/worker/materials",
+    STOCK_SORTIE_REQUEST: "/worker/materials",
+    BOUTIQUE_STOCK_REQUEST: "/worker/materials",
+    REPORT_GENERATED: "/worker/reports",
+  },
   admin: {
     JOB_CREATED: "/admin/jobs",
+    JOB_ASSIGNED: "/admin/jobs",
     JOB_STATUS_CHANGED: "/admin/jobs",
+    JOB_DONE: "/admin/jobs",
+    JOB_COMPLETED: "/admin/jobs",
+    JOB_DELIVERED: "/admin/jobs",
+    JOB_DAF_ACTION: "/admin/jobs",
+    PROGRESS_COMPLETED: "/admin/jobs",
     CUSTOMER_CREATED: "/admin/customers",
+    CUSTOMER_CHECKIN: "/admin/customers",
     EMPLOYEE_CREATED: "/admin/users",
+    PAYMENT_COLLECTED: "/admin/finance",
+    BOUTIQUE_STOCK_REQUEST: "/admin/stock",
+    BOUTIQUE_PRODUCT_ADDED: "/admin/stock",
+    STOCK_SORTIE_APPROVED: "/admin/stock",
+    STOCK_SORTIE_REJECTED: "/admin/stock",
+    STOCK_SORTIE_REQUEST: "/admin/stock",
     REPORT_GENERATED: "/admin/reports",
   },
 };
@@ -212,6 +251,30 @@ function resolveRoute(userRole: UserRole, n: Notification): string | null {
   if (userRole === "production-manager") {
     if (text.includes("job") || text.includes("confirm") || text.includes("approv") || text.includes("assign") || text.includes("progress") || text.includes("deliver")) return "/production-manager/planning";
     if (text.includes("report")) return "/production-manager/reports";
+  }
+  if (userRole === "supervisor") {
+    if (text.includes("job") || text.includes("confirm") || text.includes("approv") || text.includes("assign") || text.includes("progress") || text.includes("deliver")) return "/supervisor/jobs";
+    if (text.includes("employee") || text.includes("worker") || text.includes("staff")) return "/supervisor/employees";
+    if (text.includes("report")) return "/supervisor/reports";
+  }
+  if (userRole === "worker") {
+    if (text.includes("task") || text.includes("job") || text.includes("assign") || text.includes("progress") || text.includes("confirm")) return "/worker/tasks";
+    if (text.includes("material") || text.includes("sortie") || text.includes("stock") || text.includes("approv") || text.includes("rejected")) return "/worker/materials";
+    if (text.includes("report")) return "/worker/reports";
+  }
+  if (userRole === "stock") {
+    if (text.includes("sortie") || text.includes("request") || text.includes("approv") || text.includes("rejected")) return "/stock/requests";
+    if (text.includes("inventory") || text.includes("product") || text.includes("item")) return "/stock/inventory";
+    if (text.includes("supplier")) return "/stock/suppliers";
+    if (text.includes("report")) return "/stock/reports";
+  }
+  if (userRole === "admin") {
+    if (text.includes("job") || text.includes("progress") || text.includes("deliver") || text.includes("confirm")) return "/admin/jobs";
+    if (text.includes("customer") || text.includes("client")) return "/admin/customers";
+    if (text.includes("employee") || text.includes("user") || text.includes("staff")) return "/admin/users";
+    if (text.includes("payment") || text.includes("finance")) return "/admin/finance";
+    if (text.includes("stock") || text.includes("sortie")) return "/admin/stock";
+    if (text.includes("report")) return "/admin/reports";
   }
   return null;
 }
