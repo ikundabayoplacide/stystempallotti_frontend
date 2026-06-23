@@ -14,6 +14,9 @@ import {
   HiOutlineTrash,
   HiOutlineUser,
   HiOutlineUserAdd,
+  HiOutlineX,
+  HiOutlineArrowRight,
+  HiOutlineBriefcase,
 } from "react-icons/hi";
 import { DashboardLayout } from "../components";
 import { Card } from "../components/ui";
@@ -24,6 +27,7 @@ import {
   useGetNotificationsQuery,
   useMarkAllReadMutation,
   useMarkOneReadMutation,
+  type Notification,
   type NotificationType,
 } from "../store/services/notificationsService";
 
@@ -33,104 +37,186 @@ const typeConfig: Record<
   NotificationType,
   { icon: React.ElementType; color: string; bg: string; border: string }
 > = {
-  CUSTOMER_CREATED: {
-    icon: HiOutlineUser,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-200",
+  CUSTOMER_CREATED: { icon: HiOutlineUser, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+  CUSTOMER_CHECKIN: { icon: HiOutlineCheckCircle, color: "text-green-600", bg: "bg-green-50", border: "border-green-200" },
+  PAYMENT_COLLECTED: { icon: HiOutlineCurrencyDollar, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+  JOB_DELIVERED: { icon: HiOutlineCheckCircle, color: "text-green-700", bg: "bg-green-50", border: "border-green-200" },
+  BOUTIQUE_STOCK_REQUEST: { icon: HiOutlineExclamation, color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200" },
+  BOUTIQUE_PRODUCT_ADDED: { icon: HiOutlineShoppingBag, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
+  REPORT_GENERATED: { icon: HiOutlineDocumentText, color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200" },
+  JOB_CREATED: { icon: HiOutlineClock, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200" },
+  JOB_ASSIGNED: { icon: HiOutlineInformationCircle, color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-200" },
+  JOB_STATUS_CHANGED: { icon: HiOutlineInformationCircle, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200" },
+  PROGRESS_COMPLETED: { icon: HiOutlineCheckCircle, color: "text-teal-600", bg: "bg-teal-50", border: "border-teal-200" },
+  JOB_DONE: { icon: HiOutlineThumbUp, color: "text-green-700", bg: "bg-green-50", border: "border-green-200" },
+  JOB_COMPLETED: { icon: HiOutlineCheckCircle, color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" },
+  EMPLOYEE_CREATED: { icon: HiOutlineUserAdd, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-200" },
+  JOB_DAF_ACTION: { icon: HiOutlineBriefcase, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+  STOCK_SORTIE_APPROVED: { icon: HiOutlineThumbUp, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+  STOCK_SORTIE_REJECTED: { icon: HiOutlineThumbDown, color: "text-red-600", bg: "bg-red-50", border: "border-red-200" },
+  STOCK_SORTIE_REQUEST: { icon: HiOutlineExclamation, color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200" },
+};
+
+const fallbackConfig = { icon: HiOutlineBell, color: "text-custom-700", bg: "bg-custom-100", border: "border-custom-300" };
+
+// Dynamically adjust icon for types whose meaning depends on the content
+function getConfig(n: Notification) {
+  const base = typeConfig[n.type] ?? fallbackConfig;
+  const text = (n.title + " " + n.message).toLowerCase();
+  if (n.type === "JOB_DAF_ACTION" || n.type === "JOB_STATUS_CHANGED") {
+    if (text.includes("confirm") || text.includes("approv") || text.includes("accept")) {
+      return { ...base, icon: HiOutlineThumbUp, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" };
+    }
+    if (text.includes("reject") || text.includes("declin") || text.includes("denied")) {
+      return { ...base, icon: HiOutlineThumbDown, color: "text-red-600", bg: "bg-red-50", border: "border-red-200" };
+    }
+  }
+  return base;
+}
+
+// ─── Route resolver per role + type ──────────────────────────────────────────
+
+const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, string>>>> = {
+  receptionist: {
+    CUSTOMER_CREATED: "/reception/visitor",
+    CUSTOMER_CHECKIN: "/reception/visitor",
+    PAYMENT_COLLECTED: "/reception/payments",
+    JOB_DELIVERED: "/reception/deliveries",
+    BOUTIQUE_STOCK_REQUEST: "/reception/boutique",
+    BOUTIQUE_PRODUCT_ADDED: "/reception/boutique",
+    STOCK_SORTIE_APPROVED: "/reception/boutique",
+    STOCK_SORTIE_REJECTED: "/reception/boutique",
+    STOCK_SORTIE_REQUEST: "/reception/boutique",
+    REPORT_GENERATED: "/reception/reports",
+    JOB_CREATED: "/reception/deliveries",
+    JOB_DONE: "/reception/deliveries",
+    JOB_COMPLETED: "/reception/deliveries",
+    JOB_DAF_ACTION: "/reception/deliveries",
   },
-  CUSTOMER_CHECKIN: {
-    icon: HiOutlineCheckCircle,
-    color: "text-green-600",
-    bg: "bg-green-50",
-    border: "border-green-200",
+  sales: {
+    JOB_CREATED: "/sales/jobs",
+    JOB_ASSIGNED: "/sales/jobs",
+    JOB_STATUS_CHANGED: "/sales/jobs",
+    JOB_DONE: "/sales/jobs",
+    JOB_COMPLETED: "/sales/jobs",
+    JOB_DELIVERED: "/sales/jobs",
+    JOB_DAF_ACTION: "/sales/jobs",
+    CUSTOMER_CREATED: "/sales/customers",
+    CUSTOMER_CHECKIN: "/sales/customers",
+    PAYMENT_COLLECTED: "/sales/jobs",
+    BOUTIQUE_STOCK_REQUEST: "/sales/stocks",
+    BOUTIQUE_PRODUCT_ADDED: "/sales/stocks",
+    STOCK_SORTIE_APPROVED: "/sales/stocks",
+    STOCK_SORTIE_REJECTED: "/sales/stocks",
+    STOCK_SORTIE_REQUEST: "/sales/stocks",
+    REPORT_GENERATED: "/sales/reports",
+    PROGRESS_COMPLETED: "/sales/jobs",
   },
-  PAYMENT_COLLECTED: {
-    icon: HiOutlineCurrencyDollar,
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
+  daf: {
+    JOB_CREATED: "/finance/daf/approvals",
+    JOB_ASSIGNED: "/finance/daf/approvals",
+    JOB_STATUS_CHANGED: "/finance/daf/approvals",
+    JOB_DONE: "/finance/daf/approvals",
+    JOB_COMPLETED: "/finance/daf/approvals",
+    JOB_DELIVERED: "/finance/daf/approvals",
+    JOB_DAF_ACTION: "/finance/daf/approvals",
+    PROGRESS_COMPLETED: "/finance/daf/approvals",
+    PAYMENT_COLLECTED: "/finance/daf/control",
+    CUSTOMER_CREATED: "/finance/daf/control",
+    CUSTOMER_CHECKIN: "/finance/daf/control",
+    EMPLOYEE_CREATED: "/finance/daf/hr",
+    BOUTIQUE_STOCK_REQUEST: "/finance/daf/procurement",
+    BOUTIQUE_PRODUCT_ADDED: "/finance/daf/procurement",
+    STOCK_SORTIE_APPROVED: "/finance/daf/procurement",
+    STOCK_SORTIE_REJECTED: "/finance/daf/procurement",
+    STOCK_SORTIE_REQUEST: "/finance/daf/procurement",
+    REPORT_GENERATED: "/finance/daf/reports",
   },
-  JOB_DELIVERED: {
-    icon: HiOutlineCheckCircle,
-    color: "text-green-700",
-    bg: "bg-green-50",
-    border: "border-green-200",
+  accountant: {
+    PAYMENT_COLLECTED: "/finance/accountant1/payments",
+    REPORT_GENERATED: "/finance/accountant1/reports",
   },
-  BOUTIQUE_STOCK_REQUEST: {
-    icon: HiOutlineExclamation,
-    color: "text-yellow-600",
-    bg: "bg-yellow-50",
-    border: "border-yellow-200",
+  "production-manager": {
+    JOB_CREATED: "/production-manager/planning",
+    JOB_ASSIGNED: "/production-manager/planning",
+    JOB_STATUS_CHANGED: "/production-manager/planning",
+    JOB_DONE: "/production-manager/planning",
+    JOB_COMPLETED: "/production-manager/planning",
+    JOB_DELIVERED: "/production-manager/planning",
+    JOB_DAF_ACTION: "/production-manager/planning",
+    PROGRESS_COMPLETED: "/production-manager/planning",
+    REPORT_GENERATED: "/production-manager/reports",
   },
-  BOUTIQUE_PRODUCT_ADDED: {
-    icon: HiOutlineShoppingBag,
-    color: "text-purple-600",
-    bg: "bg-purple-50",
-    border: "border-purple-200",
+  supervisor: {
+    JOB_ASSIGNED: "/supervisor/jobs",
+    JOB_STATUS_CHANGED: "/supervisor/jobs",
+    PROGRESS_COMPLETED: "/supervisor/jobs",
+    REPORT_GENERATED: "/supervisor/reports",
   },
-  REPORT_GENERATED: {
-    icon: HiOutlineDocumentText,
-    color: "text-indigo-600",
-    bg: "bg-indigo-50",
-    border: "border-indigo-200",
+  stock: {
+    BOUTIQUE_STOCK_REQUEST: "/stock/requests",
+    STOCK_SORTIE_REQUEST: "/stock/requests",
+    STOCK_SORTIE_APPROVED: "/stock/requests",
+    STOCK_SORTIE_REJECTED: "/stock/requests",
+    REPORT_GENERATED: "/stock/reports",
   },
-  JOB_CREATED: {
-    icon: HiOutlineClock,
-    color: "text-orange-600",
-    bg: "bg-orange-50",
-    border: "border-orange-200",
+  hobe: {
+    STOCK_SORTIE_APPROVED: "/hobe/requests",
+    STOCK_SORTIE_REJECTED: "/hobe/requests",
+    STOCK_SORTIE_REQUEST: "/hobe/requests",
+    BOUTIQUE_STOCK_REQUEST: "/hobe/requests",
+    REPORT_GENERATED: "/hobe/report",
+    JOB_CREATED: "/hobe/trade",
+    JOB_STATUS_CHANGED: "/hobe/trade",
   },
-  JOB_ASSIGNED: {
-    icon: HiOutlineInformationCircle,
-    color: "text-sky-600",
-    bg: "bg-sky-50",
-    border: "border-sky-200",
-  },
-  JOB_STATUS_CHANGED: {
-    icon: HiOutlineInformationCircle,
-    color: "text-cyan-600",
-    bg: "bg-cyan-50",
-    border: "border-cyan-200",
-  },
-  PROGRESS_COMPLETED: {
-    icon: HiOutlineCheckCircle,
-    color: "text-teal-600",
-    bg: "bg-teal-50",
-    border: "border-teal-200",
-  },
-  JOB_DONE: {
-    icon: HiOutlineThumbUp,
-    color: "text-green-700",
-    bg: "bg-green-50",
-    border: "border-green-200",
-  },
-  JOB_COMPLETED: {
-    icon: HiOutlineCheckCircle,
-    color: "text-emerald-700",
-    bg: "bg-emerald-50",
-    border: "border-emerald-200",
-  },
-  EMPLOYEE_CREATED: {
-    icon: HiOutlineUserAdd,
-    color: "text-violet-600",
-    bg: "bg-violet-50",
-    border: "border-violet-200",
-  },
-  JOB_DAF_ACTION: {
-    icon: HiOutlineThumbDown,
-    color: "text-rose-600",
-    bg: "bg-rose-50",
-    border: "border-rose-200",
+  admin: {
+    JOB_CREATED: "/admin/jobs",
+    JOB_STATUS_CHANGED: "/admin/jobs",
+    CUSTOMER_CREATED: "/admin/customers",
+    EMPLOYEE_CREATED: "/admin/users",
+    REPORT_GENERATED: "/admin/reports",
   },
 };
 
-const fallbackConfig = {
-  icon: HiOutlineBell,
-  color: "text-custom-700",
-  bg: "bg-custom-100",
-  border: "border-custom-300",
-};
+function resolveRoute(userRole: UserRole, n: Notification): string | null {
+  const fromMap = roleTypeRoutes[userRole]?.[n.type] ?? null;
+  if (fromMap) return fromMap;
+
+  // Fallback: infer from title/message keywords if the type isn't mapped
+  const text = (n.title + " " + n.message).toLowerCase();
+  if (userRole === "receptionist") {
+    if (text.includes("sortie") || text.includes("boutique") || text.includes("stock request")) return "/reception/boutique";
+    if (text.includes("payment")) return "/reception/payments";
+    if (text.includes("deliver")) return "/reception/deliveries";
+    if (text.includes("visitor") || text.includes("customer")) return "/reception/visitor";
+  }
+  if (userRole === "hobe") {
+    if (text.includes("sortie") || text.includes("stock request") || text.includes("approved") || text.includes("rejected")) return "/hobe/requests";
+    if (text.includes("trade") || text.includes("sale") || text.includes("hobe")) return "/hobe/trade";
+    if (text.includes("report")) return "/hobe/report";
+  }
+  if (userRole === "sales") {
+    if (text.includes("job") || text.includes("deliver") || text.includes("progress") || text.includes("daf") || text.includes("approved") || text.includes("rejected")) return "/sales/jobs";
+    if (text.includes("customer") || text.includes("client")) return "/sales/customers";
+    if (text.includes("proforma") || text.includes("performa") || text.includes("quotation")) return "/sales/proformas";
+    if (text.includes("stock") || text.includes("sortie")) return "/sales/stocks";
+    if (text.includes("report")) return "/sales/reports";
+  }
+  if (userRole === "daf") {
+    if (text.includes("job") || text.includes("approv") || text.includes("rejected") || text.includes("deliver") || text.includes("progress")) return "/finance/daf/approvals";
+    if (text.includes("payment") || text.includes("customer") || text.includes("client")) return "/finance/daf/control";
+    if (text.includes("employee") || text.includes("hr") || text.includes("staff")) return "/finance/daf/hr";
+    if (text.includes("procurement") || text.includes("sortie") || text.includes("stock")) return "/finance/daf/procurement";
+    if (text.includes("report")) return "/finance/daf/reports";
+  }
+  if (userRole === "production-manager") {
+    if (text.includes("job") || text.includes("confirm") || text.includes("approv") || text.includes("assign") || text.includes("progress") || text.includes("deliver")) return "/production-manager/planning";
+    if (text.includes("report")) return "/production-manager/reports";
+  }
+  return null;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeAgo(ts: string) {
   const diff = Date.now() - new Date(ts).getTime();
@@ -143,6 +229,81 @@ function timeAgo(ts: string) {
   return `${days}d ago`;
 }
 
+// ─── Detail Modal ─────────────────────────────────────────────────────────────
+
+function NotificationModal({
+  notification,
+  userRole,
+  onClose,
+  onNavigate,
+}: {
+  notification: Notification;
+  userRole: UserRole;
+  onClose: () => void;
+  onNavigate: (path: string) => void;
+}) {
+  const cfg = getConfig(notification);
+  const Icon = cfg.icon;
+  const route = resolveRoute(userRole, notification);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+    >
+      <div className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <Card className="!p-6 relative">
+        {/* Close */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-custom-500 hover:text-secondary-100 transition-colors"
+        >
+          <HiOutlineX className="w-5 h-5" />
+        </button>
+
+        {/* Icon + Type */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`w-12 h-12 rounded-full ${cfg.bg} border ${cfg.border} flex items-center justify-center flex-shrink-0`}>
+            <Icon className={`w-6 h-6 ${cfg.color}`} />
+          </div>
+          <div>
+            <span className="text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-custom-100 text-custom-700">
+              {notification.type.replace(/_/g, " ")}
+            </span>
+            <p className="text-xs text-custom-500 mt-0.5">{timeAgo(notification.createdAt)}</p>
+          </div>
+        </div>
+
+        {/* Title */}
+        <h2 className="text-lg font-bold text-secondary-100 mb-2">{notification.title}</h2>
+
+        {/* Message */}
+        <p className="text-sm text-custom-700 leading-relaxed mb-6">{notification.message}</p>
+
+        {/* Actions */}
+        <div className="flex items-center gap-3">
+          {route && (
+            <button
+              onClick={() => onNavigate(route)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
+            >
+              Check
+              <HiOutlineArrowRight className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-custom-300 text-custom-700 text-sm font-semibold hover:bg-custom-100 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </Card>
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface NotificationsPageProps {
@@ -150,19 +311,11 @@ interface NotificationsPageProps {
   userName?: string;
 }
 
-const routeMap: Record<string, (id: string) => string> = {
-  job: (id) => `/jobs/${id}`,
-  employee: (id) => `/employees/${id}`,
-  payment: (id) => `/payments/${id}`,
-};
-
-export default function NotificationsPage({
-  userRole,
-  userName = "User",
-}: NotificationsPageProps) {
+export default function NotificationsPage({ userRole, userName = "User" }: NotificationsPageProps) {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Notification | null>(null);
   const limit = 20;
 
   const { data, isLoading, isFetching } = useGetNotificationsQuery({
@@ -180,9 +333,14 @@ export default function NotificationsPage({
   const totalPages = data?.totalPages ?? 1;
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const handleFilterChange = (f: "all" | "unread") => {
-    setFilter(f);
-    setPage(1);
+  const handleRead = (n: Notification) => {
+    if (!n.isRead) markOne(n.id);
+    setSelected(n);
+  };
+
+  const handleNavigate = (path: string) => {
+    setSelected(null);
+    navigate(path);
   };
 
   return (
@@ -229,7 +387,7 @@ export default function NotificationsPage({
           {(["all", "unread"] as const).map((f) => (
             <button
               key={f}
-              onClick={() => handleFilterChange(f)}
+              onClick={() => { setFilter(f); setPage(1); }}
               className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold capitalize ${
                 filter === f
                   ? "bg-primary-500 text-white"
@@ -255,65 +413,51 @@ export default function NotificationsPage({
         ) : (
           <div className={`space-y-3 transition-opacity ${isFetching ? "opacity-60" : ""}`}>
             {notifications.map((n) => {
-              const cfg = typeConfig[n.type] ?? fallbackConfig;
+              const cfg = getConfig(n);
               const Icon = cfg.icon;
 
               return (
                 <Card
                   key={n.id}
-                  onClick={() => {
-                    if (!n.isRead) markOne(n.id);
-                    if (n.relatedEntityType && n.relatedEntityId) {
-                      const fn = routeMap[n.relatedEntityType];
-                      if (fn) navigate(fn(n.relatedEntityId));
-                    }
-                  }}
-                  className={`!p-4 cursor-pointer hover:shadow-sm transition-shadow ${!n.isRead ? "border-l-4 border-l-primary-500" : "opacity-75"}`}
+                  className={`!p-4 ${!n.isRead ? "border-l-4 border-l-primary-500" : "opacity-75"}`}
                 >
                   <div className="flex items-start gap-4">
                     {/* Icon */}
-                    <div
-                      className={`w-10 h-10 rounded-full ${cfg.bg} border ${cfg.border} flex items-center justify-center flex-shrink-0`}
-                    >
+                    <div className={`w-10 h-10 rounded-full ${cfg.bg} border ${cfg.border} flex items-center justify-center flex-shrink-0`}>
                       <Icon className={`w-5 h-5 ${cfg.color}`} />
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <h3
-                          className={`text-sm font-bold ${
-                            !n.isRead ? "text-secondary-100" : "text-custom-700"
-                          }`}
-                        >
+                        <h3 className={`text-sm font-bold ${!n.isRead ? "text-secondary-100" : "text-custom-700"}`}>
                           {n.title}
                         </h3>
-                        <span className="text-xs text-custom-700 whitespace-nowrap">
-                          {timeAgo(n.createdAt)}
-                        </span>
+                        <span className="text-xs text-custom-700 whitespace-nowrap">{timeAgo(n.createdAt)}</span>
                       </div>
 
-                      <p className="text-sm text-custom-700 mb-2">{n.message}</p>
+                      <p className="text-sm text-custom-700 mb-3 line-clamp-2">{n.message}</p>
 
                       {/* Type badge */}
-                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-custom-100 text-custom-700 mb-2">
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-custom-100 text-custom-700 mb-3">
                         {n.type.replace(/_/g, " ")}
                       </span>
 
                       {/* Actions */}
                       <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleRead(n)}
+                          className="text-xs font-semibold text-white bg-primary-500 hover:bg-primary-600 transition-colors px-3 py-1.5 rounded-lg"
+                        >
+                          Read
+                        </button>
                         {!n.isRead && (
                           <button
-                            onClick={() => markOne(n.id)}
+                            onClick={(e) => { e.stopPropagation(); markOne(n.id); }}
                             className="text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
                           >
                             Mark as read
                           </button>
-                        )}
-                        {n.relatedEntityType && n.relatedEntityId && (
-                          <span className="text-xs text-custom-500">
-                            Ref: {n.relatedEntityType} #{n.relatedEntityId}
-                          </span>
                         )}
                         <button
                           onClick={() => deleteOne(n.id)}
@@ -346,9 +490,7 @@ export default function NotificationsPage({
             >
               Prev
             </button>
-            <span className="text-sm text-custom-700">
-              {page} / {totalPages}
-            </span>
+            <span className="text-sm text-custom-700">{page} / {totalPages}</span>
             <button
               disabled={page === totalPages}
               onClick={() => setPage((p) => p + 1)}
@@ -359,6 +501,16 @@ export default function NotificationsPage({
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      {selected && (
+        <NotificationModal
+          notification={selected}
+          userRole={userRole}
+          onClose={() => setSelected(null)}
+          onNavigate={handleNavigate}
+        />
+      )}
     </DashboardLayout>
   );
 }

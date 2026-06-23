@@ -18,7 +18,10 @@ export type NotificationType =
   | "JOB_DONE"
   | "JOB_COMPLETED"
   | "EMPLOYEE_CREATED"
-  | "JOB_DAF_ACTION";
+  | "JOB_DAF_ACTION"
+  | "STOCK_SORTIE_APPROVED"
+  | "STOCK_SORTIE_REJECTED"
+  | "STOCK_SORTIE_REQUEST";
 
 export interface Notification {
   id: string;                  // NotificationRead id
