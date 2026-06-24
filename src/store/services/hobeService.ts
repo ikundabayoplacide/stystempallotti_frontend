@@ -175,6 +175,16 @@ export const hobeApi = createApi({
       ],
     }),
 
+    // PATCH /hobes/:id/add-qty   (hobe.edit)
+    addHobeQty: builder.mutation<Hobe, { id: string; qty: number; note?: string }>({
+      query: ({ id, ...body }) => ({ url: `/hobes/${id}/add-qty`, method: "PATCH", body }),
+      transformResponse: (res: ApiResponse<Hobe>) => res.data,
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "Hobe", id },
+        { type: "Hobe", id: "LIST" },
+      ],
+    }),
+
     // DELETE /hobes/:id   (hobe.delete)
     deleteHobe: builder.mutation<void, string>({
       query: (id) => ({ url: `/hobes/${id}`, method: "DELETE" }),
@@ -262,6 +272,7 @@ export const {
   useGetHobeByIdQuery,
   useCreateHobeMutation,
   useUpdateHobeMutation,
+  useAddHobeQtyMutation,
   useDeleteHobeMutation,
   useSellHobeMutation,
   useGetHobeSalesQuery,

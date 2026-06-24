@@ -129,10 +129,10 @@ export const boutiqueStockApi = createApi({
       transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => res.data,
       invalidatesTags: (_r, _e, id) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSItem", id: "LIST" }],
     }),
-    rejectBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, string>({
-      query: (id) => ({ url: `/sorties/${id}/reject`, method: "PATCH" }),
+    rejectBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, { id: string; notes?: string }>({
+      query: ({ id, ...body }) => ({ url: `/sorties/${id}/reject`, method: "PATCH", body }),
       transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSSortie", id: "MY" }],
+      invalidatesTags: (_r, _e, { id }) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSSortie", id: "MY" }],
     }),
   }),
 });

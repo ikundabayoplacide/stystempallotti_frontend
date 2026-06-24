@@ -47,7 +47,7 @@ import { DepartmentsPage, JobAssignmentPage, ProductionManagerPage, ProductionMa
 // Production Department Pages
 
 // Stock Pages
-import { InventoryPage, MaterialRequestsPage, SuppliersPage, StockReportsPage, BoutiqueStockPage, GeneralStockPage } from "../pages/stock";
+import { SuppliersPage, StockReportsPage, BoutiqueStockPage, GeneralStockPage } from "../pages/stock";
 import StockPage from "../pages/stock/StockPage";
 
 // Supervisor Pages
@@ -105,6 +105,7 @@ export default function AppRoutes() {
       <Route path="/admin" element={<ProtectedRoute allowedRoles={["admin"]}><AdminPage /></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]} pageId="users"><UserManagementPage /></ProtectedRoute>} />
       <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={["admin"]}><CustomerPage /></ProtectedRoute>} />
+      <Route path="/admin/employees" element={<ProtectedRoute allowedRoles={["admin"]}><EmployeesPage /></ProtectedRoute>} />
       <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
       <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartmentsPage /></ProtectedRoute>} />
       <Route path="/admin/production" element={<ProtectedRoute allowedRoles={["admin"]}><ProductionOverviewPage /></ProtectedRoute>} />
@@ -198,8 +199,6 @@ export default function AppRoutes() {
 
       {/* Stock Department Routes */}
       <Route path="/stock" element={<ProtectedRoute allowedRoles={["stock"]}><StockPage /></ProtectedRoute>} />
-      <Route path="/stock/inventory" element={<ProtectedRoute allowedRoles={["stock"]}><InventoryPage /></ProtectedRoute>} />
-      <Route path="/stock/requests" element={<ProtectedRoute allowedRoles={["stock"]}><MaterialRequestsPage /></ProtectedRoute>} />
       <Route path="/stock/suppliers" element={<ProtectedRoute allowedRoles={["stock"]}><SuppliersPage /></ProtectedRoute>} />
       <Route path="/stock/leave" element={<ProtectedRoute allowedRoles={["stock"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/stock/notifications" element={<ProtectedRoute allowedRoles={["stock"]}><NotificationsPage userRole="stock" userName="Stock Manager" /></ProtectedRoute>} />

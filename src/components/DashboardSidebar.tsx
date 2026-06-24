@@ -43,6 +43,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/admin", icon: HiOutlineHome },
     { label: "Users", path: "/admin/users", icon: HiOutlineUsers, permissionKey: "users.view" },
     { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers, permissionKey: "customers.view" },
+    { label: "Employees", path: "/admin/employees", icon: HiOutlineUsers },
+    { label: "Casual Workers", path: "/admin/abanyabiraka", icon: HiOutlineUsers },
     { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/admin/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
     { label: "Production", path: "/admin/production", icon: HiOutlineCube, permissionKey: "production.view" },
@@ -53,7 +55,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     // { label: "Reports", path: "/admin/reports", icon: HiOutlineChartBar, permissionKey: "reports.view" },
     // { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
     { label: "Leave Management", path: "/admin/leave", icon: HiOutlineCalendar },
-    { label: "Casual Workers", path: "/admin/abanyabiraka", icon: HiOutlineUsers },
     { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText, permissionKey: "reports.view" },
     { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid, permissionKey: "ui_permissions.view" },
 
@@ -158,8 +159,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   ],
   stock: [
     { label: "Dashboard", path: "/stock", icon: HiOutlineHome },
-    { label: "Inventory", path: "/stock/inventory", icon: HiOutlineArchive, permissionKey: "stock.view" },
-    { label: "Material Requests", path: "/stock/requests", icon: HiOutlineClipboardList, permissionKey: "stock.view" },
     { label: "Boutique Stock", path: "/stock/boutique-stock", icon: HiOutlineArchive },
     { label: "General Stock", path: "/stock/general-stock", icon: HiOutlineCube },
     // { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers, permissionKey: "suppliers.view" },

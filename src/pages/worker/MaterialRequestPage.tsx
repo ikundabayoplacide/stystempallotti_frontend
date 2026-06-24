@@ -1,81 +1,79 @@
 import { useState } from "react";
 import {
+  HiOutlineArchive,
   HiOutlineCheckCircle,
-  HiOutlineClipboardList,
   HiOutlineClock,
   HiOutlinePlus,
   HiOutlineRefresh,
   HiOutlineX,
   HiOutlineXCircle,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
-import { Button, Card, Input } from "../../components/ui";
+import { Button, Card } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
-import { useGetMyEmployeeProfileQuery, useGetEmployeeJobsQuery } from "../../store/services/employeesService";
 import {
-  useGetMyMaterialRequestsQuery,
-  useCreateMaterialRequestMutation,
-  type MaterialRequest,
-} from "../../store/services/materialRequestsService";
+  useGetBindingStockItemsQuery,
+  useGetMyBindingStockSortiesQuery,
+  useCreateBindingStockSortieMutation,
+  type BindingStockSortie,
+  type SortieStatus,
+} from "../../store/services/bindingStockService";
 
-type RequestStatus = "pending" | "approved" | "rejected";
+const statusConfig: Record<SortieStatus, { label: string; color: string; icon: any; bgColor: string }> = {
+  pending:  { label: "Pending",  color: "text-yellow-600", icon: HiOutlineClock,       bgColor: "bg-yellow-100" },
+  approved: { label: "Approved", color: "text-green-600",  icon: HiOutlineCheckCircle, bgColor: "bg-green-100"  },
+  rejected: { label: "Rejected", color: "text-red-600",    icon: HiOutlineXCircle,     bgColor: "bg-red-100"    },
+};
 
-const statusConfig: Record<RequestStatus, { label: string; color: string; icon: any; bgColor: string }> = {
-  pending:  { label: "Pending",  color: "text-yellow-600", icon: HiOutlineClock,        bgColor: "bg-yellow-100" },
-  approved: { label: "Approved", color: "text-green-600",  icon: HiOutlineCheckCircle,  bgColor: "bg-green-100"  },
-  rejected: { label: "Rejected", color: "text-red-600",    icon: HiOutlineXCircle,      bgColor: "bg-red-100"    },
+const stockStatusColors: Record<string, string> = {
+  available:      "bg-emerald-100 text-emerald-700",
+  low:            "bg-yellow-100 text-yellow-700",
+  "out-of-stock": "bg-red-100 text-red-700",
 };
 
 export default function MaterialRequestPage() {
   const { userName } = useAuth();
 
-  const { data: me } = useGetMyEmployeeProfileQuery();
-  const employeeId = me?.id;
+  const { data: itemsData, isLoading: itemsLoading } = useGetBindingStockItemsQuery({ limit: 200 });
+  const { data: sortiesData, isLoading: sortiesLoading, refetch } = useGetMyBindingStockSortiesQuery({ limit: 100 });
+  const [createSortie, { isLoading: isSubmitting }] = useCreateBindingStockSortieMutation();
 
-  const { data: myJobs = [] } = useGetEmployeeJobsQuery(
-    { employeeId: employeeId! },
-    { skip: !employeeId }
-  );
+  const items   = itemsData?.data   ?? [];
+  const sorties = sortiesData?.data ?? [];
 
-  const { data: requests = [], isLoading, refetch } = useGetMyMaterialRequestsQuery();
-  const [createRequest, { isLoading: isSubmitting }] = useCreateMaterialRequestMutation();
+  const [tab, setTab]           = useState<"browse" | "my-requests">("browse");
+  const [filter, setFilter]     = useState<SortieStatus | "all">("all");
+  const [selectedSortie, setSelectedSortie] = useState<BindingStockSortie | null>(null);
 
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<MaterialRequest | null>(null);
-  const [filter, setFilter] = useState<"all" | RequestStatus>("all");
+  // Request modal state
+  const [showModal, setShowModal]     = useState(false);
+  const [selectedItem, setSelectedItem] = useState("");
+  const [quantity, setQuantity]         = useState("");
+  const [reason, setReason]             = useState("");
+  const [notes, setNotes]               = useState("");
 
-  const [jobId, setJobId] = useState("");
-  const [notes, setNotes] = useState("");
-  const [materials, setMaterials] = useState([{ name: "", quantity: "", unit: "sheets" }]);
-
-  const filteredRequests = filter === "all" ? requests : requests.filter((r) => r.status === filter);
-
-  const addMaterialField = () => setMaterials([...materials, { name: "", quantity: "", unit: "sheets" }]);
-  const removeMaterialField = (i: number) => setMaterials(materials.filter((_, idx) => idx !== i));
-  const updateMaterial = (i: number, field: string, value: string) => {
-    const updated = [...materials];
-    updated[i] = { ...updated[i], [field]: value };
-    setMaterials(updated);
-  };
+  const filteredSorties = filter === "all" ? sorties : sorties.filter((s) => s.status === filter);
 
   const resetForm = () => {
-    setJobId("");
-    setNotes("");
-    setMaterials([{ name: "", quantity: "", unit: "sheets" }]);
-    setShowRequestModal(false);
+    setSelectedItem(""); setQuantity(""); setReason(""); setNotes("");
+    setShowModal(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validItems = materials.filter((m) => m.name && m.quantity);
-    if (!validItems.length) return alert("Please add at least one material");
-    await createRequest({
-      jobId,
-      notes,
-      items: validItems.map((m) => ({ name: m.name, quantity: Number(m.quantity), unit: m.unit })),
-    });
-    resetForm();
-    refetch();
+    const qty = parseFloat(quantity);
+    if (!selectedItem) return toast.error("Select an item");
+    if (!qty || qty <= 0) return toast.error("Enter a valid quantity");
+    if (!reason.trim()) return toast.error("Reason is required");
+    try {
+      await createSortie({ stockItemId: selectedItem, quantityOut: qty, reason: reason.trim(), notes: notes.trim() || undefined }).unwrap();
+      toast.success("Request submitted — supervisor will be notified");
+      resetForm();
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to submit request");
+    }
   };
 
   return (
@@ -85,195 +83,211 @@ export default function MaterialRequestPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Material Requests</h1>
-            <p className="text-sm text-custom-700 mt-1">Request materials from stock for your jobs</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Binding Stock Requests</h1>
+            <p className="text-sm text-custom-700 mt-1">Browse available items and submit stock requests</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={refetch}
-              disabled={isLoading}
-              className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors disabled:opacity-50"
-            >
-              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+            <button onClick={() => refetch()} disabled={sortiesLoading}
+              className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors disabled:opacity-50">
+              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${sortiesLoading ? "animate-spin" : ""}`} />
             </button>
-            <button
-              onClick={() => setShowRequestModal(true)}
-              className="px-4 py-2 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors text-sm flex items-center gap-2"
-            >
+            <button onClick={() => setShowModal(true)}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors text-sm flex items-center gap-2">
               <HiOutlinePlus className="w-4 h-4" /> New Request
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {(["all", "pending", "approved", "rejected"] as const).map((s) => {
-            const count = s === "all" ? requests.length : requests.filter((r) => r.status === s).length;
-            const cfg = s === "all" ? null : statusConfig[s];
-            return (
-              <Card key={s} className="!p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cfg ? cfg.bgColor : "bg-primary-100"}`}>
-                    {s === "all"
-                      ? <HiOutlineClipboardList className="w-5 h-5 text-primary-600" />
-                      : cfg ? <cfg.icon className={`w-5 h-5 ${cfg.color}`} /> : null
-                    }
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-secondary-100">{isLoading ? "—" : count}</p>
-                <p className="text-xs text-custom-700 capitalize">{s === "all" ? "Total Requests" : cfg!.label}</p>
-              </Card>
-            );
-          })}
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
+          {([
+            { id: "browse",      label: "Browse Items",  badge: items.length },
+            { id: "my-requests", label: "My Requests",   badge: sorties.filter((s) => s.status === "pending").length },
+          ] as { id: "browse" | "my-requests"; label: string; badge?: number }[]).map(({ id, label, badge }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                tab === id ? "bg-style-500 text-secondary-100 shadow-sm" : "text-custom-700 hover:text-secondary-100"
+              }`}>
+              {label}
+              {badge != null && badge > 0 && (
+                <span className={`w-5 h-5 text-white text-[10px] font-bold rounded-full flex items-center justify-center ${id === "my-requests" ? "bg-yellow-500" : "bg-primary-500"}`}>
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto">
-          {(["all", "pending", "approved", "rejected"] as const).map((s) => {
-            const count = s === "all" ? requests.length : requests.filter((r) => r.status === s).length;
-            return (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-                  filter === s ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-                }`}
-              >
-                {s === "all" ? "All" : statusConfig[s].label} ({count})
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Table */}
-        <Card className="!p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-custom-100 border-b border-custom-300">
-                <tr>
-                  {["Request ID", "Job", "Materials", "Status", "Request Date", "Actions"].map((h) => (
-                    <th key={h} className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-custom-200">
-                {isLoading ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
-                ) : filteredRequests.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No requests found</td></tr>
-                ) : filteredRequests.map((req) => {
-                  const cfg = statusConfig[req.status];
-                  const Icon = cfg.icon;
-                  return (
-                    <tr key={req.id} className="hover:bg-custom-50 transition-colors">
-                      <td className="px-4 py-4"><span className="text-sm font-bold text-primary-600">{req.requestNumber}</span></td>
-                      <td className="px-4 py-4">
-                        <p className="text-sm font-semibold text-secondary-100">{req.job?.title ?? "—"}</p>
-                        <p className="text-xs text-custom-700">{req.job?.jobNumber ?? req.jobId}</p>
+        {/* ── Browse Items Tab ── */}
+        {tab === "browse" && (
+          <Card className="!p-0 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-custom-100 border-b border-custom-300">
+                  <tr>
+                    {["Item Name", "Category", "Unit", "Stock", "Status", "Action"].map((h) => (
+                      <th key={h} className={`px-3 py-2.5 text-xs font-bold text-secondary-100 uppercase ${h === "Action" ? "text-right" : "text-left"}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-custom-200">
+                  {itemsLoading ? (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
+                  ) : items.length === 0 ? (
+                    <tr><td colSpan={6} className="px-4 py-10 text-center">
+                      <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
+                      <p className="text-sm text-secondary-100 font-semibold">No items available</p>
+                    </td></tr>
+                  ) : items.map((item) => (
+                    <tr key={item.id} className="hover:bg-custom-50 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <p className="text-sm font-semibold text-secondary-100">{item.itemName}</p>
+                        {item.description && <p className="text-xs text-custom-700 truncate max-w-[180px]">{item.description}</p>}
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="space-y-1">
-                          {req.items.slice(0, 2).map((item, i) => (
-                            <div key={i} className="text-xs text-secondary-100">• {item.name}: {item.quantity} {item.unit}</div>
-                          ))}
-                          {req.items.length > 2 && <p className="text-xs text-custom-700">+{req.items.length - 2} more</p>}
-                        </div>
+                      <td className="px-3 py-2.5 text-sm text-secondary-100">{item.category}</td>
+                      <td className="px-3 py-2.5 text-sm text-secondary-100">{item.unit}</td>
+                      <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">{item.currentStock}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${stockStatusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                          {item.stockStatus.replace("-", " ")}
+                        </span>
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          <Icon className={`w-4 h-4 ${cfg.color}`} />
-                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${cfg.bgColor} ${cfg.color}`}>{cfg.label}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4"><span className="text-sm text-custom-700">{new Date(req.createdAt).toLocaleDateString()}</span></td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-3 py-2.5 text-right">
                         <button
-                          onClick={() => setSelectedRequest(req)}
-                          className="px-3 py-1.5 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-xs font-semibold"
+                          disabled={item.stockStatus === "out-of-stock"}
+                          onClick={() => { setSelectedItem(item.id); setShowModal(true); }}
+                          className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
-                          View Details
+                          Request
                         </button>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
 
-        {/* New Request Modal */}
-        {showRequestModal && (
-          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-            <Card className="!p-6 max-w-2xl w-full my-8">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-secondary-100">New Material Request</h3>
-                <button onClick={resetForm} className="text-custom-700 hover:text-secondary-100">
-                  <HiOutlineX className="w-6 h-6" />
-                </button>
+        {/* ── My Requests Tab ── */}
+        {tab === "my-requests" && (
+          <>
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {(["all", "pending", "approved", "rejected"] as const).map((s) => {
+                const count = s === "all" ? sorties.length : sorties.filter((r) => r.status === s).length;
+                const cfg   = s === "all" ? null : statusConfig[s];
+                return (
+                  <Card key={s} className="!p-4">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${cfg ? cfg.bgColor : "bg-primary-100"}`}>
+                      {cfg ? <cfg.icon className={`w-5 h-5 ${cfg.color}`} /> : <HiOutlineArchive className="w-5 h-5 text-primary-600" />}
+                    </div>
+                    <p className="text-2xl font-bold text-secondary-100">{sortiesLoading ? "—" : count}</p>
+                    <p className="text-xs text-custom-700 capitalize">{s === "all" ? "Total" : cfg!.label}</p>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Filter tabs */}
+            <div className="flex gap-2 overflow-x-auto">
+              {(["all", "pending", "approved", "rejected"] as const).map((s) => {
+                const count = s === "all" ? sorties.length : sorties.filter((r) => r.status === s).length;
+                return (
+                  <button key={s} onClick={() => setFilter(s)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                      filter === s ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+                    }`}>
+                    {s === "all" ? "All" : statusConfig[s].label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            <Card className="!p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-custom-100 border-b border-custom-300">
+                    <tr>
+                      {["Item", "Qty", "Reason", "Status", "Date", ""].map((h) => (
+                        <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-custom-200">
+                    {sortiesLoading ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
+                    ) : filteredSorties.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No requests found</td></tr>
+                    ) : filteredSorties.map((s) => {
+                      const cfg  = statusConfig[s.status];
+                      const Icon = cfg.icon;
+                      return (
+                        <tr key={s.id} className="hover:bg-custom-50 transition-colors">
+                          <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">{s.stockItem?.itemName ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-sm text-secondary-100">{parseFloat(s.quantityOut)} {s.stockItem?.unit ?? ""}</td>
+                          <td className="px-3 py-2.5 text-xs text-custom-700 max-w-[160px] truncate">{s.reason ?? "—"}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-1.5">
+                              <Icon className={`w-4 h-4 ${cfg.color}`} />
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.bgColor} ${cfg.color}`}>{cfg.label}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-custom-700">{new Date(s.createdAt).toLocaleDateString()}</td>
+                          <td className="px-3 py-2.5">
+                            <button onClick={() => setSelectedSortie(s)}
+                              className="px-2.5 py-1 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 text-xs font-semibold transition-colors">
+                              Details
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
+            </Card>
+          </>
+        )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
+        {/* ── New Request Modal ── */}
+        {showModal && (
+          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+            <Card className="!p-6 max-w-lg w-full my-8">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-xl font-bold text-secondary-100">New Stock Request</h3>
+                <button onClick={resetForm} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-secondary-100 mb-2">Job *</label>
-                  <select
-                    value={jobId}
-                    onChange={(e) => setJobId(e.target.value)}
-                    required
-                    className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
-                  >
-                    <option value="">Select a job</option>
-                    {myJobs.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        {job.jobNumber} — {job.title}
-                      </option>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Item *</label>
+                  <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)} required
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+                    <option value="">Select an item</option>
+                    {items.filter((i) => i.stockStatus !== "out-of-stock").map((i) => (
+                      <option key={i.id} value={i.id}>{i.itemName} ({i.currentStock} {i.unit} available)</option>
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-semibold text-secondary-100">Materials Needed *</label>
-                    <button type="button" onClick={addMaterialField} className="text-sm text-primary-500 hover:text-primary-600 font-semibold flex items-center gap-1">
-                      <HiOutlinePlus className="w-4 h-4" /> Add Material
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {materials.map((mat, i) => (
-                      <div key={i} className="flex gap-2">
-                        <Input type="text" placeholder="Material name" value={mat.name} onChange={(e) => updateMaterial(i, "name", e.target.value)} required fullWidth />
-                        <Input type="number" placeholder="Qty" value={mat.quantity} onChange={(e) => updateMaterial(i, "quantity", e.target.value)} required className="w-24" />
-                        <select
-                          value={mat.unit}
-                          onChange={(e) => updateMaterial(i, "unit", e.target.value)}
-                          className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400"
-                        >
-                          {["sheets", "units", "rolls", "boxes", "kg", "liters", "meters"].map((u) => (
-                            <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
-                          ))}
-                        </select>
-                        {materials.length > 1 && (
-                          <button type="button" onClick={() => removeMaterialField(i)} className="p-2 rounded-lg hover:bg-red-100 transition-colors">
-                            <HiOutlineX className="w-5 h-5 text-red-500" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Quantity *</label>
+                  <input type="number" min="0.01" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} required
+                    placeholder="e.g. 5"
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors" />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-semibold text-secondary-100 mb-2">Notes</label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={3}
-                    placeholder="Add any additional notes or urgency information..."
-                    className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors resize-none"
-                  />
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Reason *</label>
+                  <input value={reason} onChange={(e) => setReason(e.target.value)} required
+                    placeholder="Why do you need this item?"
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors" />
                 </div>
-
-                <div className="flex gap-3 justify-end pt-4 border-t border-custom-300">
+                <div>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Notes</label>
+                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+                    placeholder="Any additional information..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
+                </div>
+                <div className="flex gap-3 justify-end pt-3 border-t border-custom-300">
                   <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
                   <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting…" : "Submit Request"}</Button>
                 </div>
@@ -282,64 +296,33 @@ export default function MaterialRequestPage() {
           </div>
         )}
 
-        {/* Details Modal */}
-        {selectedRequest && (
+        {/* ── Details Modal ── */}
+        {selectedSortie && (
           <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-            <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <Card className="!p-6 max-w-md w-full">
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-secondary-100">{selectedRequest.requestNumber}</h3>
-                  <p className="text-sm text-custom-700 mt-1">
-                    {selectedRequest.job?.title ?? "—"} ({selectedRequest.job?.jobNumber ?? selectedRequest.jobId})
-                  </p>
-                  <span className={`inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full ${statusConfig[selectedRequest.status].bgColor} ${statusConfig[selectedRequest.status].color}`}>
-                    {statusConfig[selectedRequest.status].label}
+                  <h3 className="text-lg font-bold text-secondary-100">{selectedSortie.stockItem?.itemName ?? "Stock Request"}</h3>
+                  <span className={`inline-block mt-1.5 text-xs font-bold px-3 py-1 rounded-full ${statusConfig[selectedSortie.status].bgColor} ${statusConfig[selectedSortie.status].color}`}>
+                    {statusConfig[selectedSortie.status].label}
                   </span>
                 </div>
-                <button onClick={() => setSelectedRequest(null)} className="text-custom-700 hover:text-secondary-100">
-                  <HiOutlineX className="w-6 h-6" />
-                </button>
+                <button onClick={() => setSelectedSortie(null)} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-custom-700 mb-3">Materials Requested</p>
-                  <div className="space-y-2">
-                    {selectedRequest.items.map((item, i) => (
-                      <div key={i} className="p-3 rounded-xl bg-custom-50 border border-custom-200 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-secondary-100">{item.name}</span>
-                        <span className="text-sm text-custom-700">{item.quantity} {item.unit}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {selectedRequest.notes && (
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">Request Notes</p>
-                    <p className="text-base text-secondary-100">{selectedRequest.notes}</p>
-                  </div>
-                )}
-
-                {selectedRequest.responseNotes && (
-                  <div className={`p-4 rounded-xl ${selectedRequest.status === "approved" ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
-                    <p className={`text-sm font-semibold mb-1 ${selectedRequest.status === "approved" ? "text-green-900" : "text-red-900"}`}>Stock Response</p>
-                    <p className={`text-sm ${selectedRequest.status === "approved" ? "text-green-800" : "text-red-800"}`}>{selectedRequest.responseNotes}</p>
-                  </div>
-                )}
-
-                <div className="text-xs text-custom-700">
-                  <p>Requested: {new Date(selectedRequest.createdAt).toLocaleString()}</p>
-                  {selectedRequest.respondedAt && <p>Responded: {new Date(selectedRequest.respondedAt).toLocaleString()}</p>}
-                </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between"><span className="text-custom-700">Quantity</span><span className="font-semibold text-secondary-100">{parseFloat(selectedSortie.quantityOut)} {selectedSortie.stockItem?.unit ?? ""}</span></div>
+                {selectedSortie.reason && <div className="flex justify-between gap-4"><span className="text-custom-700 shrink-0">Reason</span><span className="text-secondary-100 text-right">{selectedSortie.reason}</span></div>}
+                {selectedSortie.notes  && <div className="flex justify-between gap-4"><span className="text-custom-700 shrink-0">Notes</span><span className="text-secondary-100 text-right">{selectedSortie.notes}</span></div>}
+                {selectedSortie.approvedBy && <div className="flex justify-between"><span className="text-custom-700">{selectedSortie.status === "approved" ? "Approved by" : "Reviewed by"}</span><span className="font-semibold text-secondary-100">{selectedSortie.approvedBy.name}</span></div>}
+                <div className="flex justify-between"><span className="text-custom-700">Requested</span><span className="text-secondary-100">{new Date(selectedSortie.createdAt).toLocaleString()}</span></div>
               </div>
-
-              <div className="flex justify-end mt-6 pt-4 border-t border-custom-300">
-                <Button variant="outline" onClick={() => setSelectedRequest(null)}>Close</Button>
+              <div className="flex justify-end mt-5 pt-4 border-t border-custom-300">
+                <Button variant="outline" onClick={() => setSelectedSortie(null)}>Close</Button>
               </div>
             </Card>
           </div>
         )}
+
       </div>
     </DashboardLayout>
   );

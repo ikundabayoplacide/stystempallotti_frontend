@@ -16,7 +16,7 @@ import {
   useGetHobesQuery,
 } from "../../store/services/hobeService";
 import { GenerateReportModal } from "../../components";
-import { useGetStockSortiesQuery } from "../../store/services/stockService";
+import { useGetMyGeneralStockSortiesQuery } from "../../store/services/generalStockService";
 import { useAuth } from "../../context/AuthContext";
 import { useLocation } from "react-router-dom";
 
@@ -530,7 +530,7 @@ function BatchOverviewReport() {
 // ─── Requests Report (stock sorties) ─────────────────────────────────────────
 
 function RequestsReport() {
-  const { data, isLoading, refetch } = useGetStockSortiesQuery({ limit: 100 });
+  const { data, isLoading, refetch } = useGetMyGeneralStockSortiesQuery({ limit: 200 });
   const sorties = data?.data ?? [];
 
   const pendingCount  = sorties.filter((s) => s.status === "pending").length;
@@ -546,9 +546,9 @@ function RequestsReport() {
   const getExportData = () => ({
     headers: ["Item", "Category", "Qty", "Unit", "Status", "Reason", "Date"],
     rows: sorties.map((s) => [
-      (s.stockItem as any)?.itemName ?? s.stockItem?.name ?? "—",
+      s.stockItem?.itemName ?? "—",
       s.stockItem?.category ?? "—",
-      String(s.quantity),
+      String(parseFloat(s.quantityOut)),
       s.stockItem?.unit ?? "—",
       s.status,
       s.reason ?? "—",
@@ -605,12 +605,12 @@ function RequestsReport() {
                 <tr key={s.id} className="hover:bg-custom-50 transition-colors">
                   <td className="px-3 py-2.5">
                     <p className="text-sm font-semibold text-secondary-100">
-                      {(s.stockItem as any)?.itemName ?? s.stockItem?.name ?? "—"}
+                      {s.stockItem?.itemName ?? "—"}
                     </p>
                     {s.stockItem?.category && <p className="text-xs text-custom-700">{s.stockItem.category}</p>}
                   </td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100 font-semibold">
-                    {s.quantity} {s.stockItem?.unit ?? ""}
+                    {parseFloat(s.quantityOut)} {s.stockItem?.unit ?? ""}
                   </td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusColors[s.status] ?? "bg-gray-100 text-gray-600"}`}>

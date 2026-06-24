@@ -16,7 +16,6 @@ import { rolesApi } from "./services/rolesService";
 import { stockApi } from "./services/stockService";
 import { usersApi } from "./services/usersService";
 import { visitsApi } from "./services/visitsService";
-import { materialRequestsApi } from "./services/materialRequestsService";
 import { reportsApi } from "./services/reportsService";
 import { hobeApi } from "./services/hobeService";
 import { notificationsApi } from "./services/notificationsService";
@@ -51,7 +50,6 @@ export const store = configureStore({
     [rolesApi.reducerPath]: rolesApi.reducer,
     [invoicesApi.reducerPath]: invoicesApi.reducer,
     [employeesApi.reducerPath]: employeesApi.reducer,
-    [materialRequestsApi.reducerPath]: materialRequestsApi.reducer,
     [reportsApi.reducerPath]: reportsApi.reducer,
     [hobeApi.reducerPath]: hobeApi.reducer,
     [notificationsApi.reducerPath]: notificationsApi.reducer,
@@ -84,7 +82,6 @@ export const store = configureStore({
       .concat(rolesApi.middleware)
       .concat(invoicesApi.middleware)
       .concat(employeesApi.middleware)
-      .concat(materialRequestsApi.middleware)
       .concat(reportsApi.middleware)
       .concat(hobeApi.middleware)
       .concat(notificationsApi.middleware)

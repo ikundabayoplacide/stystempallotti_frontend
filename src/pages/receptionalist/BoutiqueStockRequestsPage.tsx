@@ -171,6 +171,7 @@ export default function BoutiqueStockRequestsPage() {
   });
 
   const mySorties     = sortiesData?.data ?? [];
+  console.log("[MySorties] rejected →", mySorties.filter(s => s.status === "rejected").map(s => ({ id: s.id, notes: s.notes, reason: s.reason })));
   const pendingCount  = mySorties.filter((s) => s.status === "pending").length;
   const approvedCount = mySorties.filter((s) => s.status === "approved").length;
   const rejectedCount = mySorties.filter((s) => s.status === "rejected").length;
@@ -351,6 +352,9 @@ export default function BoutiqueStockRequestsPage() {
                     {sortie.status === "rejected" && (
                       <div className="px-4 py-2 bg-red-50 border-t border-red-100">
                         <p className="text-xs font-semibold text-red-700">Request was rejected</p>
+                        {sortie.notes && (
+                          <p className="text-xs text-red-600 mt-0.5 italic">"{sortie.notes}"</p>
+                        )}
                       </div>
                     )}
                   </div>

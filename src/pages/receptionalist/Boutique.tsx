@@ -21,6 +21,7 @@ import {
   useGetCategoriesQuery,
   useGetProductsQuery,
   useCreateProductMutation,
+  useCreateCategoryMutation,
   useRecordSaleMutation,
   useUpdateSaleMutation,
   useGetSalesQuery,
@@ -29,6 +30,10 @@ import {
   type StockStatus,
   type PaymentMethod,
 } from "../../store/services/boutiqueService";
+import {
+  useCreateBoutiqueStockEntryMutation,
+  useGetBoutiqueStockItemsQuery,
+} from "../../store/services/boutiqueStockService";
 import {
   useCreateStockSortieMutation,
   useGetMySortiesQuery,
@@ -58,6 +63,75 @@ const CATEGORY_COLORS = [
   "bg-rose-100 text-rose-700",
 ];
 
+// ─── Restock Modal ───────────────────────────────────────────────────────────
+
+function RestockModal({ product, onClose, onSuccess }: {
+  product: BoutiqueProduct;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [qty, setQty]   = useState("");
+  const [note, setNote] = useState("");
+  const { data: stockItemsData } = useGetBoutiqueStockItemsQuery({ limit: 200 });
+  const [createEntry, { isLoading }] = useCreateBoutiqueStockEntryMutation();
+
+  // Match boutique product to boutique stock item by name
+  const stockItem = (stockItemsData?.data ?? []).find(
+    (s) => s.itemName.toLowerCase() === product.name.toLowerCase()
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = Number(qty);
+    if (!n || n <= 0) { toast.error("Enter a valid quantity"); return; }
+    if (!stockItem) { toast.error("No matching boutique stock item found for this product"); return; }
+    try {
+      await createEntry({ stockItemId: stockItem.id, quantity: n, note: note.trim() || undefined }).unwrap();
+      toast.success(`Added ${n} units to ${product.name}`);
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to update stock");
+    }
+  };
+
+  const inputClass = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-style-500 rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-secondary-100">Add Stock</h3>
+            <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[220px]">{product.name}</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Quantity to Add *</label>
+            <input autoFocus type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="e.g. 10" className={inputClass} />
+            <p className="text-xs text-custom-700 mt-1">Current stock: <span className="font-bold text-secondary-100">{product.stock} {product.unit}</span></p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Note <span className="font-normal text-custom-700">(optional)</span></label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. New delivery" className={inputClass} />
+          </div>
+          {!stockItem && (
+            <p className="text-xs text-red-500">⚠ No matching boutique stock item found. Contact stock manager.</p>
+          )}
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading || !stockItem}
+              className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+              {isLoading ? "Adding..." : "Add Stock"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── Add Product Modal ───────────────────────────────────────────────────────
 
 function AddProductModal({ categories, onClose, onSuccess }: {
@@ -69,34 +143,43 @@ function AddProductModal({ categories, onClose, onSuccess }: {
     name: "", description: "", categoryId: "", unit: "",
     price: "", stock: "", minStock: "",
   });
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [createProduct, { isLoading }] = useCreateProductMutation();
+  const [createCategory, { isLoading: creatingCat }] = useCreateCategoryMutation();
+
+  const isAddNew = form.categoryId === "__new__";
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.categoryId || !form.unit || !form.price || !form.stock || !form.minStock) {
+    let categoryId = form.categoryId;
+    if (isAddNew) {
+      if (!newCategoryName.trim()) { toast.error("Please enter a category name"); return; }
+      try {
+        const cat = await createCategory({ name: newCategoryName.trim(), prefix: newCategoryName.trim().slice(0, 3).toUpperCase() }).unwrap();
+        categoryId = cat.id;
+      } catch (err: any) {
+        toast.error(err?.data?.message ?? "Failed to create category"); return;
+      }
+    }
+    if (!form.name || !categoryId || !form.unit || !form.price || !form.stock || !form.minStock) {
       toast.error("Please fill in all required fields"); return;
     }
-    const payload = {
+    try {
+      await createProduct({
         name: form.name.trim(),
         description: form.description.trim() || "",
-        categoryId: form.categoryId,
+        categoryId,
         unit: form.unit.trim(),
         price: Number(form.price),
         stock: Number(form.stock),
         minStock: Number(form.minStock),
-      };
-      console.log("[AddProduct] payload →", payload);
-    try {
-      await createProduct(payload).unwrap();
+      }).unwrap();
       toast.success("Product added successfully");
       onSuccess();
     } catch (err: any) {
-      console.error("[AddProduct] full error →", JSON.stringify(err, null, 2));
-      console.error("[AddProduct] err.data →", err?.data);
-      console.error("[AddProduct] err.status →", err?.status);
       toast.error(err?.data?.message ?? "Failed to add product");
     }
   };
@@ -130,7 +213,17 @@ function AddProductModal({ categories, onClose, onSuccess }: {
               <select value={form.categoryId} onChange={set("categoryId")} className={inputClass}>
                 <option value="">Select category...</option>
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value="__new__">+ Add new category</option>
               </select>
+              {isAddNew && (
+                <input
+                  autoFocus
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="New category name..."
+                  className={`${inputClass} mt-2`}
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1">Unit *</label>
@@ -154,9 +247,9 @@ function AddProductModal({ categories, onClose, onSuccess }: {
             <button type="button" onClick={onClose}
               className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
             >Cancel</button>
-            <button type="submit" disabled={isLoading}
+            <button type="submit" disabled={isLoading || creatingCat}
               className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40"
-            >{isLoading ? "Saving..." : "Add Product"}</button>
+            >{isLoading || creatingCat ? "Saving..." : "Add Product"}</button>
           </div>
         </form>
       </Card>
@@ -836,6 +929,7 @@ export default function BoutiquePage() {
   const [selectedStatus, setSelectedStatus] = useState<StockStatus | "all">("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<BoutiqueProduct | null>(null);
+  const [restockProduct, setRestockProduct]   = useState<BoutiqueProduct | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showMyRequests, setShowMyRequests] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
@@ -915,7 +1009,7 @@ export default function BoutiquePage() {
               <HiOutlinePlus className="w-4 h-4" />
               <span className="hidden sm:inline">Add Product</span>
             </button>
-            <button
+            {/* <button
               onClick={() => { setShowMyRequests(true); refetchRequests(); }}
               className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm font-semibold"
             >
@@ -927,14 +1021,14 @@ export default function BoutiquePage() {
                 </span>
               )}
 
-            </button>
-            <button
+            </button> */}
+            {/* <button
               onClick={() => setShowRequestModal(true)}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
             >
               <HiOutlineShoppingCart className="w-4 h-4" />
               <span className="hidden sm:inline">Request Stock</span>
-            </button>
+            </button> */}
             <button
               onClick={() => refetch()}
               className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm"
@@ -1125,8 +1219,14 @@ export default function BoutiquePage() {
                     </div>
                   </div>
 
-                  <div className="mt-2">
+                  <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-custom-400 font-mono">SKU: {product.sku}</p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRestockProduct(product); }}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                    >
+                      <HiOutlinePlus className="w-3.5 h-3.5" /> Add Qty
+                    </button>
                   </div>
                 </Card>
               );
@@ -1234,6 +1334,15 @@ export default function BoutiquePage() {
       {/* ── Pending Balances Modal ──────────────────────────────────────────────── */}
       {showPendingBalances && (
         <PendingBalancesModal onClose={() => setShowPendingBalances(false)} />
+      )}
+
+      {/* ── Add Product Modal ─────────────────────────────────────────────────── */}
+      {restockProduct && (
+        <RestockModal
+          product={restockProduct}
+          onClose={() => setRestockProduct(null)}
+          onSuccess={() => { setRestockProduct(null); refetch(); }}
+        />
       )}
 
       {/* ── Add Product Modal ─────────────────────────────────────────────────── */}

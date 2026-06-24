@@ -20,11 +20,71 @@ import {
   useSellHobeMutation,
   useUpdateHobeSaleMutation,
   useCreateHobeMutation,
+  useAddHobeQtyMutation,
   type Hobe,
   type HobeSale,
   type HobePaymentMethod,
 } from "../../store/services/hobeService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
+
+// ─── Add Qty Modal ───────────────────────────────────────────────────────────
+
+function AddQtyModal({ hobe, onClose, onSuccess }: {
+  hobe: Hobe;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [qty, setQty]   = useState("");
+  const [note, setNote] = useState("");
+  const [addQty, { isLoading }] = useAddHobeQtyMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = Number(qty);
+    if (!n || n <= 0) { toast.error("Enter a valid quantity"); return; }
+    try {
+      await addQty({ id: hobe.id, qty: n, note: note.trim() || undefined }).unwrap();
+      toast.success(`Added ${n} units to ${hobe.nameOfHobe}`);
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to update quantity");
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-style-500 rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-secondary-100">Add Quantity</h3>
+            <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[220px]">{hobe.nameOfHobe} · {hobe.hobeNo}</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Quantity to Add *</label>
+            <input autoFocus type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} placeholder="e.g. 10" className={inputCls} />
+            <p className="text-xs text-custom-700 mt-1">Current qty: <span className="font-bold text-secondary-100">{hobe.qty}</span> · Remaining: <span className="font-bold text-emerald-600">{hobe.qtyRemains}</span></p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Note <span className="font-normal text-custom-700">(optional)</span></label>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. New delivery" className={inputCls} />
+          </div>
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+              {isLoading ? "Adding..." : "Add Qty"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 // ─── Add Hobe Modal ───────────────────────────────────────────────────────────
 
@@ -566,6 +626,7 @@ export default function HobeTrade() {
   const [search, setSearch]                     = useState("");
   const [statusFilter, setStatusFilter]         = useState<StatusFilter>("all");
   const [selectedHobe, setSelectedHobe]         = useState<Hobe | null>(null);
+  const [addQtyHobe, setAddQtyHobe]             = useState<Hobe | null>(null);
   const [showPendingBalances, setShowPendingBalances] = useState(false);
   const [showAddHobe, setShowAddHobe]           = useState(false);
 
@@ -745,13 +806,21 @@ export default function HobeTrade() {
                   <p className="text-xs text-custom-700">{soldPct}% sold ({h.qtySold.toLocaleString()} units)</p>
 
                   {isAvailable && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setSelectedHobe(h); }}
-                      className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors"
-                    >
-                      <HiOutlineShoppingCart className="w-4 h-4" />
-                      Sell
-                    </button>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedHobe(h); }}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors"
+                      >
+                        <HiOutlineShoppingCart className="w-4 h-4" />
+                        Sell
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAddQtyHobe(h); }}
+                        className="flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                      >
+                        <HiOutlinePlus className="w-3.5 h-3.5" /> Add Qty
+                      </button>
+                    </div>
                   )}
                 </Card>
               );
@@ -764,6 +833,14 @@ export default function HobeTrade() {
         <AddHobeModal
           onClose={() => setShowAddHobe(false)}
           onSuccess={() => { setShowAddHobe(false); refetch(); }}
+        />
+      )}
+
+      {addQtyHobe && (
+        <AddQtyModal
+          hobe={addQtyHobe}
+          onClose={() => setAddQtyHobe(null)}
+          onSuccess={() => { setAddQtyHobe(null); refetch(); }}
         />
       )}
 

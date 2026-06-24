@@ -19,9 +19,9 @@ import {
   type EmployeeJob,
 } from "../../store/services/employeesService";
 import { GenerateReportModal } from "../../components";
-import { useGetMyMaterialRequestsQuery } from "../../store/services/materialRequestsService";
 import { useAuth } from "../../context/AuthContext";
 import { jobStatusConfig } from "../../types/JobStatus";
+import { useGetMyBindingStockSortiesQuery } from "../../store/services/bindingStockService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -213,12 +213,6 @@ const priorityColor: Record<string, string> = {
   urgent: "bg-red-500 text-white",
 };
 
-const reqStatusColor: Record<string, string> = {
-  pending:  "bg-yellow-100 text-yellow-700",
-  approved: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
-};
-
 // ─── Tab 1: My Jobs ───────────────────────────────────────────────────────────
 
 function JobsReport() {
@@ -388,123 +382,64 @@ function JobsReport() {
 
 // ─── Tab 2: Material Requests ─────────────────────────────────────────────────
 
+const reqStatusColor: Record<string, string> = {
+  pending:  "bg-yellow-100 text-yellow-700",
+  approved: "bg-emerald-100 text-emerald-700",
+  rejected: "bg-red-100 text-red-700",
+};
+
 function MaterialRequestsReport() {
-  const [page, setPage] = useState(1);
-  const { data: requests = [], isLoading, refetch } = useGetMyMaterialRequestsQuery();
-
-  const totalPages    = Math.max(1, Math.ceil(requests.length / PAGE_SIZE));
-  const paginated     = requests.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const pendingCount  = requests.filter((r) => r.status === "pending").length;
-  const approvedCount = requests.filter((r) => r.status === "approved").length;
-  const rejectedCount = requests.filter((r) => r.status === "rejected").length;
-
-  const getExportData = () => ({
-    headers: ["Request #", "Job", "Materials", "Status", "Date"],
-    rows: requests.map((r) => [
-      r.requestNumber,
-      r.job ? `${r.job.jobNumber} — ${r.job.title}` : r.jobId,
-      r.items.map((i) => `${i.name}: ${i.quantity} ${i.unit}`).join(", "),
-      r.status,
-      new Date(r.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
-    ]),
-    summary: [
-      { label: "Total Requests", value: String(requests.length) },
-      { label: "Pending",        value: String(pendingCount) },
-      { label: "Approved",       value: String(approvedCount) },
-      { label: "REJECTED",       value: String(rejectedCount), bold: true },
-    ] as SummaryRow[],
-  });
+  const { data, isLoading, refetch } = useGetMyBindingStockSortiesQuery({ limit: 100 });
+  const sorties = data?.data ?? [];
+  const pending  = sorties.filter((r) => r.status === "pending").length;
+  const approved = sorties.filter((r) => r.status === "approved").length;
+  const rejected = sorties.filter((r) => r.status === "rejected").length;
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex-1" />
-        <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
+      <div className="flex justify-end">
+        <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
           <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
         </button>
-        <PdfButtons title="Material Requests Report" getExportData={getExportData} />
       </div>
-
-      {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Requests" value={isLoading ? "…" : requests.length} />
-        <StatCard label="Pending"        value={isLoading ? "…" : pendingCount}   color="text-yellow-600" />
-        <StatCard label="Approved"       value={isLoading ? "…" : approvedCount}  color="text-emerald-600" />
-        <StatCard label="Rejected"       value={isLoading ? "…" : rejectedCount}  color={rejectedCount > 0 ? "text-red-600" : "text-secondary-100"} />
+        <StatCard label="Total Requests" value={isLoading ? "…" : sorties.length} />
+        <StatCard label="Pending"  value={isLoading ? "…" : pending}  color="text-yellow-600" />
+        <StatCard label="Approved" value={isLoading ? "…" : approved} color="text-emerald-600" />
+        <StatCard label="Rejected" value={isLoading ? "…" : rejected} color="text-red-600" />
       </div>
-
-      {/* Table */}
       <Card className="!p-0 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Request #", "Job", "Materials", "Status", "Response", "Date"].map((h) => (
+                {["Item", "Qty", "Reason", "Status", "Date"].map((h) => (
                   <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td></tr>
-              ) : requests.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center">
-                    <HiOutlineArchive className="w-10 h-10 text-custom-400 mx-auto mb-2" />
-                    <p className="text-sm text-custom-700 font-semibold">No material requests found</p>
-                  </td>
-                </tr>
-              ) : paginated.map((req) => (
-                <tr key={req.id} className="hover:bg-custom-50 transition-colors">
-                  <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">{req.requestNumber}</td>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td></tr>
+              ) : sorties.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-custom-700 text-sm">No stock requests found</td></tr>
+              ) : sorties.map((r) => (
+                <tr key={r.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">{r.stockItem?.itemName ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{parseFloat(r.quantityOut)} {r.stockItem?.unit ?? ""}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700 max-w-[160px] truncate">{r.reason ?? "—"}</td>
                   <td className="px-3 py-2.5">
-                    <p className="text-sm font-semibold text-secondary-100">{req.job?.title ?? "—"}</p>
-                    <p className="text-xs text-custom-700">{req.job?.jobNumber ?? req.jobId}</p>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <div className="space-y-0.5">
-                      {req.items.slice(0, 2).map((item, i) => (
-                        <p key={i} className="text-xs text-secondary-100">• {item.name}: {item.quantity} {item.unit}</p>
-                      ))}
-                      {req.items.length > 2 && <p className="text-xs text-custom-500">+{req.items.length - 2} more</p>}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${reqStatusColor[req.status] ?? "bg-gray-100 text-gray-700"}`}>
-                      {req.status}
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${reqStatusColor[r.status] ?? "bg-gray-100 text-gray-700"}`}>
+                      {r.status}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5">
-                    {req.responseNotes
-                      ? <p className="text-xs text-custom-700 max-w-[140px] truncate" title={req.responseNotes}>{req.responseNotes}</p>
-                      : <span className="text-custom-400 text-xs">—</span>}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-custom-700">
-                    {new Date(req.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
-                  </td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">{new Date(r.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </Card>
-
-      {requests.length > PAGE_SIZE && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-custom-700">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, requests.length)} of {requests.length}</p>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold hover:bg-custom-100 disabled:opacity-40">Prev</button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-              <button key={n} onClick={() => setPage(n)}
-                className={`w-8 h-8 rounded-lg text-xs font-bold ${n === page ? "bg-primary-500 text-white" : "border border-custom-300 hover:bg-custom-100"}`}>{n}</button>
-            ))}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold hover:bg-custom-100 disabled:opacity-40">Next</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

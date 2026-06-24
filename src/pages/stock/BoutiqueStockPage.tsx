@@ -62,24 +62,27 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     description:  item?.description  ?? "",
     category:     item?.category     ?? "",
     unit:         item?.unit         ?? "",
-    currentStock: item?.currentStock ?? 0,
+    currentStock: item?.currentStock?.toString() ?? "",
     alarmStock:   item?.alarmStock   ?? 0,
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((p) => ({ ...p, [k]: k === "currentStock" || k === "alarmStock" ? Number(e.target.value) : e.target.value }));
+    setForm((p) => ({ ...p, [k]: k === "alarmStock" ? Number(e.target.value) : e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.itemName.trim() || !form.category.trim() || !form.unit.trim()) {
-      toast.error("Item name, category, and unit are required"); return;
+    if (!form.itemName.trim() || !form.category.trim()) {
+      toast.error("Item name and category are required"); return;
+    }
+    if (!isEdit && !String(form.currentStock).trim()) {
+      toast.error("Initial stock is required"); return;
     }
     try {
       if (isEdit) {
         await updateItem({ id: item!.id, ...form }).unwrap();
         toast.success("Item updated");
       } else {
-        await createItem(form).unwrap();
+        await createItem({ ...form, currentStock: Number(form.currentStock) }).unwrap();
         toast.success("Item created");
       }
       onSuccess();
@@ -106,7 +109,7 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
               <input value={form.category} onChange={set("category")} placeholder="e.g. Packaging" className={cls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit *</label>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit</label>
               <input value={form.unit} onChange={set("unit")} placeholder="e.g. pcs, kg, box" className={cls} />
             </div>
             <div>
@@ -115,8 +118,8 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
             </div>
             {!isEdit && (
               <div>
-                <label className="block text-xs font-semibold text-secondary-100 mb-1">Initial Stock</label>
-                <input type="number" min={0} value={form.currentStock} onChange={set("currentStock")} className={cls} />
+                <label className="block text-xs font-semibold text-secondary-100 mb-1">Initial Stock *</label>
+                <input type="text" value={form.currentStock} onChange={set("currentStock")} placeholder="e.g. 100" required className={cls} />
               </div>
             )}
           </div>
@@ -134,6 +137,48 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
             </button>
           </div>
         </form>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Delete Confirm Modal ────────────────────────────────────────────────────
+
+function DeleteModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; onClose: () => void; onSuccess: () => void }) {
+  const [deleteItem, { isLoading }] = useDeleteBoutiqueStockItemMutation();
+
+  const handleDelete = async () => {
+    try {
+      await deleteItem(item.id).unwrap();
+      toast.success("Item deleted");
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to delete");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-sm w-full">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+            <HiOutlineTrash className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-secondary-100">Delete Item</h3>
+            <p className="text-xs text-custom-700 mt-0.5">This action cannot be undone</p>
+          </div>
+        </div>
+        <p className="text-sm text-secondary-100 mb-5">
+          Are you sure you want to delete <span className="font-semibold">"{item.itemName}"</span>?
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+          <button onClick={handleDelete} disabled={isLoading}
+            className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors">
+            {isLoading ? "Deleting..." : "Delete"}
+          </button>
+        </div>
       </Card>
     </div>
   );
@@ -192,28 +237,18 @@ function RestockModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; o
 // ─── Items Tab ────────────────────────────────────────────────────────────────
 
 function ItemsTab() {
-  const [showForm, setShowForm]     = useState(false);
-  const [editItem, setEditItem]     = useState<BoutiqueStockItem | null>(null);
+  const [showForm, setShowForm]       = useState(false);
+  const [editItem, setEditItem]       = useState<BoutiqueStockItem | null>(null);
   const [restockItem, setRestockItem] = useState<BoutiqueStockItem | null>(null);
-  const [search, setSearch]         = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<BoutiqueStockItem | null>(null);
+  const [search, setSearch]           = useState("");
 
   const { data, isLoading, refetch } = useGetBoutiqueStockItemsQuery({ limit: 200 });
-  const [deleteItem] = useDeleteBoutiqueStockItemMutation();
 
   const items = (data?.data ?? []).filter((i) => {
     const q = search.trim().toLowerCase();
     return !q || i.itemName.toLowerCase().includes(q) || i.category.toLowerCase().includes(q);
   });
-
-  const handleDelete = async (item: BoutiqueStockItem) => {
-    if (!confirm(`Delete "${item.itemName}"? This cannot be undone.`)) return;
-    try {
-      await deleteItem(item.id).unwrap();
-      toast.success("Item deleted");
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to delete");
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -288,7 +323,7 @@ function ItemsTab() {
                         className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                         <HiOutlinePencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => handleDelete(item)} title="Delete"
+                      <button onClick={() => setDeleteTarget(item)} title="Delete"
                         className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
                         <HiOutlineTrash className="w-3.5 h-3.5" />
                       </button>
@@ -315,6 +350,69 @@ function ItemsTab() {
           onSuccess={() => { setRestockItem(null); refetch(); }}
         />
       )}
+      {deleteTarget && (
+        <DeleteModal
+          item={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onSuccess={() => { setDeleteTarget(null); refetch(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Reject Modal ────────────────────────────────────────────────────────────
+
+function RejectModal({ sortie, onClose, onSuccess }: {
+  sortie: BoutiqueStockSortie;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [reject, { isLoading }] = useRejectBoutiqueStockSortieMutation();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) { toast.error("Please provide a reason"); return; }
+    try {
+      await reject({ id: sortie.id, notes: reason.trim() }).unwrap();
+      toast.success("Request rejected");
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to reject");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-sm w-full">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+            <HiOutlineBan className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-secondary-100">Reject Request</h3>
+            <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[200px]">{sortie.stockItem?.itemName ?? "Stock Item"}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Reason *</label>
+            <textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
+              placeholder="e.g. Insufficient stock available..."
+              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none"
+            />
+          </div>
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors">
+              {isLoading ? "Rejecting..." : "Reject"}
+            </button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }
@@ -323,12 +421,12 @@ function ItemsTab() {
 
 function SortiesTab() {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
+  const [rejectTarget, setRejectTarget] = useState<BoutiqueStockSortie | null>(null);
 
   const { data, isLoading, refetch } = useGetBoutiqueStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
   );
   const [approve] = useApproveBoutiqueStockSortieMutation();
-  const [reject]  = useRejectBoutiqueStockSortieMutation();
 
   const sorties: BoutiqueStockSortie[] = data?.data ?? [];
   const pending  = sorties.filter((s) => s.status === "pending").length;
@@ -339,16 +437,6 @@ function SortiesTab() {
       toast.success("Request approved");
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to approve");
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    if (!confirm("Reject this stock request?")) return;
-    try {
-      await reject(id).unwrap();
-      toast.success("Request rejected");
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to reject");
     }
   };
 
@@ -410,7 +498,7 @@ function SortiesTab() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors">
                     <HiOutlineCheck className="w-3.5 h-3.5" /> Approve
                   </button>
-                  <button onClick={() => handleReject(sortie.id)}
+                  <button onClick={() => setRejectTarget(sortie)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
                     <HiOutlineBan className="w-3.5 h-3.5" /> Reject
                   </button>
@@ -429,6 +517,13 @@ function SortiesTab() {
           </Card>
         ))}
       </div>
+      {rejectTarget && (
+        <RejectModal
+          sortie={rejectTarget}
+          onClose={() => setRejectTarget(null)}
+          onSuccess={() => { setRejectTarget(null); refetch(); }}
+        />
+      )}
     </div>
   );
 }

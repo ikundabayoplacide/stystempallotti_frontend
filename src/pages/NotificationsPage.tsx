@@ -82,11 +82,11 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     CUSTOMER_CHECKIN: "/reception/visitor",
     PAYMENT_COLLECTED: "/reception/payments",
     JOB_DELIVERED: "/reception/deliveries",
-    BOUTIQUE_STOCK_REQUEST: "/reception/boutique",
+    BOUTIQUE_STOCK_REQUEST: "/reception/boutique-stock",
     BOUTIQUE_PRODUCT_ADDED: "/reception/boutique",
-    STOCK_SORTIE_APPROVED: "/reception/boutique",
-    STOCK_SORTIE_REJECTED: "/reception/boutique",
-    STOCK_SORTIE_REQUEST: "/reception/boutique",
+    STOCK_SORTIE_APPROVED: "/reception/boutique-stock",
+    STOCK_SORTIE_REJECTED: "/reception/boutique-stock",
+    STOCK_SORTIE_REQUEST: "/reception/boutique-stock",
     REPORT_GENERATED: "/reception/reports",
     JOB_CREATED: "/reception/deliveries",
     JOB_DONE: "/reception/deliveries",
@@ -160,16 +160,16 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     REPORT_GENERATED: "/supervisor/reports",
   },
   stock: {
-    BOUTIQUE_STOCK_REQUEST: "/stock/requests",
-    STOCK_SORTIE_REQUEST: "/stock/requests",
-    STOCK_SORTIE_APPROVED: "/stock/requests",
-    STOCK_SORTIE_REJECTED: "/stock/requests",
+    BOUTIQUE_STOCK_REQUEST: "/stock/boutique-stock",
+    STOCK_SORTIE_REQUEST: "/stock/boutique-stock",
+    STOCK_SORTIE_APPROVED: "/stock/boutique-stock",
+    STOCK_SORTIE_REJECTED: "/stock/boutique-stock",
     JOB_CREATED: "/stock/requests",
     JOB_ASSIGNED: "/stock/requests",
     JOB_STATUS_CHANGED: "/stock/inventory",
     JOB_DONE: "/stock/inventory",
     JOB_COMPLETED: "/stock/inventory",
-    BOUTIQUE_PRODUCT_ADDED: "/stock/inventory",
+    BOUTIQUE_PRODUCT_ADDED: "/stock/boutique-stock",
     EMPLOYEE_CREATED: "/stock/inventory",
     REPORT_GENERATED: "/stock/reports",
   },
@@ -224,7 +224,8 @@ function resolveRoute(userRole: UserRole, n: Notification): string | null {
   // Fallback: infer from title/message keywords if the type isn't mapped
   const text = (n.title + " " + n.message).toLowerCase();
   if (userRole === "receptionist") {
-    if (text.includes("sortie") || text.includes("boutique") || text.includes("stock request")) return "/reception/boutique";
+    if (text.includes("sortie") || text.includes("stock request")) return "/reception/boutique-stock";
+    if (text.includes("boutique")) return "/reception/boutique";
     if (text.includes("payment")) return "/reception/payments";
     if (text.includes("deliver")) return "/reception/deliveries";
     if (text.includes("visitor") || text.includes("customer")) return "/reception/visitor";
@@ -263,7 +264,7 @@ function resolveRoute(userRole: UserRole, n: Notification): string | null {
     if (text.includes("report")) return "/worker/reports";
   }
   if (userRole === "stock") {
-    if (text.includes("sortie") || text.includes("request") || text.includes("approv") || text.includes("rejected")) return "/stock/requests";
+    if (text.includes("sortie") || text.includes("request") || text.includes("approv") || text.includes("rejected") || text.includes("boutique")) return "/stock/boutique-stock";
     if (text.includes("inventory") || text.includes("product") || text.includes("item")) return "/stock/inventory";
     if (text.includes("supplier")) return "/stock/suppliers";
     if (text.includes("report")) return "/stock/reports";

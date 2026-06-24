@@ -62,12 +62,12 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     description:  item?.description  ?? "",
     category:     item?.category     ?? "",
     unit:         item?.unit         ?? "",
-    currentStock: item?.currentStock ?? 0,
-    alarmStock:   item?.alarmStock   ?? 0,
+    currentStock: item?.currentStock?.toString() ?? "",
+    alarmStock:   item?.alarmStock?.toString()   ?? "",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((p) => ({ ...p, [k]: k === "currentStock" || k === "alarmStock" ? Number(e.target.value) : e.target.value }));
+    setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +75,12 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
       toast.error("Item name, category, and unit are required"); return;
     }
     try {
+      const payload = { ...form, currentStock: Number(form.currentStock) || 0, alarmStock: Number(form.alarmStock) || 0 };
       if (isEdit) {
-        await updateItem({ id: item!.id, ...form }).unwrap();
+        await updateItem({ id: item!.id, ...payload }).unwrap();
         toast.success("Item updated");
       } else {
-        await createItem(form).unwrap();
+        await createItem(payload).unwrap();
         toast.success("Item created");
       }
       onSuccess();
@@ -111,12 +112,12 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
             </div>
             <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock Level</label>
-              <input type="number" min={0} value={form.alarmStock} onChange={set("alarmStock")} className={cls} />
+              <input type="text" value={form.alarmStock} onChange={set("alarmStock")} placeholder="e.g. 10" className={cls} />
             </div>
             {!isEdit && (
               <div>
                 <label className="block text-xs font-semibold text-secondary-100 mb-1">Initial Stock</label>
-                <input type="number" min={0} value={form.currentStock} onChange={set("currentStock")} className={cls} />
+                <input type="text" value={form.currentStock} onChange={set("currentStock")} placeholder="e.g. 100" className={cls} />
               </div>
             )}
           </div>
