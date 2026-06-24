@@ -83,12 +83,12 @@ export const boutiqueStockApi = createApi({
       transformResponse: (res: ApiResponse<BoutiqueStockItem[]>) => toPaginated(res),
       providesTags: (r) => r ? [...r.data.map(({ id }) => ({ type: "BSItem" as const, id })), { type: "BSItem", id: "LIST" }] : [{ type: "BSItem", id: "LIST" }],
     }),
-    createBoutiqueStockItem: builder.mutation<BoutiqueStockItem, { itemName: string; description?: string; category: string; unit: string; currentStock: number; alarmStock: number }>({
+    createBoutiqueStockItem: builder.mutation<BoutiqueStockItem, { itemName: string; description?: string; category: string; unit: string; currentStock: number; alarmStock: number; unitCost?: number }>({
       query: (body) => ({ url: "/items", method: "POST", body }),
       transformResponse: (res: ApiResponse<BoutiqueStockItem>) => res.data,
       invalidatesTags: [{ type: "BSItem", id: "LIST" }],
     }),
-    updateBoutiqueStockItem: builder.mutation<BoutiqueStockItem, { id: string; itemName?: string; description?: string; category?: string; unit?: string; alarmStock?: number }>({
+    updateBoutiqueStockItem: builder.mutation<BoutiqueStockItem, { id: string; itemName?: string; description?: string; category?: string; unit?: string; alarmStock?: number; unitCost?: number }>({
       query: ({ id, ...body }) => ({ url: `/items/${id}`, method: "PUT", body }),
       transformResponse: (res: ApiResponse<BoutiqueStockItem>) => res.data,
       invalidatesTags: (_r, _e, { id }) => [{ type: "BSItem", id }, { type: "BSItem", id: "LIST" }],

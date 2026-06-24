@@ -64,10 +64,13 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     unit:         item?.unit         ?? "",
     currentStock: item?.currentStock?.toString() ?? "",
     alarmStock:   item?.alarmStock   ?? 0,
+    unitCost:     item?.unitCost?.toString() ?? "",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [k]: k === "alarmStock" ? Number(e.target.value) : e.target.value }));
+
+  const totalValue = Number(form.unitCost || 0) * Number(form.currentStock || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,10 +82,10 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     }
     try {
       if (isEdit) {
-        await updateItem({ id: item!.id, ...form }).unwrap();
+        await updateItem({ id: item!.id, ...form, unitCost: form.unitCost !== "" ? Number(form.unitCost) : undefined }).unwrap();
         toast.success("Item updated");
       } else {
-        await createItem({ ...form, currentStock: Number(form.currentStock) }).unwrap();
+        await createItem({ ...form, currentStock: Number(form.currentStock), unitCost: form.unitCost !== "" ? Number(form.unitCost) : undefined }).unwrap();
         toast.success("Item created");
       }
       onSuccess();
@@ -113,6 +116,10 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
               <input value={form.unit} onChange={set("unit")} placeholder="e.g. pcs, kg, box" className={cls} />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit Cost (RWF)</label>
+              <input type="number" min={0} step="0.01" value={form.unitCost} onChange={set("unitCost")} placeholder="e.g. 500" className={cls} />
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock Level</label>
               <input type="number" min={0} value={form.alarmStock} onChange={set("alarmStock")} className={cls} />
             </div>
@@ -123,6 +130,12 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
               </div>
             )}
           </div>
+          {form.unitCost && form.currentStock && (
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-primary-50 border border-primary-200">
+              <span className="text-xs font-semibold text-primary-700">Total Stock Value</span>
+              <span className="text-sm font-bold text-primary-600">{totalValue.toLocaleString()} RWF</span>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-secondary-100 mb-1">Description</label>
             <textarea value={form.description} onChange={set("description")} rows={2} placeholder="Optional description..."
@@ -284,16 +297,16 @@ function ItemsTab() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Item Name", "Category", "Unit", "Stock", "Alarm", "Status", "Actions"].map((h) => (
+                {["Item Name", "Category", "Unit", "Stock", "Unit Cost", "Total Value", "Alarm", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center">
+                <tr><td colSpan={9} className="px-4 py-10 text-center">
                   <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
                   <p className="text-sm text-secondary-100 font-semibold">No boutique stock items</p>
                   <p className="text-xs text-custom-700 mt-1">Add the first item using the button above</p>
@@ -307,6 +320,12 @@ function ItemsTab() {
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.category}</td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.unit}</td>
                   <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">{item.currentStock}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">
+                    {item.unitCost != null ? `${Number(item.unitCost).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">
+                    {item.unitCost != null ? `${(Number(item.unitCost) * item.currentStock).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
+                  </td>
                   <td className="px-3 py-2.5 text-sm text-custom-700">{item.alarmStock}</td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>

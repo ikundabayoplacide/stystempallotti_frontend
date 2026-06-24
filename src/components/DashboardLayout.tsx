@@ -56,6 +56,7 @@ export default function DashboardLayout({
   showNotifications = true,
 }: DashboardLayoutProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -65,11 +66,12 @@ export default function DashboardLayout({
   const { language, setLanguage } = useLanguage();
 
   const LANGUAGES: { code: Language; label: string; flag: string }[] = [
-    { code: 'en', label: 'English',    flag: '🇬🇧' },
+    { code: 'en', label: 'English',     flag: '🇬🇧' },
     { code: 'rw', label: 'Kinyarwanda', flag: '🇷🇼' },
-    { code: 'fr', label: 'Français',   flag: '🇫🇷' },
-    { code: 'sw', label: 'Kiswahili',  flag: '🇰🇪' },
-    { code: 'ar', label: 'العربية',    flag: '🇸🇦' },
+    { code: 'bm', label: 'Bambara',     flag: '🇲🇱' },
+    { code: 'fr', label: 'Français',    flag: '🇫🇷' },
+    { code: 'sw', label: 'Kiswahili',   flag: '🇰🇪' },
+    { code: 'ar', label: 'العربية',     flag: '🇸🇦' },
   ];
 
   const currentLang = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
@@ -107,7 +109,9 @@ export default function DashboardLayout({
         userRole={userRole}
         userName={userName}
         isCollapsed={isSidebarCollapsed}
+        isMobileOpen={isMobileOpen}
         onToggle={() => setIsSidebarCollapsed((v) => !v)}
+        onMobileClose={() => setIsMobileOpen(false)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -115,7 +119,7 @@ export default function DashboardLayout({
         <header className="bg-style-600 border-b border-custom-300 px-4 py-3 flex items-center justify-between lg:px-6">
           {/* Mobile menu toggle */}
           <button
-            onClick={() => setIsSidebarCollapsed((v) => !v)}
+            onClick={() => setIsMobileOpen(true)}
             className="lg:hidden p-2 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100"
             aria-label="Toggle menu"
           >

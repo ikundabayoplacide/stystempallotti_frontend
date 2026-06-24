@@ -35,7 +35,9 @@ interface DashboardSidebarProps {
   userRole: UserRole;
   userName?: string;
   isCollapsed: boolean;
+  isMobileOpen: boolean;
   onToggle: () => void;
+  onMobileClose: () => void;
 }
 
 const menuItems: Record<UserRole, MenuItem[]> = {
@@ -202,7 +204,9 @@ export default function DashboardSidebar({
   userRole,
   userName = "User",
   isCollapsed,
+  isMobileOpen,
   onToggle,
+  onMobileClose,
 }: DashboardSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -307,10 +311,10 @@ export default function DashboardSidebar({
   return (
     <>
       {/* Mobile Overlay */}
-      {!isCollapsed && (
+      {isMobileOpen && (
         <div
           className="fixed inset-0 bg-secondary-100/50 z-40 lg:hidden"
-          onClick={onToggle}
+          onClick={onMobileClose}
         />
       )}
 
@@ -322,7 +326,9 @@ export default function DashboardSidebar({
           transition-all duration-300 ease-in-out
           z-50 flex flex-col
           font-[family-name:var(--font-family-primary)]
-          ${isCollapsed ? "-translate-x-full lg:translate-x-0 lg:w-20" : "translate-x-0 w-64"}
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0
+          ${isCollapsed ? "lg:w-20" : "w-64"}
         `}
       >
         {/* Header */}
@@ -343,7 +349,7 @@ export default function DashboardSidebar({
             {isCollapsed ? (
               <HiOutlineMenu className="w-5 h-5" />
             ) : (
-              <HiOutlineX className="w-5 h-5 lg:hidden" />
+              <HiOutlineX className="w-5 h-5 lg:hidden" onClick={onMobileClose} />
             )}
             {!isCollapsed && (
               <HiOutlineMenu className="w-5 h-5 hidden lg:block" />
@@ -387,7 +393,7 @@ export default function DashboardSidebar({
                     } else {
                       isUserClick.current = true;
                       navigate(item.path);
-                      if (window.innerWidth < 1024 && !isCollapsed) onToggle();
+                      if (window.innerWidth < 1024) onMobileClose();
                     }
                   }}
                   className={`
@@ -430,7 +436,7 @@ export default function DashboardSidebar({
                             (e.currentTarget as HTMLButtonElement).blur();
                             isUserClick.current = true;
                             navigate(child.path);
-                            if (window.innerWidth < 1024 && !isCollapsed) onToggle();
+                            if (window.innerWidth < 1024) onMobileClose();
                           }}
                           className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200 ${childIsActive
                               ? "bg-primary-100 text-primary-600 font-semibold"
@@ -452,7 +458,7 @@ export default function DashboardSidebar({
         {/* Footer */}
         <div className="p-3 border-t border-custom-300 space-y-1">
           <button
-            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(notifPath[userRole]); }}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(notifPath[userRole]); if (window.innerWidth < 1024) onMobileClose(); }}
             className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
               location.pathname === notifPath[userRole]
                 ? "bg-primary-500 text-secondary-200"
@@ -469,7 +475,7 @@ export default function DashboardSidebar({
             )}
           </button>
           <button
-            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(settingsPath[userRole]); }}
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(settingsPath[userRole]); if (window.innerWidth < 1024) onMobileClose(); }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
               location.pathname === settingsPath[userRole]
                 ? "bg-primary-500 text-secondary-200"
