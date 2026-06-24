@@ -336,9 +336,11 @@ export default function DashboardSidebar({
           {!isCollapsed && (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-                <span className="text-secondary-200 font-bold text-sm">ST</span>
+                <span className="text-secondary-200 font-bold text-sm">
+                  <img src="/logo.jpeg" alt="Logo" className="w-6 h-6 rounded-lg" />
+                </span>
               </div>
-              <span className="font-bold text-secondary-100 text-lg">SAN Track</span>
+              <span className="font-bold text-secondary-100 text-lg">Pallotti Presse</span>
             </div>
           )}
           <button
