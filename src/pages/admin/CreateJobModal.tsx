@@ -128,7 +128,9 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
           <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row flex-1 min-h-0">
 
             {/* ── LEFT: Customer selection ──────────────────────────────── */}
-            <div className="lg:w-2/5 border-b lg:border-b-0 lg:border-r border-custom-300 flex flex-col min-h-0">
+            <div className={`lg:w-2/5 border-b lg:border-b-0 lg:border-r border-custom-300 flex flex-col min-h-0 ${
+              selectedCustomer ? "hidden lg:flex" : "flex"
+            }`}>
 
               {/* Search bar (fixed inside left panel) */}
               <div className="px-6 py-4 border-b border-custom-200 shrink-0">
@@ -184,7 +186,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
 
               {/* Selected customer summary (fixed at bottom of left panel) */}
               {selectedCustomer && (
-                <div className="px-6 py-4 border-t border-custom-300 bg-primary-50 shrink-0">
+                <div className="hidden sm:block px-6 py-4 border-t border-custom-300 bg-primary-50 shrink-0">
                   <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-3">
                     Selected Customer
                   </p>
@@ -222,13 +224,31 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
             </div>
 
             {/* ── RIGHT: Job details ────────────────────────────────────── */}
-            <div className="lg:w-3/5 flex flex-col min-h-0">
+            <div className={`lg:w-3/5 flex flex-col min-h-0 ${
+              selectedCustomer ? "flex" : "hidden lg:flex"
+            }`}>
 
               {/* Step label (fixed) */}
               <div className="px-6 py-4 border-b border-custom-200 shrink-0">
-                <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
-                  Step 2 — Job Details
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                    Step 2 — Job Details
+                  </p>
+                  {selectedCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCustomer(null)}
+                      className="lg:hidden text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
+                    >
+                      ← Change customer
+                    </button>
+                  )}
+                </div>
+                {selectedCustomer && (
+                  <p className="text-xs text-custom-700 mt-0.5 truncate">
+                    {selectedCustomer.name}{selectedCustomer.company ? ` · ${selectedCustomer.company}` : ""}
+                  </p>
+                )}
                 {!selectedCustomer && (
                   <p className="text-xs text-custom-600 mt-1">
                     Select a customer on the left to enable this form

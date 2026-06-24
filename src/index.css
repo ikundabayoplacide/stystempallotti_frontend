@@ -8,10 +8,27 @@
 #goog-gt-tt,
 .goog-te-balloon-frame,
 .goog-tooltip,
-.goog-tooltip-content {
+.goog-tooltip-content,
+.goog-te-spinner-pos,
+.goog-te-spinner,
+.VIpgJd-ZVi9od-l4eHX,
+.VIpgJd-ZVi9od-l4eHX-hSRGPd,
+.VIpgJd-ZVi9od-ORHb,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+#google_translate_element,
+#google_translate_element2,
+iframe[name*="google"],
+iframe[title*="translate"],
+iframe[id*="google"] {
   display: none !important;
   visibility: hidden !important;
   height: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
 }
 body { top: 0 !important; position: static !important; }
 

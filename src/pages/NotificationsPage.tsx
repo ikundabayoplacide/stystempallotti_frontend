@@ -101,8 +101,8 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     JOB_COMPLETED: "/sales/jobs",
     JOB_DELIVERED: "/sales/jobs",
     JOB_DAF_ACTION: "/sales/jobs",
-    CUSTOMER_CREATED: "/sales/customers",
-    CUSTOMER_CHECKIN: "/sales/customers",
+    CUSTOMER_CREATED: "/sales/jobs",
+    CUSTOMER_CHECKIN: "/sales/jobs",
     PAYMENT_COLLECTED: "/sales/jobs",
     BOUTIQUE_STOCK_REQUEST: "/sales/stocks",
     BOUTIQUE_PRODUCT_ADDED: "/sales/stocks",
@@ -236,8 +236,7 @@ function resolveRoute(userRole: UserRole, n: Notification): string | null {
     if (text.includes("report")) return "/hobe/report";
   }
   if (userRole === "sales") {
-    if (text.includes("job") || text.includes("deliver") || text.includes("progress") || text.includes("daf") || text.includes("approved") || text.includes("rejected")) return "/sales/jobs";
-    if (text.includes("customer") || text.includes("client")) return "/sales/customers";
+    if (text.includes("job") || text.includes("deliver") || text.includes("progress") || text.includes("daf") || text.includes("approved") || text.includes("rejected") || text.includes("customer") || text.includes("client") || text.includes("check")) return "/sales/jobs";
     if (text.includes("proforma") || text.includes("performa") || text.includes("quotation")) return "/sales/proformas";
     if (text.includes("stock") || text.includes("sortie")) return "/sales/stocks";
     if (text.includes("report")) return "/sales/reports";

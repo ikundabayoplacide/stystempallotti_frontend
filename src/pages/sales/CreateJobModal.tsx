@@ -30,7 +30,7 @@ interface Props {
 
 interface SelectedItem {
   stockItem: StockItem;
-  quantityNeeded: number;
+  quantityNeeded: string;
   notes: string;
 }
 
@@ -218,18 +218,20 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   // ── Calculated total from items ────────────────────────────────────────────
   const itemsTotal = selectedItems.reduce((sum, si) => {
     const cost = si.stockItem.unitCost ?? 0;
-    return sum + cost * si.quantityNeeded;
+    return sum + cost * (parseFloat(si.quantityNeeded) || 0);
   }, 0);
 
   // Track whether user has manually edited the amount
   const [amountManuallyEdited, setAmountManuallyEdited] = useState(false);
-  const [taxRate, setTaxRate]         = useState(18);  // %
-  const [discountRate, setDiscountRate] = useState(0); // %
+  const [taxRate, setTaxRate]           = useState("18");  // %
+  const [discountRate, setDiscountRate]  = useState("0");   // %
 
   // Derived: apply discount then tax on top of items total
-  const discountAmt = Math.round((itemsTotal * discountRate) / 100);
+  const taxNum      = Math.min(100, Math.max(0, parseFloat(taxRate)      || 0));
+  const discountNum = Math.min(100, Math.max(0, parseFloat(discountRate) || 0));
+  const discountAmt = Math.round((itemsTotal * discountNum) / 100);
   const afterDiscount = itemsTotal - discountAmt;
-  const taxAmt = Math.round((afterDiscount * taxRate) / 100);
+  const taxAmt = Math.round((afterDiscount * taxNum) / 100);
   const computedTotal = afterDiscount + taxAmt;
 
   // Auto-sync amount from computed total unless user has manually changed it
@@ -251,15 +253,15 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   const addItem = (stockItem: StockItem) => {
     setSelectedItems((prev) => [
       ...prev,
-      { stockItem, quantityNeeded: 1, notes: "" },
+      { stockItem, quantityNeeded: "1", notes: "" },
     ]);
     setItemSearch("");
   };
 
-  const updateItemQty = (id: string, qty: number) => {
+  const updateItemQty = (id: string, qty: string) => {
     setSelectedItems((prev) =>
       prev.map((si) =>
-        si.stockItem.id === id ? { ...si, quantityNeeded: Math.max(1, qty) } : si
+        si.stockItem.id === id ? { ...si, quantityNeeded: qty } : si
       )
     );
   };
@@ -295,7 +297,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
       ...(selectedItems.length > 0 && {
         items: selectedItems.map((si) => ({
           stockItemId: si.stockItem.id,
-          quantityNeeded: si.quantityNeeded,
+          quantityNeeded: parseFloat(si.quantityNeeded) || 1,
           ...(si.notes.trim() && { notes: si.notes }),
         })),
       }),
@@ -343,7 +345,9 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
             <div className="flex flex-col lg:flex-row flex-1 min-h-0">
 
               {/* LEFT — Customer search */}
-              <div className="lg:w-2/5 border-b lg:border-b-0 lg:border-r border-custom-300 flex flex-col min-h-0">
+              <div className={`lg:w-2/5 border-b lg:border-b-0 lg:border-r border-custom-300 flex flex-col min-h-0 ${
+                selectedCustomer ? "hidden lg:flex" : "flex"
+              }`}>
                 <div className="px-6 py-4 border-b border-custom-200 shrink-0">
                   <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">
                     Step 1 of 2 — Select Customer
@@ -389,8 +393,12 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                   )}
                 </div>
 
+                <div className="px-4 py-3 border-t border-custom-300 flex items-center justify-end shrink-0 lg:hidden">
+                  <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                </div>
+
                 {selectedCustomer && (
-                  <div className="px-6 py-4 border-t border-custom-300 bg-primary-50 shrink-0">
+                  <div className="hidden sm:block px-6 py-4 border-t border-custom-300 bg-primary-50 shrink-0">
                     <p className="text-xs font-bold text-primary-600 uppercase tracking-wide mb-2">Selected</p>
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
@@ -419,9 +427,27 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
               </div>
 
               {/* RIGHT — Job details form */}
-              <div className="lg:w-3/5 flex flex-col min-h-0">
+              <div className={`lg:w-3/5 flex flex-col min-h-0 ${
+                selectedCustomer ? "flex" : "hidden lg:flex"
+              }`}>
                 <div className="px-6 py-4 border-b border-custom-200 shrink-0">
-                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Job Details</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Job Details</p>
+                    {selectedCustomer && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCustomer(null)}
+                        className="lg:hidden text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
+                      >
+                        ← Change customer
+                      </button>
+                    )}
+                  </div>
+                  {selectedCustomer && (
+                    <p className="text-xs text-custom-700 mt-0.5 truncate">
+                      {selectedCustomer.name}{selectedCustomer.company ? ` · ${selectedCustomer.company}` : ""}
+                    </p>
+                  )}
                   {!selectedCustomer && (
                     <p className="text-xs text-custom-600 mt-1">Select a customer first</p>
                   )}
@@ -459,8 +485,9 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Quantity</label>
-                      <Input name="quantity" type="number" min="1" placeholder="e.g. 500"
-                        value={form.quantity} onChange={handleFieldChange} fullWidth />
+                      <input name="quantity" type="number" min="1" placeholder="e.g. 500"
+                        value={form.quantity} onChange={handleFieldChange}
+                        className={selectCls} />
                     </div>
                   </div>
 
@@ -549,14 +576,11 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                   </div>
                 </div>
 
-                <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-end gap-3 shrink-0">
-                  <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                  <Button
-                    type="button"
-                    disabled={!step1Valid}
-                    onClick={() => setStep(2)}
-                  >
-                    Next: Stock Items →
+                <div className="px-4 py-3 border-t border-custom-300 flex items-center justify-end gap-2 shrink-0">
+                  <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                  <Button type="button" size="sm" disabled={!step1Valid} onClick={() => setStep(2)}>
+                    <span className="hidden sm:inline">Next: Stock Items →</span>
+                    <span className="sm:hidden">Next →</span>
                   </Button>
                 </div>
               </div>
@@ -657,81 +681,6 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                           </button>
                         </div>
                       ))}
-
-                      {/* Pricing Adjustments — below the added items list */}
-                      {itemsTotal > 0 && (
-                        <div className="mt-3 rounded-xl border border-custom-300 bg-custom-50 p-3 space-y-3">
-                          <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Pricing Adjustments</p>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            {/* Discount */}
-                            <div>
-                              <label className="block text-xs font-semibold text-secondary-100 mb-1">Discount (%)</label>
-                              <div className="flex items-center gap-1">
-                                <button type="button"
-                                  onClick={() => { setDiscountRate((v) => Math.max(0, v - 1)); setAmountManuallyEdited(false); }}
-                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-                                  <span className="text-xs font-bold leading-none">−</span>
-                                </button>
-                                <input type="number" min={0} max={100} value={discountRate}
-                                  onChange={(e) => { setDiscountRate(Math.min(100, Math.max(0, Number(e.target.value)))); setAmountManuallyEdited(false); }}
-                                  className="flex-1 px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs text-center focus:outline-none focus:border-primary-400 transition-colors"
-                                />
-                                <button type="button"
-                                  onClick={() => { setDiscountRate((v) => Math.min(100, v + 1)); setAmountManuallyEdited(false); }}
-                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-                                  <span className="text-xs font-bold leading-none">+</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Tax */}
-                            <div>
-                              <label className="block text-xs font-semibold text-secondary-100 mb-1">Tax / VAT (%)</label>
-                              <div className="flex items-center gap-1">
-                                <button type="button"
-                                  onClick={() => { setTaxRate((v) => Math.max(0, v - 1)); setAmountManuallyEdited(false); }}
-                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-                                  <span className="text-xs font-bold leading-none">−</span>
-                                </button>
-                                <input type="number" min={0} max={100} value={taxRate}
-                                  onChange={(e) => { setTaxRate(Math.min(100, Math.max(0, Number(e.target.value)))); setAmountManuallyEdited(false); }}
-                                  className="flex-1 px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs text-center focus:outline-none focus:border-primary-400 transition-colors"
-                                />
-                                <button type="button"
-                                  onClick={() => { setTaxRate((v) => Math.min(100, v + 1)); setAmountManuallyEdited(false); }}
-                                  className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-                                  <span className="text-xs font-bold leading-none">+</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Mini breakdown */}
-                          <div className="space-y-1 pt-2 border-t border-custom-200 text-xs">
-                            <div className="flex justify-between text-custom-700">
-                              <span>Subtotal</span>
-                              <span className="font-semibold text-secondary-100">{itemsTotal.toLocaleString()} RWF</span>
-                            </div>
-                            {discountRate > 0 && (
-                              <div className="flex justify-between text-custom-700">
-                                <span>Discount ({discountRate}%)</span>
-                                <span className="font-semibold text-orange-600">− {discountAmt.toLocaleString()} RWF</span>
-                              </div>
-                            )}
-                            {taxRate > 0 && (
-                              <div className="flex justify-between text-custom-700">
-                                <span>Tax / VAT ({taxRate}%)</span>
-                                <span className="font-semibold text-secondary-100">+ {taxAmt.toLocaleString()} RWF</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between font-bold text-secondary-100 pt-1 border-t border-custom-200">
-                              <span>Total</span>
-                              <span className="text-primary-500">{computedTotal.toLocaleString()} RWF</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -765,8 +714,9 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                   ) : (
                     <div className="space-y-3">
                       {selectedItems.map((si) => {
-                        const isOverStock = si.quantityNeeded > si.stockItem.currentStock;
-                        const lineTotal = (si.stockItem.unitCost ?? 0) * si.quantityNeeded;
+                        const qtyNum = parseFloat(si.quantityNeeded) || 0;
+                        const isOverStock = qtyNum > si.stockItem.currentStock;
+                        const lineTotal = (si.stockItem.unitCost ?? 0) * qtyNum;
 
                         return (
                           <div
@@ -800,12 +750,10 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                                   Quantity Needed ({si.stockItem.unit})
                                 </label>
                                 <input
-                                  type="number"
-                                  min="1"
+                                  type="text"
                                   value={si.quantityNeeded}
-                                  onChange={(e) =>
-                                    updateItemQty(si.stockItem.id, parseInt(e.target.value, 10) || 1)
-                                  }
+                                  onChange={(e) => updateItemQty(si.stockItem.id, e.target.value)}
+                                  placeholder="e.g. 5"
                                   className={`w-full px-3 py-2 rounded-xl border text-sm font-semibold text-secondary-100 bg-style-500 focus:outline-none focus:ring-2 transition-colors ${
                                     isOverStock
                                       ? "border-red-400 focus:ring-red-200"
@@ -850,6 +798,33 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
 
                 </div>
 
+                {/* Pricing card — above footer */}
+                {itemsTotal > 0 && (
+                  <div className="mx-6 mb-3 rounded-xl border border-custom-300 bg-custom-50 p-3">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-custom-700">Discount %</span>
+                        <input type="text" inputMode="numeric" value={discountRate}
+                          onChange={(e) => { setDiscountRate(e.target.value); setAmountManuallyEdited(false); }}
+                          className="w-14 px-2 py-1 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs text-center focus:outline-none focus:border-primary-400 transition-colors" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-custom-700">Tax %</span>
+                        <input type="text" inputMode="numeric" value={taxRate}
+                          onChange={(e) => { setTaxRate(e.target.value); setAmountManuallyEdited(false); }}
+                          className="w-14 px-2 py-1 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs text-center focus:outline-none focus:border-primary-400 transition-colors" />
+                      </div>
+                      <div className="ml-auto text-right">
+                        <p className="text-xs text-custom-700">
+                          {discountNum > 0 && <span className="mr-2">−{discountAmt.toLocaleString()} RWF</span>}
+                          {taxNum > 0 && <span>+{taxAmt.toLocaleString()} RWF tax</span>}
+                        </p>
+                        <p className="text-sm font-bold text-primary-500">{computedTotal.toLocaleString()} RWF</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Error — step 2 */}
                 {submitError && (
                   <div className="mx-6 mb-2 flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -859,21 +834,16 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                 )}
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
-                  >
+                <div className="px-4 py-3 border-t border-custom-300 flex items-center justify-between gap-2 shrink-0">
+                  <button type="button" onClick={() => setStep(1)}
+                    className="text-xs font-semibold text-custom-700 hover:text-secondary-100 transition-colors">
                     ← Back
                   </button>
-                  <div className="flex gap-3">
-                    <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button
-                      type="button"
-                      onClick={() => setStep(3)}
-                    >
-                      Next: Documents →
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                    <Button type="button" size="sm" onClick={() => setStep(3)}>
+                      <span className="hidden sm:inline">Next: Documents →</span>
+                      <span className="sm:hidden">Next →</span>
                     </Button>
                   </div>
                 </div>
@@ -961,18 +931,16 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                 </div>
               </div>
 
-              <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
-                >
+              <div className="px-4 py-3 border-t border-custom-300 flex items-center justify-between gap-2 shrink-0">
+                <button type="button" onClick={() => setStep(2)}
+                  className="text-xs font-semibold text-custom-700 hover:text-secondary-100 transition-colors">
                   ← Back
                 </button>
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                  <Button type="button" onClick={() => setStep(4)}>
-                    Next: Review & Amount →
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                  <Button type="button" size="sm" onClick={() => setStep(4)}>
+                    <span className="hidden sm:inline">Next: Review & Amount →</span>
+                    <span className="sm:hidden">Next →</span>
                   </Button>
                 </div>
               </div>
@@ -1033,7 +1001,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Items Breakdown</p>
                       <div className="space-y-2">
                         {selectedItems.map((si) => {
-                          const lineTotal = (si.stockItem.unitCost ?? 0) * si.quantityNeeded;
+                          const lineTotal = (si.stockItem.unitCost ?? 0) * (parseFloat(si.quantityNeeded) || 0);
                           return (
                             <div key={si.stockItem.id} className="flex justify-between text-sm">
                               <span className="text-custom-700 truncate max-w-[60%]">
@@ -1051,13 +1019,13 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                               <span className="text-custom-700">Subtotal</span>
                               <span className="font-semibold text-secondary-100">{itemsTotal.toLocaleString()} RWF</span>
                             </div>
-                            {discountRate > 0 && (
+                            {discountNum > 0 && (
                               <div className="flex justify-between">
                                 <span className="text-custom-700">Discount ({discountRate}%)</span>
                                 <span className="font-semibold text-orange-600">− {discountAmt.toLocaleString()} RWF</span>
                               </div>
                             )}
-                            {taxRate > 0 && (
+                            {taxNum > 0 && (
                               <div className="flex justify-between">
                                 <span className="text-custom-700">Tax / VAT ({taxRate}%)</span>
                                 <span className="font-semibold text-secondary-100">+ {taxAmt.toLocaleString()} RWF</span>
@@ -1149,21 +1117,14 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 border-t border-custom-300 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="text-sm font-semibold text-custom-700 hover:text-secondary-100 transition-colors"
-                >
+              <div className="px-4 py-3 border-t border-custom-300 flex items-center justify-between gap-2 shrink-0">
+                <button type="button" onClick={() => setStep(3)}
+                  className="text-xs font-semibold text-custom-700 hover:text-secondary-100 transition-colors">
                   ← Back
                 </button>
-                <div className="flex gap-3">
-                  <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                  <Button
-                    type="button"
-                    disabled={submitting}
-                    onClick={handleSubmit}
-                  >
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+                  <Button type="button" size="sm" disabled={submitting} onClick={handleSubmit}>
                     {submitting ? "Creating…" : "Create Job"}
                   </Button>
                 </div>
