@@ -1,0 +1,3863 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pallotti Presse – Complete User Manual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    :root {
+      --navy: #0f1c2e;
+      --navy2: #162032;
+      --navy3: #1e2f47;
+      --blue: #2563eb;
+      --blue2: #1d4ed8;
+      --blue-light: #3b82f6;
+      --blue-pale: #eff6ff;
+      --blue-100: #dbeafe;
+      --gold: #f59e0b;
+      --gold2: #d97706;
+      --gold-pale: #fffbeb;
+      --green: #16a34a;
+      --green2: #15803d;
+      --green-pale: #f0fdf4;
+      --green-100: #dcfce7;
+      --red: #dc2626;
+      --red-pale: #fef2f2;
+      --red-100: #fee2e2;
+      --orange: #ea580c;
+      --orange-pale: #fff7ed;
+      --orange-100: #ffedd5;
+      --purple: #7c3aed;
+      --purple-pale: #f5f3ff;
+      --purple-100: #ede9fe;
+      --teal: #0d9488;
+      --teal-pale: #f0fdfa;
+      --teal-100: #ccfbf1;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-400: #94a3b8;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
+      --font: 'Inter', sans-serif;
+      --radius: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 4px 12px rgba(0, 0, 0, .06);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, .1), 0 1px 4px rgba(0, 0, 0, .06);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, .12);
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      font-family: var(--font);
+      color: var(--gray-800);
+      background: var(--gray-50);
+      line-height: 1.7;
+      font-size: 15px
+    }
+  </style>
+  <style>
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100vh;
+      background: var(--navy);
+      color: #fff;
+      overflow-y: auto;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 4px
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, .15);
+      border-radius: 2px
+    }
+
+    .sb-header {
+      padding: 1.5rem 1.25rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, .08)
+    }
+
+    .sb-logo {
+      display: flex;
+      align-items: center;
+      gap: .75rem
+    }
+
+    .sb-logo img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      object-fit: cover
+    }
+
+    .sb-logo-text {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2
+    }
+
+    .sb-logo-sub {
+      font-size: .7rem;
+      color: rgba(255, 255, 255, .4);
+      margin-top: .1rem
+    }
+
+    .sb-nav {
+      flex: 1;
+      padding: .75rem 0
+    }
+
+    .sb-section {
+      padding: .4rem 1.25rem .2rem;
+      font-size: .6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: rgba(255, 255, 255, .25);
+      margin-top: .5rem
+    }
+
+    .sb-nav a {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .48rem 1.25rem;
+      color: rgba(255, 255, 255, .65);
+      text-decoration: none;
+      font-size: .82rem;
+      font-weight: 500;
+      transition: all .18s;
+      border-left: 3px solid transparent;
+      position: relative
+    }
+
+    .sb-nav a:hover {
+      background: rgba(255, 255, 255, .06);
+      color: #fff;
+      border-left-color: rgba(255, 255, 255, .2)
+    }
+
+    .sb-nav a.active {
+      background: rgba(37, 99, 235, .18);
+      color: #fff;
+      border-left-color: var(--blue-light)
+    }
+
+    .sb-icon {
+      width: 16px;
+      text-align: center;
+      font-size: .95rem;
+      flex-shrink: 0
+    }
+
+    .sb-num {
+      font-size: .7rem;
+      background: rgba(255, 255, 255, .08);
+      border-radius: 3px;
+      padding: .05rem .3rem;
+      margin-left: auto;
+      color: rgba(255, 255, 255, .4);
+      font-weight: 600
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: 280px;
+      min-height: 100vh
+    }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy3) 60%, #1a3a5c 100%);
+      color: #fff;
+      padding: 3.5rem 3.5rem 3rem;
+      position: relative;
+      overflow: hidden
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      right: -80px;
+      top: -80px;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(37, 99, 235, .12) 0%, transparent 70%);
+      pointer-events: none
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      left: 30%;
+      bottom: -40px;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(245, 158, 11, .06) 0%, transparent 70%);
+      pointer-events: none
+    }
+
+    .hero-eyebrow {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: 1rem
+    }
+
+    .hero-eyebrow .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, .4);
+      animation: pulse-dot 2s infinite
+    }
+
+    @keyframes pulse-dot {
+      0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, .4)
+      }
+
+      70% {
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0)
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0)
+      }
+    }
+
+    .hero-eyebrow span {
+      font-size: .75rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, .5);
+      text-transform: uppercase;
+      letter-spacing: 1px
+    }
+
+    .hero h1 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      letter-spacing: -.5px;
+      line-height: 1.15
+    }
+
+    .hero h1 span {
+      color: var(--gold)
+    }
+
+    .hero-desc {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, .6);
+      max-width: 620px;
+      margin-top: .75rem;
+      line-height: 1.6
+    }
+
+    .hero-meta {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .3rem .85rem;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 600
+    }
+
+    .badge-version {
+      background: rgba(245, 158, 11, .15);
+      color: var(--gold);
+      border: 1px solid rgba(245, 158, 11, .25)
+    }
+
+    .badge-live {
+      background: rgba(34, 197, 94, .12);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, .2)
+    }
+
+    /* ── CONTENT ── */
+    .content {
+      max-width: 1060px;
+      padding: 2.5rem 3.5rem 5rem
+    }
+  </style>
+
+  <style>
+    /* ── SECTION HEADINGS ── */
+    .sec-title {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin: 3rem 0 1.5rem
+    }
+
+    .sec-title:first-child {
+      margin-top: 0
+    }
+
+    .sec-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0
+    }
+
+    .sec-icon-blue {
+      background: var(--blue-100)
+    }
+
+    .sec-text h2 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      line-height: 1.2
+    }
+
+    .sec-text p {
+      font-size: .8rem;
+      color: var(--gray-500);
+      margin-top: .1rem
+    }
+
+    .sec-divider {
+      height: 2px;
+      background: linear-gradient(90deg, var(--blue-100), transparent);
+      border-radius: 1px;
+      margin: -1rem 0 1.5rem
+    }
+
+    h3.sub-head {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--gray-700);
+      margin: 2rem 0 .75rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem
+    }
+
+    h3.sub-head::before {
+      content: '';
+      width: 4px;
+      height: 16px;
+      background: var(--blue);
+      border-radius: 2px;
+      flex-shrink: 0
+    }
+
+    /* ── PAGE CARD ── */
+    .page-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin: 1.25rem 0;
+      box-shadow: var(--shadow)
+    }
+
+    .pc-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--gray-100);
+      background: var(--gray-50)
+    }
+
+    .pc-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+      background: var(--blue-100)
+    }
+
+    .pc-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gray-900)
+    }
+
+    .pc-route {
+      font-family: monospace;
+      font-size: .75rem;
+      color: var(--gray-500);
+      background: var(--gray-100);
+      padding: .1rem .5rem;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: .2rem
+    }
+
+    .pc-body {
+      padding: 1.25rem 1.5rem
+    }
+
+    /* ── SCREEN MOCK ── */
+    .screen-mock {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: .75rem 0
+    }
+
+    .screen-mock-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--gray-400);
+      margin-bottom: .75rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem
+    }
+
+    .screen-mock-title::before {
+      content: '🖥';
+      font-size: .85rem
+    }
+
+    /* ── KPI GRID (dashboard illustration) ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+      margin: .75rem 0
+    }
+
+    .kpi-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: .75rem 1rem;
+      position: relative;
+      overflow: hidden
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: 8px 8px 0 0
+    }
+
+    .kpi-blue::before {
+      background: linear-gradient(90deg, var(--blue), var(--blue-light))
+    }
+
+    .kpi-green::before {
+      background: linear-gradient(90deg, var(--green), #4ade80)
+    }
+
+    .kpi-red::before {
+      background: linear-gradient(90deg, var(--red), #f87171)
+    }
+
+    .kpi-gold::before {
+      background: linear-gradient(90deg, var(--gold2), var(--gold))
+    }
+
+    .kpi-purple::before {
+      background: linear-gradient(90deg, var(--purple), #a78bfa)
+    }
+
+    .kpi-teal::before {
+      background: linear-gradient(90deg, var(--teal), #2dd4bf)
+    }
+
+    .kpi-label {
+      font-size: .7rem;
+      font-weight: 600;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: .4px
+    }
+
+    .kpi-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin: .1rem 0 0;
+      line-height: 1
+    }
+
+    .kpi-sub {
+      font-size: .7rem;
+      color: var(--gray-400);
+      margin-top: .15rem
+    }
+
+    /* ── WIDGET ROW ── */
+    .widget-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+      margin: .75rem 0
+    }
+
+    .widget {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: .75rem 1rem
+    }
+
+    .widget-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--gray-500);
+      margin-bottom: .5rem
+    }
+
+    .widget-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .3rem 0;
+      border-bottom: 1px solid var(--gray-100);
+      font-size: .78rem
+    }
+
+    .widget-item:last-child {
+      border-bottom: none
+    }
+
+    .widget-item .wi-label {
+      color: var(--gray-700)
+    }
+
+    .widget-item .wi-val {
+      font-weight: 700;
+      color: var(--gray-900)
+    }
+
+    .wi-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-right: .4rem
+    }
+
+    /* ── EXPAND SECTION ── */
+    .expand-section {
+      border: 1px solid var(--blue-100);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: .75rem 0
+    }
+
+    .expand-header {
+      background: var(--blue-pale);
+      padding: .55rem 1rem;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--blue2);
+      display: flex;
+      align-items: center;
+      gap: .4rem
+    }
+
+    .expand-body {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .6rem;
+      padding: .75rem
+    }
+
+    .expand-item {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: .6rem .75rem;
+      font-size: .75rem
+    }
+
+    .expand-item strong {
+      display: block;
+      color: var(--gray-700);
+      font-weight: 700;
+      margin-bottom: .2rem;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .3px
+    }
+
+    .expand-item span {
+      color: var(--gray-500)
+    }
+  </style>
+
+  <style>
+    /* ── STEP BOX ── */
+    .step-box {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      margin: 1rem 0;
+      box-shadow: var(--shadow)
+    }
+
+    .step-box-title {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 1rem;
+      padding-bottom: .6rem;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      gap: .4rem
+    }
+
+    .step-item {
+      display: flex;
+      gap: .85rem;
+      align-items: flex-start;
+      padding: .6rem 0;
+      border-bottom: 1px solid var(--gray-50)
+    }
+
+    .step-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: var(--blue);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 800;
+      margin-top: 2px
+    }
+
+    .step-text {
+      flex: 1;
+      font-size: .88rem;
+      color: var(--gray-700);
+      line-height: 1.5
+    }
+
+    .step-text strong {
+      color: var(--gray-900)
+    }
+
+    /* inline labels */
+    .lbl-click {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      background: var(--gold);
+      color: #78350f;
+      padding: .1rem .5rem;
+      border-radius: 5px;
+      font-size: .78rem;
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .lbl-field {
+      display: inline-block;
+      background: #fef9c3;
+      color: #713f12;
+      padding: .1rem .45rem;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: .78rem;
+      font-weight: 600;
+      border: 1px solid #fde68a
+    }
+
+    .lbl-ui {
+      display: inline-block;
+      background: var(--blue-pale);
+      color: var(--blue2);
+      padding: .1rem .45rem;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: .78rem;
+      font-weight: 600;
+      border: 1px solid var(--blue-100)
+    }
+
+    kbd {
+      background: var(--gray-100);
+      border: 1px solid var(--gray-300);
+      border-radius: 4px;
+      padding: .05rem .4rem;
+      font-family: monospace;
+      font-size: .78rem;
+      color: var(--gray-700)
+    }
+
+    /* ── INFO / TIP / WARN BOXES ── */
+    .info-box,
+    .tip-box,
+    .warn-box {
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      display: flex;
+      gap: .75rem;
+      align-items: flex-start
+    }
+
+    .info-box {
+      background: var(--blue-pale);
+      border: 1px solid var(--blue-100)
+    }
+
+    .tip-box {
+      background: var(--gold-pale);
+      border: 1px solid #fde68a
+    }
+
+    .warn-box {
+      background: var(--red-pale);
+      border: 1px solid var(--red-100)
+    }
+
+    .box-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: .1rem
+    }
+
+    .box-content p {
+      margin: 0;
+      font-size: .85rem;
+      line-height: 1.55
+    }
+
+    .box-content p:not(:last-child) {
+      margin-bottom: .4rem
+    }
+
+    .box-content strong {
+      font-weight: 700
+    }
+
+    .info-box .box-content strong {
+      color: var(--blue2)
+    }
+
+    .tip-box .box-content strong {
+      color: var(--gold2)
+    }
+
+    .warn-box .box-content strong {
+      color: var(--red)
+    }
+
+    /* ── ROLE BADGES ── */
+    .role-tab {
+      display: inline-flex;
+      align-items: center;
+      padding: .2rem .65rem;
+      border-radius: 20px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .4px
+    }
+
+    .role-admin {
+      background: #dbeafe;
+      color: #1d4ed8
+    }
+
+    .role-reception {
+      background: #dcfce7;
+      color: #15803d
+    }
+
+    .role-sales {
+      background: #ffedd5;
+      color: #c2410c
+    }
+
+    .role-finance {
+      background: #ede9fe;
+      color: #6d28d9
+    }
+
+    .role-accountant {
+      background: #fee2e2;
+      color: #b91c1c
+    }
+
+    .role-production {
+      background: #ccfbf1;
+      color: #0f766e
+    }
+
+    .role-supervisor {
+      background: #fef9c3;
+      color: #a16207
+    }
+
+    .role-worker {
+      background: #fce7f3;
+      color: #be185d
+    }
+
+    .role-stock {
+      background: #d1fae5;
+      color: #065f46
+    }
+
+    .role-hr {
+      background: #e2e8f0;
+      color: #334155
+    }
+
+    .role-hobe {
+      background: #ffe4e6;
+      color: #9f1239
+    }
+
+    /* ── STATUS BADGES ── */
+    .sbadge {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .2rem .65rem;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 700
+    }
+
+    .s-pending {
+      background: #fef9c3;
+      color: #a16207
+    }
+
+    .s-confirmed {
+      background: #dbeafe;
+      color: #1e40af
+    }
+
+    .s-composition {
+      background: #ffedd5;
+      color: #c2410c
+    }
+
+    .s-montage {
+      background: #fef9c3;
+      color: #a16207
+    }
+
+    .s-printing {
+      background: #fce7f3;
+      color: #be185d
+    }
+
+    .s-binding {
+      background: #ccfbf1;
+      color: #0f766e
+    }
+
+    .s-packaging {
+      background: #d1fae5;
+      color: #065f46
+    }
+
+    .s-quality {
+      background: #ede9fe;
+      color: #6d28d9
+    }
+
+    .s-ready {
+      background: #dbeafe;
+      color: #1d4ed8
+    }
+
+    .s-delivered {
+      background: #d1fae5;
+      color: #065f46
+    }
+
+    .s-completed {
+      background: #d1fae5;
+      color: #065f46
+    }
+
+    .s-rejected {
+      background: #fee2e2;
+      color: #b91c1c
+    }
+
+    /* ── TABLES ── */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: .83rem;
+      background: #fff;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      box-shadow: var(--shadow)
+    }
+
+    .data-table thead th {
+      background: var(--gray-50);
+      color: var(--gray-600);
+      font-weight: 700;
+      text-align: left;
+      padding: .7rem 1rem;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid var(--gray-200)
+    }
+
+    .data-table tbody td {
+      padding: .65rem 1rem;
+      border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-700);
+      vertical-align: top
+    }
+
+    .data-table tbody tr:last-child td {
+      border-bottom: none
+    }
+
+    .data-table tbody tr:hover td {
+      background: var(--gray-50)
+    }
+
+    /* ── FLOW ── */
+    .flow-wrap {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      margin: 1rem 0;
+      box-shadow: var(--shadow)
+    }
+
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .4rem
+    }
+
+    .flow-step {
+      padding: .3rem .8rem;
+      border-radius: 20px;
+      font-size: .75rem;
+      font-weight: 700;
+      white-space: nowrap
+    }
+
+    .flow-arrow {
+      color: var(--gray-300);
+      font-weight: 700
+    }
+
+    /* ── BACK TO TOP ── */
+    .back-top {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      margin-top: 1.25rem;
+      font-size: .75rem;
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 600;
+      opacity: .7;
+      transition: opacity .2s
+    }
+
+    .back-top:hover {
+      opacity: 1
+    }
+
+    /* ── FOOTER ── */
+    .doc-footer {
+      margin-top: 4rem;
+      padding: 1.5rem 0;
+      border-top: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .75rem;
+      color: var(--gray-400);
+      font-size: .78rem
+    }
+
+    /* ── MOBILE TOGGLE ── */
+    .mob-toggle {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1100;
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      width: 42px;
+      height: 42px;
+      font-size: 1.4rem;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-md)
+    }
+
+    /* ── GENERAL ── */
+    .content p {
+      margin-bottom: .9rem;
+      color: var(--gray-600);
+      font-size: .88rem;
+      line-height: 1.65
+    }
+
+    .content ul,
+    .content ol {
+      margin: 0 0 1rem 1.4rem;
+      color: var(--gray-600);
+      font-size: .88rem
+    }
+
+    .content li {
+      margin-bottom: .35rem;
+      line-height: 1.55
+    }
+
+    @media(max-width:1000px) {
+      .sidebar {
+        transform: translateX(-100%)
+      }
+
+      .sidebar.open {
+        transform: translateX(0)
+      }
+
+      .main {
+        margin-left: 0
+      }
+
+      .mob-toggle {
+        display: flex
+      }
+
+      .hero {
+        padding: 2.5rem 1.5rem 2rem;
+        padding-top: 4rem
+      }
+
+      .hero h1 {
+        font-size: 1.65rem
+      }
+
+      .content {
+        padding: 1.5rem
+      }
+    }
+
+    @media print {
+
+      .sidebar,
+      .mob-toggle,
+      .back-top {
+        display: none !important
+      }
+
+      .main {
+        margin-left: 0
+      }
+
+      .hero {
+        padding: 2rem;
+        background: var(--navy) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact
+      }
+
+      .content {
+        padding: 1.5rem
+      }
+
+      .kpi-card,
+      .step-item {
+        break-inside: avoid
+      }
+    }
+  </style>
+
+</head>
+
+<body>
+  <button class="mob-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo">
+        <img src="/logo.jpeg" alt="Logo" onerror="this.style.display='none'" />
+        <div>
+          <div class="sb-logo-text">Pallotti Presse</div>
+          <div class="sb-logo-sub">Complete User Manual</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Getting Started</div>
+      <a href="#intro"><span class="sb-icon">📖</span> About This System</a>
+      <a href="#layout"><span class="sb-icon">🖥️</span> Screen Layout</a>
+      <a href="#login"><span class="sb-icon">🔐</span> How to Log In</a>
+      <a href="#sidebar-nav"><span class="sb-icon">🧭</span> Sidebar Navigation</a>
+      <a href="#topbar"><span class="sb-icon">👤</span> Profile & Logout</a>
+      <div class="sb-section">Role Guides</div>
+      <a href="#admin"><span class="sb-icon">⚙️</span> Admin (Director)</a>
+      <a href="#reception"><span class="sb-icon">🏢</span> Receptionist</a>
+      <a href="#sales"><span class="sb-icon">💼</span> Sales Officer</a>
+      <a href="#finance"><span class="sb-icon">💰</span> DAF (Finance)</a>
+      <a href="#accountant"><span class="sb-icon">🧾</span> Accountant</a>
+      <a href="#production"><span class="sb-icon">🏭</span> Production Manager</a>
+      <a href="#supervisor"><span class="sb-icon">🎯</span> Supervisor</a>
+      <a href="#worker"><span class="sb-icon">🔧</span> Worker</a>
+      <a href="#stock"><span class="sb-icon">📦</span> Stock Manager</a>
+      <a href="#hr"><span class="sb-icon">👥</span> HR &amp; Payroll</a>
+      <a href="#hobe"><span class="sb-icon">🛒</span> Hobe (Trade)</a>
+      <div class="sb-section">System Reference</div>
+      <a href="#jobflow"><span class="sb-icon">🔄</span> Job Status Flow</a>
+      <a href="#reports-guide"><span class="sb-icon">📈</span> Reports Module</a>
+      <a href="#leave"><span class="sb-icon">🏖️</span> My Leave</a>
+      <a href="#notifications"><span class="sb-icon">🔔</span> Notifications</a>
+      <a href="#faq"><span class="sb-icon">❓</span> Troubleshooting</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <section class="hero">
+      <div class="hero-eyebrow">
+        <div class="live-dot"></div>
+        <span>Official Documentation</span>
+      </div>
+      <h1>Pallotti Presse<br /><span>Complete User Guide</span></h1>
+      <p class="hero-desc">This manual matches the actual system code. Every screen, button, and step described here
+        reflects exactly what is built. Follow any section to complete your tasks confidently.</p>
+      <div class="hero-meta">
+        <span class="hero-badge badge-version">📄 June 2026</span>
+      </div>
+    </section>
+    <div class="content">
+
+      <!-- ═══ 1. INTRO ═══ -->
+      <div class="sec-title" id="intro">
+        <div class="sec-icon sec-icon-blue">📖</div>
+        <div class="sec-text">
+          <h2>1. About This System</h2>
+          <p>Overview and user roles</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <p><strong>Pallotti Presse</strong> is a web-based printing job management system. It runs in any modern browser
+        (Chrome, Firefox, Edge, Safari) and requires an internet connection.</p>
+      <p><strong>What it does:</strong></p>
+      <ul>
+        <li>Creates and tracks printing jobs through every production stage</li>
+        <li>Creates price proposals (performa invoices) for customers</li>
+        <li>Records payments and generates invoices</li>
+        <li>Manages inventory (boutique stock and general production stock)</li>
+        <li>Manages employees, casual workers, payroll, and leave</li>
+        <li>Handles Hobe trade (batch sales with partial/overpaid tracking)</li>
+        <li>Generates and shares reports across roles</li>
+      </ul>
+      <h3 class="sub-head">11 User Roles</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Who</th>
+            <th>What They Do</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="role-tab role-admin">Admin</span></td>
+            <td>Director / System Admin</td>
+            <td>Full access — users, jobs, departments, settings, reports, permissions</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-reception">Receptionist</span></td>
+            <td>Front desk</td>
+            <td>Payments, boutique sales, deliveries, visitors, expenses/outstands</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-sales">Sales</span></td>
+            <td>Sales Officer</td>
+            <td>Jobs, performa invoices (quotes), stock visibility</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-finance">DAF</span></td>
+            <td>Finance Director</td>
+            <td>Job approvals (approve/reject), procurement, HR overview</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-accountant">Accountant</span></td>
+            <td>Accountant</td>
+            <td>Payments, invoices, documents, operations, recovery (debt collection)</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-production">Prod Mgr</span></td>
+            <td>Production Manager</td>
+            <td>Job planning and department assignment, general stock, departments</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-supervisor">Supervisor</span></td>
+            <td>Department Supervisor</td>
+            <td>Assign jobs to workers, mark department done, employees, machines</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-worker">Worker</span></td>
+            <td>Production Worker</td>
+            <td>Task board (start/pause/resume/complete jobs), material requests</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-stock">Stock</span></td>
+            <td>Stock Manager</td>
+            <td>Boutique stock, general stock management</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-hr">HR</span></td>
+            <td>Human Resources</td>
+            <td>Employees, casual workers (abanyabiraka), payroll, leave management</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-hobe">Hobe</span></td>
+            <td>Trade Officer</td>
+            <td>Hobe batch trading, stock requests</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="info-box"><span class="box-icon">📌</span>
+        <div class="box-content">
+          <p><strong>Important:</strong> If you do not have login details, ask your system administrator for the web
+            address (URL), your email, and your initial password.</p>
+        </div>
+      </div>
+      <a href="#" class="back-top">↑ Back to top</a>
+
+      <!-- ═══ 2. LAYOUT ═══ -->
+      <div class="sec-title" id="layout">
+        <div class="sec-icon sec-icon-blue">🖥️</div>
+        <div class="sec-text">
+          <h2>2. Understanding the Screen Layout</h2>
+          <p>How the interface is organized</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <p>After logging in, the screen has two main areas:</p>
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon">◀</div>
+          <div>
+            <div class="pc-title">Left Sidebar</div>
+            <div class="pc-route">Fixed navigation panel</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <p>Dark panel on the left side of every page. Contains:</p>
+          <ul>
+            <li>Company logo and name at the top</li>
+            <li>Navigation menu items in the middle — click any to open that page</li>
+            <li>Items with a <strong>▾ arrow</strong> expand to show sub-items</li>
+            <li><strong>🔔 Notifications</strong> button at the bottom (shows unread count badge)</li>
+            <li><strong>⚙️ Settings</strong> button at the bottom — goes to your Profile or System Settings</li>
+          </ul>
+        </div>
+      </div>
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon">⬜</div>
+          <div>
+            <div class="pc-title">Main Content Area</div>
+            <div class="pc-route">Center panel</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <p>The large area where all pages, tables, forms, and dashboards appear. Click any sidebar item to load it
+            here.</p>
+        </div>
+      </div>
+      <div class="info-box"><span class="box-icon">📌</span>
+        <div class="box-content">
+          <p><strong>Note:</strong> There is no top bar. Your profile and logout are accessed via the sidebar footer
+            <strong>⚙️ Settings</strong> button.
+          </p>
+        </div>
+      </div>
+      <a href="#" class="back-top">↑ Back to top</a>
+
+      <!-- ═══ 3. LOGIN ═══ -->
+      <div class="sec-title" id="login">
+        <div class="sec-icon sec-icon-blue">🔐</div>
+        <div class="sec-text">
+          <h2>3. How to Log In</h2>
+          <p>Accessing the system</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon">🔐</div>
+          <div>
+            <div class="pc-title">Login Page — What You See</div>
+            <div class="pc-route">/login</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">Screen layout</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;font-size:.8rem">
+              <div
+                style="background:var(--blue-pale);border-radius:6px;padding:.75rem;text-align:center;color:var(--blue2)">
+                <br /><img src="../jts/src/assets/images/login.png" alt="Illustration"
+                  style="max-width:100%;height:auto">
+              </div>
+              <div
+                style="background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:.75rem;font-size:.75rem;color:var(--gray-600)">
+                <div style="font-weight:700;color:var(--gray-900);margin-bottom:.4rem">Login</div>
+                <div style="background:var(--gray-100);border-radius:4px;padding:.3rem .5rem;margin:.2rem 0">📧 Email
+                  address</div>
+                <div style="background:var(--gray-100);border-radius:4px;padding:.3rem .5rem;margin:.2rem 0">🔒 Password
+                  ••••••</div>
+                <div style="margin:.3rem 0;color:var(--gray-500)">☐ Remember me &nbsp; Forgot password?</div>
+                <div
+                  style="background:var(--gold);color:#78350f;border-radius:5px;padding:.3rem .5rem;text-align:center;font-weight:700;margin-top:.4rem">
+                  Login</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step-box">
+        <div class="step-box-title">📋 Step-by-step: Log in</div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Open Chrome or Firefox. Type the
+            system URL in the address bar and press <kbd>Enter</kbd>.</span></div>
+        <div class="step-item"><span class="step-num">2</span><span class="step-text">Click the <span
+              class="lbl-field">Email</span> field and type your email address.</span></div>
+        <div class="step-item"><span class="step-num">3</span><span class="step-text">Click the <span
+              class="lbl-field">Password</span> field and type your password. You will see dots — this is normal.</span>
+        </div>
+        <div class="step-item"><span class="step-num">4</span><span class="step-text">(Optional) Tick <span
+              class="lbl-field">Remember me</span> to stay logged in on this computer.</span></div>
+        <div class="step-item"><span class="step-num">5</span><span class="step-text">Click the yellow <span
+              class="lbl-click">Login</span> button.</span></div>
+        <div class="step-item"><span class="step-num">6</span><span class="step-text">The system sends you to your
+            role's dashboard automatically. If you see an error, check for typing mistakes or ask admin to reset your
+            password.</span></div>
+      </div>
+      <h3 class="sub-head">Where each role lands after login</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Redirected To</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="role-tab role-admin">Admin</span></td>
+            <td><code>/admin</code> — Director Dashboard</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-reception">Receptionist</span></td>
+            <td><code>/reception</code> — Reception Dashboard</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-sales">Sales</span></td>
+            <td><code>/sales</code> — Sales Dashboard</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-finance">DAF</span></td>
+            <td><code>/finance/daf</code> — DAF Dashboard</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-accountant">Accountant</span></td>
+            <td><code>/finance/accountant1</code> — Accountant Dashboard</td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-production">Prod Mgr</span></td>
+            <td><code>/production-manager</code></td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-stock">Stock</span></td>
+            <td><code>/stock</code></td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-supervisor">Supervisor</span></td>
+            <td><code>/supervisor</code></td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-worker">Worker</span></td>
+            <td><code>/worker</code></td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-hr">HR</span></td>
+            <td><code>/hr</code></td>
+          </tr>
+          <tr>
+            <td><span class="role-tab role-hobe">Hobe</span></td>
+            <td><code>/hobe</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <a href="#" class="back-top">↑ Back to top</a>
+
+      <!-- ═══ 4. SIDEBAR NAV ═══ -->
+      <div class="sec-title" id="sidebar-nav">
+        <div class="sec-icon sec-icon-blue">🧭</div>
+        <div class="sec-text">
+          <h2>4. Sidebar Navigation</h2>
+          <p>Getting around the system</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <div class="step-box">
+        <div class="step-box-title">📋 How to navigate</div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the page you want in the left
+            sidebar. Click the text once — the page opens in the center area.</span></div>
+        <div class="step-item"><span class="step-num">2</span><span class="step-text">Items with a <strong>▾
+              arrow</strong> (e.g., Reports) expand when clicked. Sub-items appear below, indented. Click any sub-item
+            to go there.</span></div>
+        <div class="step-item"><span class="step-num">3</span><span class="step-text">The currently active page is
+            highlighted with a blue left border in the sidebar.</span></div>
+        <div class="step-item"><span class="step-num">4</span><span class="step-text">At the <strong>bottom</strong> of
+            the sidebar: <strong>🔔 Notifications</strong> (with unread count) and <strong>⚙️ Settings</strong> (profile
+            or system settings).</span></div>
+      </div>
+      <div class="info-box"><span class="box-icon">📌</span>
+        <div class="box-content">
+          <p><strong>Missing menu items?</strong> Some items only appear if you have the correct permission. The Admin
+            can grant access via <strong>UI Permissions</strong>. Contact them if you believe an item should be visible
+            to you.</p>
+        </div>
+      </div>
+      <a href="#" class="back-top">↑ Back to top</a>
+
+      <!-- ═══ 5. PROFILE ═══ -->
+      <div class="sec-title" id="topbar">
+        <div class="sec-icon sec-icon-blue">👤</div>
+        <div class="sec-text">
+          <h2>5. Profile, Password &amp; Logout</h2>
+          <p>Managing your account</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <p>Your profile, password change, and logout are all accessed via the sidebar footer. Click the <strong>⚙️
+          Settings</strong> button at the very bottom of the sidebar.</p>
+      <ul>
+        <li><strong>Admin role:</strong> Settings → goes to System Settings page</li>
+        <li><strong>All other roles:</strong> Settings → goes to your Profile page</li>
+      </ul>
+      <div class="step-box">
+        <div class="step-box-title">🔑 Change your password</div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click the <strong>⚙️
+              Settings</strong> button at the bottom of the sidebar.</span></div>
+        <div class="step-item"><span class="step-num">2</span><span class="step-text">Your Profile page opens. Find the
+            password change section.</span></div>
+        <div class="step-item"><span class="step-num">3</span><span class="step-text">Enter your current password, new
+            password, and confirm the new password.</span></div>
+        <div class="step-item"><span class="step-num">4</span><span class="step-text">Click <span class="lbl-click">Save
+              Changes</span>.</span></div>
+      </div>
+      <div class="step-box">
+        <div class="step-box-title">🚪 Logout</div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click the <strong>⚙️
+              Settings</strong> button → Profile page.</span></div>
+        <div class="step-item"><span class="step-num">2</span><span class="step-text">Find and click the <span
+              class="lbl-click">Logout</span> button. You are returned to the login page.</span></div>
+      </div>
+      <div class="warn-box"><span class="box-icon">⚠️</span>
+        <div class="box-content">
+          <p><strong>Always log out</strong> when you finish, especially on a shared computer. Do not just close the
+            browser tab.</p>
+        </div>
+      </div>
+      <a href="#" class="back-top">↑ Back to top</a>
+
+      <!-- ═══ 6. ADMIN ═══ -->
+      <div class="sec-title" id="admin">
+        <div class="sec-icon sec-icon-blue">⚙️</div>
+        <div class="sec-text">
+          <h2>6. Administrator (Director)</h2>
+          <p>Full system access — every page explained</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <p>As Admin you have access to every feature. Your sidebar menu: <strong>Dashboard, Users, Customers, Employees,
+          Casual Workers, Jobs, Departments, Production, Machines, Sales, Finance, Stock, Leave Management, View
+          Reports, UI Permissions.</strong> Footer: Notifications, Settings → System Settings.</p>
+
+      <!-- Director Dashboard page card -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--blue-100)">📊</div>
+          <div>
+            <div class="pc-title">Director Dashboard</div>
+            <div class="pc-route">/admin</div>
+          </div>
+        </div>
+        <div class="pc-body">
+
+          <!-- Header bar illustration -->
+          <div class="screen-mock">
+            <div class="screen-mock-title">Page header</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+              <div>
+                <div style="font-size:1rem;font-weight:800;color:var(--gray-900)">Director Dashboard</div>
+                <div style="font-size:.75rem;color:var(--gray-500);margin-top:.15rem">Thursday, 25 June 2026</div>
+              </div>
+              <div
+                style="display:flex;align-items:center;gap:.4rem;background:var(--green-100);border:1px solid #86efac;border-radius:20px;padding:.25rem .7rem;font-size:.72rem;font-weight:700;color:var(--green2)">
+                <span
+                  style="width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;animation:pulse-dot 2s infinite"></span>
+                Live
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI cards illustration -->
+          <div class="screen-mock">
+            <div class="screen-mock-title">Six KPI cards — live data from database</div>
+            <div class="kpi-grid">
+              <div class="kpi-card kpi-blue">
+                <div class="kpi-label">Jobs In Progress</div>
+                <div class="kpi-value">24</div>
+                <div class="kpi-sub">Active across departments</div>
+              </div>
+              <div class="kpi-card kpi-green">
+                <div class="kpi-label">Completed Today</div>
+                <div class="kpi-value">7</div>
+                <div class="kpi-sub">Finished since midnight</div>
+              </div>
+              <div class="kpi-card kpi-red">
+                <div class="kpi-label">Delayed Jobs</div>
+                <div class="kpi-value">3</div>
+                <div class="kpi-sub">Past their due date</div>
+              </div>
+              <div class="kpi-card kpi-gold">
+                <div class="kpi-label">Revenue (RWF)</div>
+                <div class="kpi-value">2.4M</div>
+                <div class="kpi-sub">Total invoiced</div>
+              </div>
+              <div class="kpi-card kpi-purple">
+                <div class="kpi-label">Payments Received</div>
+                <div class="kpi-value">1.9M</div>
+                <div class="kpi-sub">Collected to date</div>
+              </div>
+              <div class="kpi-card kpi-teal">
+                <div class="kpi-label">Outstanding</div>
+                <div class="kpi-value">500K</div>
+                <div class="kpi-sub">Unpaid balances</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mid-section widgets -->
+          <div class="screen-mock">
+            <div class="screen-mock-title">Below KPIs — three side-by-side widgets</div>
+            <div class="widget-row">
+              <div class="widget">
+                <div class="widget-title">📂 Department Breakdown</div>
+                <div class="widget-item"><span class="wi-label"><span class="wi-dot"
+                      style="background:#3b82f6"></span>Printing</span><span class="wi-val">8 jobs</span></div>
+                <div class="widget-item"><span class="wi-label"><span class="wi-dot"
+                      style="background:#f59e0b"></span>Binding</span><span class="wi-val">5 jobs</span></div>
+                <div class="widget-item"><span class="wi-label"><span class="wi-dot"
+                      style="background:#8b5cf6"></span>Composition</span><span class="wi-val">6 jobs</span></div>
+                <div class="widget-item"><span class="wi-label"><span class="wi-dot"
+                      style="background:#10b981"></span>Packaging</span><span class="wi-val">5 jobs</span></div>
+              </div>
+              <div class="widget">
+                <div class="widget-title">🔴 Low Stock Alerts</div>
+                <div class="widget-item"><span class="wi-label" style="color:var(--red)">A4 Paper</span><span
+                    class="wi-val" style="color:var(--red)">12 reams</span></div>
+                <div class="widget-item"><span class="wi-label" style="color:var(--orange)">Black Ink</span><span
+                    class="wi-val" style="color:var(--orange)">2 cartridges</span></div>
+                <div class="widget-item"><span class="wi-label" style="color:var(--red)">Binding Glue</span><span
+                    class="wi-val" style="color:var(--red)">1 kg left</span></div>
+              </div>
+              <div class="widget">
+                <div class="widget-title">💰 Outstanding Balances</div>
+                <div class="widget-item"><span class="wi-label">Client A</span><span class="wi-val">120,000 RWF</span>
+                </div>
+                <div class="widget-item"><span class="wi-label">Client B</span><span class="wi-val">85,000 RWF</span>
+                </div>
+                <div class="widget-item"><span class="wi-label">Client C</span><span class="wi-val">295,000 RWF</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tracker + Bottleneck -->
+          <div class="screen-mock">
+            <div class="screen-mock-title">Further down — Delayed Jobs Tracker &amp; Bottleneck Detection</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+              <div class="widget">
+                <div class="widget-title">⏰ Delayed Jobs Tracker</div>
+                <div style="font-size:.75rem;color:var(--gray-600)">Lists every job that has passed its due date. Shows
+                  Job #, Client, days overdue, current status. Helps prioritize urgent action.</div>
+              </div>
+              <div class="widget">
+                <div class="widget-title">🔍 Bottleneck Detection</div>
+                <div style="font-size:.75rem;color:var(--gray-600)">Highlights departments with the highest job load.
+                  Shows which stage is causing slowdowns in the production pipeline.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Show More Details expanded view -->
+          <div class="screen-mock">
+            <div class="screen-mock-title">Clicking "Show More Details" reveals additional analytics</div>
+            <div class="expand-section">
+              <div class="expand-header">📂 Show More Details — expanded sections</div>
+              <div class="expand-body">
+                <div class="expand-item">
+                  <strong>📊 Performance Metrics</strong>
+                  <span>On-time delivery %, active job rate, payment collection rate</span>
+                </div>
+                <div class="expand-item">
+                  <strong>👥 Client Overview</strong>
+                  <span>Total clients in system, clients active this month</span>
+                </div>
+                <div class="expand-item">
+                  <strong>📅 Upcoming Deadlines</strong>
+                  <span>Jobs grouped: Overdue · Due Today · Due This Week · On Track</span>
+                </div>
+                <div class="expand-item">
+                  <strong>🏢 Staff Overview</strong>
+                  <span>Employee count per department, staffing summary</span>
+                </div>
+                <div class="expand-item" style="grid-column:1/-1">
+                  <strong>📋 Recent Jobs Table</strong>
+                  <span>Columns: Job # · Client · Status · Due Date — latest jobs at a glance</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="step-box">
+            <div class="step-box-title">📋 How to use the Director Dashboard</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Read the <strong>six KPI
+                  boxes</strong> at the top for a real-time overview. All data pulls live from the database.</span>
+            </div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Scroll down:
+                <strong>Department Breakdown</strong> shows job counts per department. <strong>Low Stock Alerts</strong>
+                shows items below threshold. <strong>Outstanding Balances</strong> shows unpaid clients.</span></div>
+            <div class="step-item"><span class="step-num">3</span><span class="step-text">Continue scrolling to see
+                <strong>Delayed Jobs Tracker</strong> (jobs past deadline) and <strong>Bottleneck Detection</strong>
+                (overloaded departments).</span></div>
+            <div class="step-item"><span class="step-num">4</span><span class="step-text">Click <span
+                  class="lbl-click">Show More Details</span> to expand the analytics panels: Performance Metrics, Client
+                Overview, Upcoming Deadlines, Staff Overview, and the Recent Jobs table.</span></div>
+            <div class="step-item"><span class="step-num">5</span><span class="step-text">Click <span
+                  class="lbl-click">Show Less</span> to collapse those panels when you're done.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Management -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--purple-100)">👤</div>
+          <div>
+            <div class="pc-title">User Management</div>
+            <div class="pc-route">/admin/users</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see on this page</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Heading "User Management" · Blue <strong>Create
+                User</strong> button (top-right) · Search bar + "All Roles" dropdown + "All Status" dropdown · Four stat
+              boxes: Total / Active / Inactive Users / Workers · Table: No, User (name + email), Phone, Role badge,
+              Department, Status (Active green / Inactive red), Actions (✏️ Edit · Toggle · 🗑️ Delete) · Pagination at
+              bottom.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">➕ Create a new user</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Create User</span> (top-right). A popup form appears.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Fill <span
+                  class="lbl-field">Full Name</span> (minimum 3 characters).</span></div>
+            <div class="step-item"><span class="step-num">3</span><span class="step-text">Fill <span
+                  class="lbl-field">Email</span> — this becomes their login email.</span></div>
+            <div class="step-item"><span class="step-num">4</span><span class="step-text">Fill <span
+                  class="lbl-field">Password</span> (minimum 5 characters) and <span class="lbl-field">Confirm
+                  Password</span>.</span></div>
+            <div class="step-item"><span class="step-num">5</span><span class="step-text">Fill <span
+                  class="lbl-field">Phone</span> with country code (e.g., +250788123456).</span></div>
+            <div class="step-item"><span class="step-num">6</span><span class="step-text">Select <span
+                  class="lbl-field">Gender</span>: Male, Female, or Other.</span></div>
+            <div class="step-item"><span class="step-num">7</span><span class="step-text">Select <span
+                  class="lbl-field">Role</span>: Receptionist, Sales, DAF, Accountant, Production Manager, Stock,
+                Supervisor, Worker, HR, or Hobe.</span></div>
+            <div class="step-item"><span class="step-num">8</span><span class="step-text">Select <span
+                  class="lbl-field">Department</span> (optional). Click <span class="lbl-click">Create User</span>. Red
+                messages appear if any fields are invalid.</span></div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">✏️ Edit a user</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the user. Click ✏️ in the
+                Actions column. The popup opens with their current data pre-filled.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Change any field. Leave
+                password blank to keep their existing password.</span></div>
+            <div class="step-item"><span class="step-num">3</span><span class="step-text">Click <span
+                  class="lbl-click">Save Changes</span>.</span></div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">🔄 Activate / Deactivate a user</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">In the Actions column, click
+                the toggle button. A confirmation popup appears.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Click <span
+                  class="lbl-click">Activate</span> or <span class="lbl-click">Deactivate</span> to confirm. Inactive
+                users cannot log in.</span></div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">🗑️ Delete a user</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click the red 🗑️ icon. A
+                confirmation popup appears: "Delete this user? This cannot be undone."</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Click the red <span
+                  class="lbl-click">Delete</span> button to confirm. <strong>This action is permanent and cannot be
+                  reversed.</strong></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customers -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--teal-100)">🏢</div>
+          <div>
+            <div class="pc-title">Customers</div>
+            <div class="pc-route">/admin/customers</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table of customers: Name, Phone, Email, Address,
+              Total Jobs, Total Amount. <strong>Add Customer</strong> button + search, edit, delete controls.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">➕ Add a customer</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Add Customer</span>. Fill: Name, Phone, Email, Address, and select Type
+                (<strong>BUSINESS</strong> for printing jobs). Click <span class="lbl-click">Save</span>.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Employees -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--green-100)">👥</div>
+          <div>
+            <div class="pc-title">Employees</div>
+            <div class="pc-route">/admin/employees</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table: Full Name, Phone, Email, Contract Type,
+              Salary, Department, Linked (to a user account), Status (Active/Inactive), Actions (Link · Assign dept · ✏️
+              Edit · 🗑️ Delete).</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">➕ Add an employee</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Add Employee</span>. Fill: Full Name*, Gender*, Date of Birth*, Phone*, Address*,
+                NID (optional), Hired At (optional), Contract Type, Contract Salary (RWF)*, and an initial
+                Password*.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Click <span
+                  class="lbl-click">Add Employee</span> to save.</span></div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">🏢 Assign to a department</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the employee row. Click
+                the blue <span class="lbl-click">Assign</span> button (department icon).</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Select a department from the
+                dropdown. Click <span class="lbl-click">Assign</span>. To unassign, choose "— Unassign —".</span></div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">🔗 Link employee to a Worker login account</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click the <span
+                  class="lbl-click">Link</span> (or <span class="lbl-click">Relink</span>) button next to the
+                employee.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">A dropdown lists all users
+                with the WORKER role. Select the matching login. Click <span class="lbl-click">Save Link</span>.</span>
+            </div>
+          </div>
+          <div class="warn-box"><span class="box-icon">⚠️</span>
+            <div class="box-content">
+              <p><strong>Workers MUST be linked.</strong> If an employee's record is not linked to their login account,
+                the worker will see "Employee profile not linked" on their task board and cannot work.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Jobs Admin -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📋</div>
+          <div>
+            <div class="pc-title">Jobs (Admin View)</div>
+            <div class="pc-route">/admin/jobs</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Full list of ALL jobs. Search box, status filter
+              dropdown. Table: Job #, Customer, Title, Amount, Status badge, Priority badge, Due Date. Per row: 👁 View
+              · ✏️ Edit · 🗑️ Delete. <strong>Create Job</strong> button at top-right.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">➕ Create a job</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Create Job</span>. A two-panel modal opens.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text"><strong>Left panel — Select
+                  Customer:</strong> Search by name, email, or company. Click a customer to select them.</span></div>
+            <div class="step-item"><span class="step-num">3</span><span class="step-text"><strong>Right panel — Job
+                  Details:</strong> Fill Job Title* (required), Job Type, Quantity, Amount (RWF), Size
+                (A3/A4/A5/A6/Letter/Custom), Color Mode (Full Color / B&amp;W / Spot Color), Binding Type (None / Staple
+                / Spiral / Perfect Bind / Hardcover), Priority (Low/Normal/High/Urgent), Due Date, Description,
+                Notes.</span></div>
+            <div class="step-item"><span class="step-num">4</span><span class="step-text">Click <span
+                  class="lbl-click">Create Job</span>. Job is created with status <span
+                  class="sbadge s-pending">Pending</span> and awaits DAF approval.</span></div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">👁 View details &amp; assign to department</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click 👁 on any job row. The
+                Job Details modal opens showing full info, status timeline, and all fields.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">At the bottom: <strong>Assign
+                  to Department</strong>. Select a department from the dropdown. Click <span
+                  class="lbl-click">Assign</span> (or <span class="lbl-click">Reassign</span> if already
+                assigned).</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Departments / Machines / Overview cards -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--teal-100)">🏗️</div>
+          <div>
+            <div class="pc-title">Departments</div>
+            <div class="pc-route">/admin/departments</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table of departments: Name, worker count button,
+              Actions. <strong>Add Department</strong> button. Click a green worker-count button (e.g., "5 workers") to
+              open a side panel listing all workers in that department.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">➕ Add or edit a department</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Add Department</span>. Type the department name. Click <span
+                  class="lbl-click">Save</span>.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--orange-100)">⚙️</div>
+          <div>
+            <div class="pc-title">Machines</div>
+            <div class="pc-route">/admin/machines</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">List of machines: Name, Type, Department, Status
+              (Operational / Under Maintenance / Broken), Last Maintenance date. <strong>Add Machine</strong> button.
+            </p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">➕ Add a machine / update status</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Add Machine</span>. Fill name, type, department, status. Click <span
+                  class="lbl-click">Save</span>.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">To update status: click the
+                status badge on the machine row and select the new status from the dropdown.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--purple-100)">📊</div>
+          <div>
+            <div class="pc-title">Sales / Finance / Stock Overview Pages</div>
+            <div class="pc-route">/admin/sales &nbsp;·&nbsp; /admin/finance &nbsp;·&nbsp; /admin/stock</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <p style="font-size:.85rem;color:var(--gray-600)">Summary dashboards for each area visible to the Admin:</p>
+          <ul>
+            <li><strong>Sales:</strong> Total proformas, conversion rate, recent activities</li>
+            <li><strong>Finance:</strong> Revenue, payments received, outstanding amounts, recent transactions</li>
+            <li><strong>Stock:</strong> Low stock alerts, current stock levels, recent stock movements</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Leave / Reports / UI Permissions / System Settings -->
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--green-100)">🏖️</div>
+          <div>
+            <div class="pc-title">Leave Management (Admin)</div>
+            <div class="pc-route">/admin/leave</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">All leave requests from all employees. Filter by
+              status. Table: Employee Name, Leave Type, Start Date, End Date, Status (Pending/Approved/Rejected).
+              Approve and Reject buttons per row.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">✅ Approve or reject leave</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click on a leave request to
+                see full details including reason and any supporting document.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Click green <span
+                  class="lbl-click">Approve</span> or red <span class="lbl-click">Reject</span>. When rejecting, type a
+                reason — the employee will see it on their My Leave page.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--blue-100)">🔒</div>
+          <div>
+            <div class="pc-title">UI Permissions</div>
+            <div class="pc-route">/admin/ui-permissions</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Role selector dropdown. Three sections:
+              <strong>Dashboard Widgets</strong> (toggle on/off) · <strong>Sidebar Menu Items</strong> (toggle
+              show/hide) · <strong>Page Permissions</strong> (check/uncheck view/create/edit/delete/approve per page).
+              <strong>Save Changes</strong> button.
+            </p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">🔧 Configure permissions for a role</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Select a role from the
+                dropdown (e.g., Worker, Supervisor).</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Toggle switches or
+                check/uncheck items under each section as needed.</span></div>
+            <div class="step-item"><span class="step-num">3</span><span class="step-text">Click <span
+                  class="lbl-click">Save Changes</span>. Changes take effect the next time that role's users load a
+                page.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gray-100)">⚙️</div>
+          <div>
+            <div class="pc-title">System Settings</div>
+            <div class="pc-route">/admin/settings &nbsp;(sidebar footer ⚙️)</div>
+          </div>
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">Settings sections</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.78rem">
+              <div style="background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:.6rem .75rem">
+                <strong style="color:var(--gray-700)">Company Info</strong><br /><span
+                  style="color:var(--gray-500)">Name, email, phone, address, currency</span>
+              </div>
+              <div style="background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:.6rem .75rem">
+                <strong style="color:var(--gray-700)">Job Settings</strong><br /><span style="color:var(--gray-500)">Job
+                  number prefix, default deadline, auto-assign</span>
+              </div>
+              <div style="background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:.6rem .75rem">
+                <strong style="color:var(--gray-700)">Financial Settings</strong><br /><span
+                  style="color:var(--gray-500)">Tax rate (%)</span>
+              </div>
+              <div style="background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:.6rem .75rem">
+                <strong style="color:var(--gray-700)">Inventory Settings</strong><br /><span
+                  style="color:var(--gray-500)">Low stock threshold (%)</span>
+              </div>
+              <div style="background:#fff;border:1px solid var(--gray-200);border-radius:6px;padding:.6rem .75rem">
+                <strong style="color:var(--gray-700)">Notifications</strong><br /><span
+                  style="color:var(--gray-500)">Email / SMS toggle switches</span>
+              </div>
+            </div>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">🔧 Change settings</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Edit any field or toggle.
+                Currency options: USD, EUR, GBP, RWF.</span></div>
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">Click <span
+                  class="lbl-click">Save Changes</span>. A green "Saved!" confirmation appears briefly.</span></div>
+          </div>
+        </div>
+      </div>
+      <a href="#" class="back-top">↑ Back to top</a>
+
+      <!-- ═══ 7. RECEPTION ═══ -->
+      <div class="sec-title" id="reception">
+        <div class="sec-icon sec-icon-blue">🏢</div>
+        <div class="sec-text">
+          <h2>7. Receptionist</h2>
+          <p>Front desk operations</p>
+        </div>
+      </div>
+      <div class="sec-divider"></div>
+      <p>Your sidebar: <strong>Dashboard, Visitor, Payments, Deliveries, Boutique, Boutique Stock, Expenses, My Leave,
+          Reports ▾.</strong></p>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--blue-100)">📊</div><img
+            src="../jts/src/assets/images/receptionslist/receptionalist.png" alt="Reception Dashboard"
+            style="max-width:100%;height:auto">
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Job pipeline strip at the top: Total Jobs ·
+              Pending · Ready for Delivery · Completed · Delivered · Customers. Below: recent jobs list with Job #,
+              Customer, Status badge, Priority badge, Due date. Pagination buttons.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--teal-100)">👤</div><img
+            src="../jts/src/assets/images/receptionslist/vistor.png" alt="Visitor Registration"
+            style="max-width:100%;height:auto">
+        </div>
+        <div class="pc-body">
+          <div class="screen-mock">
+            <div class="screen-mock-title">What you see</div>
+            <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table of today's visitors: Name, Phone, Visiting,
+              Purpose, Time In, Time Out. <strong>Register Visitor</strong> button.</p>
+          </div>
+          <div class="step-box">
+            <div class="step-box-title">📋 Register a visitor</div>
+            <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                  class="lbl-click">Register Visitor</span>. Fill: Visitor Name, Phone, Person/Department Visiting,
+                Purpose. Time In sets automatically. Click <span class="lbl-click">Save</span>.</span></div>
+            <img src="../jts/src/assets/images/receptionslist/addvisitor.png" alt="Visitor Registration Form"
+              style="max-width:100%;height:auto;margin-top:.5rem">
+            <div class="step-item"><span class="step-num">2</span><span class="step-text">When the visitor leaves, find
+                their row and click <span class="lbl-click">Check Out</span> to record the Time Out.</span></div>
+            <img src="../jts/src/assets/images/receptionslist/checkIn.png" alt="Visitor Check Out"
+              style="max-width:100%;height:auto;margin-top:.5rem">
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--green-100)">💵</div>
+          <div>
+            <div class="pc-title">Payments</div>
+            <img src="../jts/src/assets/images/receptionslist/payment.png" alt="Payments"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">List of payments: Date, Customer, Job, Amount,
+            Payment Method, Receipt #. Search box. <strong>Add Payment</strong> button.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">💳 Record a payment</div>
+          <img src="../jts/src/assets/images/receptionslist/paynow.png" alt="Add Payment Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Add Payment</span>. Type customer name → select from suggestions.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Select the <span
+                class="lbl-field">Job</span> the payment is for.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Enter <span
+                class="lbl-field">Amount</span> (RWF). Select <span class="lbl-field">Payment Method</span>: Cash,
+              Mobile Money, Bank Transfer, or Cheque.</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">Add optional notes. Click <span
+                class="lbl-click">Save</span>. A receipt number is generated automatically.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--orange-100)">📦</div>
+        <div>
+          <div class="pc-title">Deliveries</div>
+          <img src="../jts/src/assets/images/receptionslist/delivers.png" alt="Deliveries"
+            style="max-width:100%;height:auto">
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">List of deliveries: Item, Supplier/Customer, Date,
+            Status (Pending / Received / Delivered). <strong>New Delivery</strong> button.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">📋 Record a delivery</div>
+          <img src="../jts/src/assets/images/receptionslist/recordDerivered.png" alt="Add Delivery Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">New Delivery</span>. Select type: <strong>Incoming</strong> (supplies arriving) or
+              <strong>Outgoing</strong> (finished jobs leaving).</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Fill Supplier/Customer name,
+              item description, quantity. Click <span class="lbl-click">Save</span>.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">When the physical delivery
+              happens, find the record and click <span class="lbl-click">Mark as Received</span> or <span
+                class="lbl-click">Mark as Delivered</span>.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--purple-100)">🛍️</div>
+        <div>
+          <div class="pc-title">Boutique Sales</div>
+          <img src="../jts/src/assets/images/receptionslist/boutique.png" alt="Boutique Sales"
+            style="max-width:100%;height:auto">
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Product catalog with prices and stock quantities.
+            <strong>New Sale</strong> button.
+          </p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">🛒 Make a boutique sale</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">card of product</span>
+              <img src="../jts/src/assets/images/receptionslist/trade.png" alt="Boutique Sale Form"
+                style="max-width:100%;height:auto;margin-top:.5rem">
+
+              <div class="step-item"><span class="step-text">Select payment method, record payment amount. Click <span
+                    class="lbl-click">Confirm Sale</span>. A receipt can be printed.</span></div>
+              <div class="step-item"><span class="step-num">2</span><span class="step-text"> Click <span
+                    class="lbl-click">add quantity</span></span></div>
+              <img src="../jts/src/assets/images/receptionslist/addQuantity.png" alt="Add Quantity Form"
+                style="max-width:100%;height:auto;margin-top:.5rem">
+
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">🛒 check product which in stock</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">card of product</span>
+              <img src="../jts/src/assets/images/receptionslist/checkstock.png" alt="Boutique Sale Form"
+                style="max-width:100%;height:auto;margin-top:.5rem">
+
+              <div class="step-item"><span class="step-num">2</span><span class="step-text"> Click <span
+                    class="lbl-click">Add Request</span> for product needed in boutique</span></div>
+              <img src="../jts/src/assets/images/receptionslist/addrequest.png" alt="Add Quantity Form"
+                style="max-width:100%;height:auto;margin-top:.5rem">
+
+          </div>
+        </div>
+      </div>
+
+      <div class="page-card">
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">💸</div>
+          <div>
+            <div class="pc-title">Expenses (Outstands)</div>
+            <img src="../jts/src/assets/images/receptionslist/expense.png" alt="Expenses"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">List of petty cash expenses: Date, Description,
+            Amount, Category. <strong>Add Expense</strong> button.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">➕ Record an expense</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Add Expense</span>. Fill: Description, Amount (RWF), Category (e.g., Office Supplies,
+              Transport, Cleaning). Click <span class="lbl-click">Save</span>.</span></div>
+          <img src="../jts/src/assets/images/receptionslist/addnewexpense.png" alt="Add Expense Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+      </div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click"> approve expense</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+              class="lbl-click">(...) under section</span> then you get modal <span class="lbl-click">yes,
+              approve</span>.</span></div>
+        <img src="../jts/src/assets/images/receptionslist/yesapprove.png" alt="Add Expense Form"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+      <div class="step-box">
+        <div class="step-box-title"> Leave</div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+              class="lbl-click">Leave</span></span></div>
+        <img src="../jts/src/assets/images/receptionslist/leave.png" alt="Add Expense Form"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click"> ask for Leave</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+              class="lbl-click">Request</span> complete the form and submit.</span></div>
+        <img src="../jts/src/assets/images/receptionslist/requestleave.png" alt="Add Expense Form"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+      <div class="step-box-title">📋 ABOUT REPORTS</div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click">shop reports</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span class="lbl-click">shop
+              sales </span> tab to get what's the report about all boutique transactions.</span></div>
+        <img src="../jts/src/assets/images/receptionslist/shoprreports.png" alt="Add Expense Form"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click">visitor reports</span></div>
+        <div class="step-item"><span class="step-num">2</span><span class="step-text">Click <span
+              class="lbl-click">visitors </span> tab to get what's the report about all visitor comes in ltd.</span>
+        </div>
+        <img src="../jts/src/assets/images/receptionslist/visitor.png" alt="generate reports"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+      <div class="step-box-title">📋 MY REPORTS</div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click">my reports</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span class="lbl-click">my
+              reports </span>on sidebar</span></div>
+        <img src="../jts/src/assets/images/receptionslist/myreports.png" alt="my reports"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+      <div class="step-box-title">📋 Notifications</div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click">notifications</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+              class="lbl-click">notifications </span>on sidebar</span></div>
+        <img src="../jts/src/assets/images/receptionslist/checkingnotify.png" alt="notifications"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+      <div class="step-box-title">📋 Settings</div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click">settings</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+              class="lbl-click">settings </span>then Click <span class="lbl-click">profile </span></span></div>
+        <img src="../jts/src/assets/images/receptionslist/checkandmodifyprofile.png" alt="settings"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+      <div class="step-box">
+        <div class="step-box-title"><span class="lbl-click">change credentials(email and password)</span></div>
+        <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+              class="lbl-click">settings </span>then Click <span class="lbl-click">password </span></span></div>
+        <img src="../jts/src/assets/images/receptionslist/changepass.png" alt="settings"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 8. SALES ═══ -->
+    <div class="sec-title" id="sales">
+      <div class="sec-icon sec-icon-blue">💼</div>
+      <div class="sec-text">
+        <h2>8. Sales Officer</h2>
+        <p>Jobs and performa invoices</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Jobs, Stock, Performa Invoice, My Leave, Reports ▾.</strong></p>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--blue-100)">📊</div>
+        <div>
+          <div class="pc-title">Sales Dashboard</div>
+          <img src="../jts/src/assets/images/sales/salesDashboard.png" alt="Sales Dashboard"
+            style="max-width:100%;height:auto">
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">KPI cards: Total Proformas This Month · Accepted
+            Proformas · Jobs Created · Conversion Rate. Recent proformas table and recent jobs table below.</p>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div>
+          <div class="pc-title">Jobs</div>
+          <p>The list of jobs that have been created,and overview. Actions view to check many details of job, and edit
+            which shows the way to modify the job and delete which will allow job be deleted </p>
+          <img src="../jts/src/assets/images/sales/sales.png" alt="Sales Dashboard" style="max-width:100%;height:auto">
+        </div>
+      </div>
+      <div>
+        <div class="pc-title">Create Job Step1</div>
+        <p>At this steps 1, on letf side there are customer who comes in ltd. </p>
+        <img src="../jts/src/assets/images/sales/step1.png" alt="Sales Dashboard" style="max-width:100%;height:auto">
+      </div>
+      <div>
+        <div class="pc-title">Create Job Step2</div>
+        <p>At this steps 2, when selected customer the right side will be activated and allow sales manager fill the
+          form about all details of job. </p>
+        <img src="../jts/src/assets/images/sales/step1selectedcustomer.png" alt="Sales Dashboard"
+          style="max-width:100%;height:auto">
+      </div>
+      <div>
+        <div class="pc-title">Create Job Step3</div>
+        <p>At this steps 3, there is a section to select materials for the job. and then when click on materials will be
+          added on the materials needed, and it will be listed at right side. </p>
+        <img src="../jts/src/assets/images/sales/step2selectMaterials.png" alt="Sales Dashboard"
+          style="max-width:100%;height:auto">
+      </div>
+
+      <div>
+        <div class="pc-title">Create Job Step3(next)</div>
+        <p>At this steps 3, there is a section to select materials for the job. and then when click on materials will be
+          added on the materials needed, and it will be listed at right side. </p>
+        <img src="../jts/src/assets/images/sales/listofselectedandamount.png" alt="Sales Dashboard"
+          style="max-width:100%;height:auto">
+      </div>
+
+      <div>
+        <div class="pc-title">Create Job Step4 (upload docs needed)</div>
+        <p>At this steps 4, there is a section to upload necessary documents for the job. </p>
+        <img src="../jts/src/assets/images/sales/uploadImage.png" alt="Sales Dashboard"
+          style="max-width:100%;height:auto">
+      </div>
+      <div>
+        <div class="pc-title">Create Job Step5 (view details)</div>
+        <p>At this steps 5, there is a section to view all details of the job. </p>
+        <img src="../jts/src/assets/images/sales/detailsofall.png" alt="Sales Dashboard"
+          style="max-width:100%;height:auto">
+        <p>There is back button to go back to previous step.<span class="lbl-click">Back</span></p>
+      </div>
+    </div>
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+        <!-- stock -->
+        <div>
+          <div class="pc-title">STOCK</div>
+          <p>Stock is the list of materials available in ltd. and their quantity, and the price of each material. </p>
+          <img src="../jts/src/assets/images/sales/stock.png" alt="Sales Dashboard" style="max-width:100%;height:auto">
+        </div>
+
+      </div>
+      <!-- details -->
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+        <div>
+          <div class="pc-title">Stock/Details</div>
+          <p>Stock details include the description, quantity, and price of each material. </p>
+          <img src="../jts/src/assets/images/sales/detailsofstock.png" alt="Sales Dashboard"
+            style="max-width:100%;height:auto">
+        </div>
+
+      </div>
+    </div>
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+        <div class="step-box">
+          <div class="step-box-title">📋 Manage a performa</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click 👁 View to see full
+              details: stock items, estimated amount, terms, notes.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">If status is
+              <strong>Draft</strong>: click ✏️ Edit to update Valid Until date, Terms &amp; Conditions, and Notes. Click
+              <span class="lbl-click">Save Changes</span>.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">In the detail view: Draft →
+              click <span class="lbl-click">Send to Client</span>. Sent → click <span class="lbl-click">Mark
+                Accepted</span> or <span class="lbl-click">Mark Rejected</span> based on client feedback.</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">To print: click 🖨️ (opens
+              printable page in new tab, use Ctrl+P). To save as PDF: click ⬇️ Download PDF — downloads with company
+              letterhead.</span></div>
+        </div>
+      </div>
+      <img src="../jts/src/assets/images/sales/performa.png" alt="Sales Dashboard" style="max-width:100%;height:auto">
+
+
+
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table: Performa #, Customer, Linked Job, Estimated
+            Amount, Status badge (Draft/Sent/Accepted/Rejected/Expired), Valid Until, Created date. Actions per row: ✏️
+            Edit (Draft only) · 🖨️ Print · ⬇️ Download PDF · 👁 View. KPI cards: Total · Draft · Sent · Accepted Value.
+          </p>
+        </div>
+        <div class="info-box"><span class="box-icon">📌</span>
+          <div class="box-content">
+            <p><strong>What is a Performa Invoice?</strong> It is a <strong>proposal/quotation</strong> sent to the
+              customer for negotiation. Tax is NOT applied here — tax is only on the final invoice. A performa is
+              automatically created when you create a job.</p>
+          </div>
+        </div>
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">Leave</div>
+            <p>Leave management allows employees to request time off and track their leave balance.</p>
+            <img src="../jts/src/assets/images/sales/leave.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+
+
+        </div>
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">Leave Request</div>
+            <p>Leave request way by filling the form</p>
+            <img src="../jts/src/assets/images/sales/requestleave.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">REPORTS/All Reports</div>
+            <p>Access various reports for financial and operational insights. THis has jobs, Porforma invoices,
+              customer, markets.</p>
+            <img src="../jts/src/assets/images/sales/salesreport.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">REPORTS/Generate reports</div>
+            <p>Button, and way to generate reports to fill the form </p>
+            <img src="../jts/src/assets/images/sales/generatereprot.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">REPORTS/My Reports</div>
+            <p>All my Generated Reports </p>
+            <img src="../jts/src/assets/images/sales/myreports.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">REPORTS/Assigned Reports</div>
+            <p>Assigned Reports by others </p>
+            <img src="../jts/src/assets/images/sales/assignedreports.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">NOTIFICATIONS</div>
+            <p>All notifications, that will be viewed by sales</p>
+            <img src="../jts/src/assets/images/sales/checknotify.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+
+        <div class="pc-header">
+          <div class="pc-icon" style="background:var(--gold-pale)">📄</div>
+          <div>
+            <div class="pc-title">SETTINGS</div>
+            <p>All settings for the sales manager</p>
+            <img src="../jts/src/assets/images/sales/changepass.png" alt="Sales Dashboard"
+              style="max-width:100%;height:auto">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--teal-100)">📦</div>
+        <div>
+          <div class="pc-title">Stock (Sales View)</div>
+          <div class="pc-route">/sales/stocks</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <p style="font-size:.85rem;color:var(--gray-600)">Read-only view of stock levels. Use this to check material
+          availability before quoting a customer. You cannot add or remove stock from here.</p>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 9. DAF ═══ -->
+    <div class="sec-title" id="finance">
+      <div class="sec-icon sec-icon-blue">💰</div>
+      <div class="sec-text">
+        <h2>9. DAF (Finance Director)</h2>
+        <p>Job approvals and financial oversight</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Job Approvals, Employees, Procurement, My Leave, Reports ▾.</strong></p>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--blue-100)">📊</div>
+        <div>
+          <div class="pc-title">DAF Dashboard</div>
+          <div class="pc-route">/finance/daf</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Four KPI cards: Total Revenue (RWF) · Pending
+            Approvals (count) · Active Employees · Confirmed Jobs. Below: Pending Job Approvals table (job number,
+            priority badge, title, customer, due date, amount). Recent Payments feed. Job Status Overview
+            (pending/confirmed/rejected counts with RWF values). HR Summary by Department (department, total/active
+            employee counts, progress bar).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--green-100)">✅</div>
+        <div>
+          <div class="pc-title">Job Approvals</div>
+          <div class="pc-route">/finance/daf/approvals</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">List of jobs with status <span
+              class="sbadge s-pending">Pending</span>. For each: Job #, Priority, Title, Customer, Due Date, Amount,
+            Description. <strong>Approve</strong> and <strong>Reject</strong> buttons per row.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">✅ Approve or reject a job</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click on a job row to see full
+              details.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">If correct: click green <span
+                class="lbl-click">Approve</span>. Job becomes <span class="sbadge s-confirmed">Confirmed</span> and is
+              visible to the Production Manager.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">If there is a problem: click red
+              <span class="lbl-click">Reject</span>. Type a rejection reason. The job is marked <span
+                class="sbadge s-rejected">Rejected</span> and the Sales Officer sees the reason.</span></div>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 10. ACCOUNTANT ═══ -->
+    <div class="sec-title" id="accountant">
+      <div class="sec-icon sec-icon-blue">🧾</div>
+      <div class="sec-text">
+        <h2>10. Accountant</h2>
+        <p>Payments, invoices, and financial records</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Payments, Invoices, Documents, Operations, Recovery, My Leave, Reports
+        ▾.</strong></p>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--blue-100)">📊</div>
+        <div>
+          <div class="pc-title">Accountant Dashboard</div>
+          <div class="pc-route">/finance/accountant1</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Financial KPIs: Total Payments · Pending Invoices ·
+            Outstanding Balances · Recent Transactions.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--gold-pale)">🧾</div>
+        <div>
+          <div class="pc-title">Invoices</div>
+          <div class="pc-route">/finance/accountant1/invoices</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Invoice list: Invoice Number, Customer, Job,
+            Amount, Tax, Total, Status (Paid/Unpaid/Partial), Date. <strong>Create Invoice</strong> button. Download PDF
+            per invoice.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">➕ Create an invoice</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Create Invoice</span>. Select Customer and Job — details pre-fill
+              automatically.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Review amounts. Enter Tax Rate %
+              if applicable (tax is applied here — not on the performa). Click <span
+                class="lbl-click">Generate</span>.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Click <span
+                class="lbl-click">Download PDF</span> to print or send to the customer.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--red-100)">🔴</div>
+        <div>
+          <div class="pc-title">Recovery (Debt Collection)</div>
+          <div class="pc-route">/finance/accountant2/recovery</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Customers with outstanding balances: Customer Name,
+            Total Outstanding, Aging (days overdue). Use this page to prioritize and follow up on unpaid amounts.</p>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 11. PRODUCTION MANAGER ═══ -->
+    <div class="sec-title" id="production">
+      <div class="sec-icon sec-icon-blue">🏭</div>
+      <div class="sec-text">
+        <h2>11. Production Manager</h2>
+        <p>Job planning and department assignment</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Job Planning, General Stock, Departments, My Leave, Reports ▾.</strong></p>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--teal-100)">📋</div>
+        <div>
+          <div class="pc-title">Job Planning</div>
+          <div class="pc-route">/production-manager/planning</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table of <strong>Confirmed jobs</strong>
+            (DAF-approved) waiting for department assignment. Columns: Job #, Customer, Title, Priority, Due Date,
+            Amount, current Department. 👁 View button · Assign button per row.</p>
+        </div>
+        <div class="info-box"><span class="box-icon">📌</span>
+          <div class="box-content">
+            <p>Only jobs with status <strong>Confirmed</strong> appear here. Pending or Rejected jobs do not appear.</p>
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">📋 Assign a confirmed job to a department</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click 👁 on a job to open its
+              details. Review type, quantity, size, description.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">In the <strong>Assign to
+                Department</strong> section, select a department from the dropdown (e.g., Composition, Printing,
+              Binding).</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Click <span
+                class="lbl-click">Assign</span>. The job becomes visible to that department's Supervisor. If already
+              assigned, the button shows <span class="lbl-click">Reassign</span>.</span></div>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 12. SUPERVISOR ═══ -->
+    <div class="sec-title" id="supervisor">
+      <div class="sec-icon sec-icon-blue">🎯</div>
+      <div class="sec-text">
+        <h2>12. Supervisor</h2>
+        <p>Department job management</p>
+        <img src="../jts/src/assets/images/supervisor/supervisorDashboard.png" alt="Supervisor Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Jobs, Employees, Machines, Binding Stock, My Leave, Reports ▾.</strong></p>
+    <div class="warn-box"><span class="box-icon">⚠️</span>
+      <div class="box-content">
+        <p><strong>Department Required:</strong> Your user account must be assigned to a department. If not, you will
+          see "Your account is not assigned to a department" and cannot use the Jobs page. Ask the Administrator to
+          assign your account.</p>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--gold-pale)">📋</div>
+        <div>
+          <div class="pc-title">Jobs (Supervisor View)</div>
+          <img src="../jts/src/assets/images/supervisor/jobs.png" alt="Supervisor Dashboard"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Table of jobs assigned to <strong>your department
+              only</strong>. Columns: Job #, Client, Status, Dept State, Progress, Priority, Due Date, Actions. Urgent
+            jobs have a red background. Summary cards: Active · Dept Done · Completed · Urgent counts. Search box. Three
+            dots (⋮) Actions menu per row.</p>
+        </div>
+        <div class="info-box"><span class="box-icon">📌</span>
+          <div class="box-content">
+            <p><strong>Three tracking fields per job:</strong> <strong>Status</strong> (overall stage) · <strong>Dept
+                State</strong> (your department's sub-state, e.g., in-printing → printing-done) ·
+              <strong>Progress</strong> (individual worker: Started/Paused/Resumed/Completed)
+            </p>
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">👤 Assign a job to a worker</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the job. Click ⋮ in the
+              Actions column → select <span class="lbl-click">Assign</span>.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">A list of employees in your
+              department appears, each showing availability (Available / Has other job / Already assigned).</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Click the worker you want. The
+              job appears on their Task Board.</span></div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">✅ Mark your department's work as Done</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">This is only available after the
+              assigned worker has <strong>Completed</strong> their progress.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Click ⋮ → <span
+                class="lbl-click">Mark Done</span>. A confirmation modal shows the current state and what it will change
+              to.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Click <span
+                class="lbl-click">Confirm — Mark Done</span>. The Production Manager can now advance the job to the next
+              department.</span></div>
+        </div>
+      </div>
+    </div><br>
+      <div class="sec-text">
+        <h2>Employee</h2>
+        <p>Dashboard for employee tasks and activities</p>
+        <img src="../jts/src/assets/images/supervisor/employee.png" alt="Employee Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem"></div>
+
+          <div class="sec-text"><br>
+        <h2>My Leave</h2>
+        <p>Manage your leave requests and approvals</p>
+        <img src="../jts/src/assets/images/supervisor/requestLeave.png" alt="Employee Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+             <div class="sec-text"><br>
+        <h2>Reports</h2>
+        <p>Generate and view reports</p>
+        <img src="../jts/src/assets/images/supervisor/myreports.png" alt="Employee Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+              <div class="sec-text"><br>
+        <h2>Notifications</h2>
+        <p>View and manage notifications</p>
+        <img src="../jts/src/assets/images/supervisor/notifications.png" alt="Employee Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+              <div class="sec-text"><br>
+        <h2>Settings/Profile</h2>
+        <p>Manage your account settings</p>
+        <img src="../jts/src/assets/images/supervisor/profile.png" alt="Employee Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+               <div class="sec-text"><br>
+        <h2>Settings/password</h2>
+        <p>change password</p>
+        <img src="../jts/src/assets/images/supervisor/pass.png" alt="Employee Dashboard"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 13. WORKER ═══ -->
+    <div class="sec-title" id="worker">
+      <div class="sec-icon sec-icon-blue">🔧</div>
+      <div class="sec-text">
+        <h2>13. Worker</h2>
+        <p>Task board and material requests</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>My Jobs, Task Board, Material Requests, My Leave, Reports ▾.</strong></p>
+    <img src="../jts/src/assets/images/worker/dashboard.png" alt="Worker Dashboard"
+      style="max-width:100%;height:auto;margin-top:.5rem">
+    <div class="warn-box"><span class="box-icon">⚠️</span>
+      <div class="box-content">
+        <p><strong>Account must be linked:</strong> Your employee record must be linked to your login account by the
+          Administrator or HR. If you see "Employee profile not linked", contact your administrator immediately.</p>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--blue-100)">🗂️</div>
+        <div>
+          <div class="pc-title">Task Board</div>
+          <div class="pc-route">/worker/tasks</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">Kanban board — 4 columns</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;font-size:.75rem">
+            <div
+              style="background:var(--blue-pale);border:1px solid var(--blue-100);border-radius:6px;padding:.6rem;text-align:center">
+              <strong style="color:var(--blue2)">📋 To Do</strong><br /><span style="color:var(--gray-500)">Assigned,
+                not started</span>
+            </div>
+            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:.6rem;text-align:center">
+              <strong style="color:#a16207">⚡ In Progress</strong><br /><span style="color:var(--gray-500)">Currently
+                working</span>
+            </div>
+            <div
+              style="background:var(--orange-pale);border:1px solid var(--orange-100);border-radius:6px;padding:.6rem;text-align:center">
+              <strong style="color:var(--orange)">⏸ Paused</strong><br /><span style="color:var(--gray-500)">Temporarily
+                stopped</span>
+            </div>
+            <div
+              style="background:var(--green-pale);border:1px solid var(--green-100);border-radius:6px;padding:.6rem;text-align:center">
+              <strong style="color:var(--green2)">✅ Completed</strong><br /><span style="color:var(--gray-500)">Work
+                finished</span>
+            </div>
+          </div>
+          <img src="../jts/src/assets/images/worker/taskBoard.png" alt="Task Board"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">📋 Working through a job</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text"><strong>To start:</strong> Find
+              the job in "To Do". Click <span class="lbl-click">Start</span>. Card moves to "In Progress". Supervisor
+              can see you started.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text"><strong>To pause:</strong> In
+              "In Progress", click <span class="lbl-click">Pause</span>. Card moves to "Paused".</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text"><strong>To resume:</strong> In
+              "Paused", click <span class="lbl-click">Resume</span>. Card returns to "In Progress".</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text"><strong>To complete:</strong> In
+              "In Progress", click <span class="lbl-click">Complete</span>. Card moves to "Completed". Supervisor can
+              now "Mark Done" for the department.</span></div>
+          <div class="step-item"><span class="step-num">5</span><span class="step-text">Click any card to open a detail
+              modal with job type, description, deadline, and timestamps.</span></div>
+        </div>
+        <div class="info-box"><span class="box-icon">📌</span>
+          <div class="box-content">
+            <p>You must click <strong>Complete</strong> before the Supervisor can mark the department as Done. Do not
+              forget to complete your job cards when finished.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--teal-100)">📦</div>
+        <div>
+          <div class="pc-title">Material Requests</div>
+          <div class="lbl-click">/worker/materials</div>
+          <img src="../jts/src/assets/images/worker/items.png" alt="Material Requests"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+      </div>
+      <div>
+        <div class="lbl-click">/worker/myrequests</div>
+        <img src="../jts/src/assets/images/worker/requestpage.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Two panels: <strong>Left</strong> — Available Items
+            in General Stock (item name, category, stock level with OK/Low/Out indicator). <strong>Right</strong> — My
+            Requests (your requests with status: pending/approved/rejected). Summary cards: Pending · Approved ·
+            Rejected counts. <strong>New Request</strong> button.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">📋 Request materials</div>
+          <img src="../jts/src/assets/images/worker/thewayrequest.png" alt="Request Materials"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">New Request</span>. A modal opens.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Select a stock item from the
+              dropdown (shows current available quantity). Enter the Quantity needed. Click the <strong>+</strong>
+              button to add it to your request list.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Add more items the same way if
+              needed.</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">Enter a <span
+                class="lbl-field">Reason</span>* (required, e.g., "Running low on paper for job JOB-045"). Click <span
+                class="lbl-click">Submit Request</span>.</span>
+          </div>
+        </div>
+      </div>
+      <div><br>
+        <div class="lbl-click mt-4">/worker/my leave</div>
+        <p> This helps workers manage their leave requests.</p>
+        <img src="../jts/src/assets/images/worker/leavepage.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+
+      </div>
+      <div><br>
+        <div class="lbl-click mt-4">/worker/request leave</div>
+        <img src="../jts/src/assets/images/worker/requestleave.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+
+      </div>
+      <div> <br>
+        <div class="lbl-click mt-4">/reports/my jobs</div>
+        <p>This helps workers view their submitted reports.</p>
+        <img src="../jts/src/assets/images/worker/reportpage.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+      <div><br>
+        <div class="lbl-click mt-4">/reports/materials requests</div>
+        <p>This helps workers view their materials request reports.</p>
+        <img src="../jts/src/assets/images/worker/materialreport.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+
+      <div><br>
+        <div class="lbl-click mt-4">/reports/way to generate reports</div>
+        <p>This helps workers generate various reports by filling out forms.</p>
+        <img src="../jts/src/assets/images/worker/materialreport.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+      <div><br>
+        <div class="lbl-click mt-4">/reports/may reports</div>
+        <p>This helps workers view their monthly reports.</p>
+        <img src="../jts/src/assets/images/worker/myreports.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+      <div><br>
+        <div class="lbl-click mt-4">/reports/reports assigned</div>
+        <p>This helps workers view their assigned reports.</p>
+        <img src="../jts/src/assets/images/worker/reportAssigned.png" alt="My Requests"
+          style="max-width:100%;height:auto;margin-top:.5rem">
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 14. STOCK ═══ -->
+    <div class="sec-title" id="stock">
+      <div class="sec-icon sec-icon-blue">📦</div>
+      <div class="sec-text">
+        <h2>14. Stock Manager</h2>
+        <p>Boutique and general stock management</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Boutique Stock, General Stock, My Leave, Reports ▾.</strong></p>
+    <div class="info-box"><span class="box-icon">📌</span>
+      <div class="box-content">
+        <p>The Suppliers page (<code>/stock/suppliers</code>) exists in the system but is not shown in the sidebar by
+          default. Ask the Administrator to enable it via UI Permissions if needed.</p>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--green-100)">🛒</div>
+        <div>
+          <div class="pc-title">Boutique Stock</div>
+          <div class="pc-route">/stock/boutique-stock</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Items sold in the boutique: Name, Category, Current
+            Stock quantity, Unit, Price, Alarm Stock threshold, Status (OK/Low/Out of Stock). <strong>Add Stock
+              Item</strong> button. Edit and adjust buttons per row.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">➕ Add a boutique stock item</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Add Stock Item</span>. Fill: Item Name*, Category, Unit (pieces/kg/liters/etc.),
+              Current Stock*, Price per Unit, Alarm Stock (quantity that triggers a low-stock alert). Click <span
+                class="lbl-click">Save</span>.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--teal-100)">🏭</div>
+        <div>
+          <div class="pc-title">General Stock</div>
+          <div class="pc-route">/stock/general-stock</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Production materials (paper, ink, chemicals) — same
+            structure as Boutique Stock. Also shows a <strong>Pending Requests</strong> section: stock requests from
+            workers/Hobe waiting for approval.</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">✅ Approve or reject a stock request</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the Pending Requests
+              section. Each entry shows: requester name, item requested, quantity needed, reason.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Click <span
+                class="lbl-click">Approve</span> to fulfill (stock quantity deducted) or <span
+                class="lbl-click">Reject</span> to decline.</span></div>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 15. HR ═══ -->
+    <div class="sec-title" id="hr">
+      <div class="sec-icon sec-icon-blue">👥</div>
+      <div class="sec-text">
+        <h2>15. HR &amp; Payroll</h2>
+        <p>Employees, casual workers, and payroll</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Employees, Casual Workers, Payroll, Leave Management, Reports ▾.</strong></p>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--blue-100)">📊</div>
+        <div>
+          <div class="pc-title">HR Dashboard</div>
+          <div class="pc-route">/hr</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Summary cards: Total Employees · Active · Inactive
+            · Interns. Contract type breakdown. Gender distribution. Payroll summary for the current month: Draft total
+            · Approved total · Paid total (RWF).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--purple-100)">💳</div>
+        <div>
+          <div class="pc-title">Payroll</div>
+          <div class="pc-route">/hr/payroll</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Payroll table: Worker name, Type (Employee/Casual,
+            color-coded), Period, Base Salary, Overtime, Deductions, Net Salary, Status (Draft/Approved/Paid). Summary
+            cards at top. Filters: search, type, status, month/year. <strong>New Payroll</strong> button.</p>
+        </div>
+        <div class="info-box"><span class="box-icon">📌</span>
+          <div class="box-content">
+            <p><strong>Payroll workflow:</strong> Draft → Approve → Paid (three steps in order). Once Approved or Paid,
+              the record is locked and cannot be edited.</p>
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">➕ Create a payroll record</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">New Payroll</span>. Select worker type tab: <strong>Employee</strong> (purple) or
+              <strong>Casual Worker</strong> (orange).</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Select the worker. If Employee,
+              the base salary pre-fills from their contract.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Select the <span
+                class="lbl-field">Period</span> (month/year, e.g., 2026-06).</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">Enter <span
+                class="lbl-field">Base Salary</span>*, <span class="lbl-field">Overtime</span> (optional), <span
+                class="lbl-field">Deductions</span> (optional). Net = Salary + Overtime − Deductions (updates
+              live).</span></div>
+          <div class="step-item"><span class="step-num">5</span><span class="step-text">Add optional Notes. Click <span
+                class="lbl-click">Create Payroll</span>. Record is created with status <strong>Draft</strong>.</span>
+          </div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">✅ Approve → Mark Paid</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the Draft payroll. Click
+              blue <span class="lbl-click">Approve</span>. Confirm in the modal. Status becomes
+              <strong>Approved</strong>.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Find the Approved payroll. Click
+              green <span class="lbl-click">Mark Paid</span>. Confirm. Status becomes <strong>Paid</strong> — final
+              state, no further changes possible.</span></div>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 16. HOBE ═══ -->
+    <div class="sec-title" id="hobe">
+      <div class="sec-icon sec-icon-blue">🛒</div>
+      <div class="sec-text">
+        <h2>16. Hobe (Trade)</h2>
+        <p>Batch trading and stock requests</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Your sidebar: <strong>Dashboard, Trade, Requests, My Leave, Reports ▾.</strong> The Hobe module handles trading
+      goods in batches, recording sales, and managing outstanding payments (underpaid and overpaid).</p>
+    <img src="../jts/src/assets/images/hobe/dashboard.png" alt="Add Delivery Form"
+      style="max-width:100%;height:auto;margin-top:.5rem">
+
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--gold-pale)">🏷️</div>
+        <div>
+          <div class="pc-title">Trade (Batch Management)</div>
+          <img src="../jts/src/assets/images/hobe/trade.png" alt="Batch Management"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Grid of batch cards. Each card: Batch # (e.g.,
+            HOB-001), Status badge (Active/Expired/Sold Out), item name, price per item, available/total units, sold %
+            progress bar. Active batches have <strong>Sell</strong> and <strong>Add Qty</strong> buttons. Top:
+            <strong>Add Batch</strong> (blue) · <strong>Pending</strong> button (orange with count). Filters: All /
+            Active / Expired / Sold Out. Search box.
+          </p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">➕ Add a new batch</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Add Batch</span>. Fill: Name*, Done At* (receipt date), Expires At*, Quantity*, Price
+              per Item (RWF)*, OB (optional opening balance), Note (optional). Click <span class="lbl-click">Add
+                Batch</span>.</span></div>
+          <img src="../jts/src/assets/images/hobe/newBatch.png" alt="Add Batch Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <!-- kwishyuza -->
+        <div class="step-box">
+          <div class="step-box-title">Collect unpaid balances</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click
+              <span class="lbl-click">Pending</span>. in
+              <span class="lbl-click">due balance</span> if client give you remais amout , click on <span
+                class="lbl-click">collect.</span></div>
+          <img src="../jts/src/assets/images/hobe/collectayasigaye.png" alt="Add Batch Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <!-- Gusubiza umuclient -->
+        <div class="step-box">
+          <div class="step-box-title">To pay amount(changes to give)</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click
+              <span class="lbl-click">Pending</span>. in
+              <span class="lbl-click">change to give</span> we can need to give client amount , click on <span
+                class="lbl-click">Mark Returned</span></div>
+          <img src="../jts/src/assets/images/hobe/returns.png" alt="Add Batch Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <!-- Requests -->
+        <div class="step-box">
+          <div class="step-box-title">Request sth(if its happens)</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click
+              <span class="lbl-click">Requests</span>. in sidebar
+              we can get all requests </div>
+          <img src="../jts/src/assets/images/hobe/requests.png" alt="Add Batch Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <!-- add new request -->
+        <div class="step-box">
+          <div class="step-box-title">Add new request</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click
+              <span class="lbl-click">Requests</span>. in sidebar
+              we can get all requests, then check on add request </div>
+          <img src="../jts/src/assets/images/hobe/request.png" alt="Add Batch Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <!-- about leave -->
+        <div class="step-box">
+          <div class="step-box-title"> Leave</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Leave</span>.</span></div>
+          <img src="../jts/src/assets/images/hobe/allleave.png" alt="Add Expense Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click"> ask for Leave</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Request</span> complete the form and submit.</span></div>
+          <img src="../jts/src/assets/images/hobe/hobeLeave.png" alt="Add Expense Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <!-- about reports -->
+        <div class="step-box-title">📋 ABOUT REPORTS</div>
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click">hobe reports</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">sales
+                reports </span> tab to get what's the report about all hobe transactions.</span></div>
+          <img src="../jts/src/assets/images/hobe/hobereport.png" alt="Add Expense Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <!-- generate reports -->
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click">Generate reports</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span class="lbl-click">
+                generate reports
+              </span> you will see modal to fill. before submit remember to select who will see you report</span></div>
+          <img src="../jts/src/assets/images/hobe/generatehobereport.png" alt="Add Expense Form"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <div class="step-box-title">📋 MY REPORTS</div>
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click">my reports</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span class="lbl-click">my
+                reports </span>on sidebar</span></div>
+          <img src="../jts/src/assets/images/hobe/myhobereports.png" alt="my reports"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <div class="step-box-title">📋 Notifications</div>
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click">notifications</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">notifications </span>on sidebar</span></div>
+          <img src="../jts/src/assets/images/hobe/hobenotify.png" alt="notifications"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <div class="step-box-title">📋 Settings</div>
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click">settings</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">settings </span>then Click <span class="lbl-click">profile </span></span></div>
+          <img src="../jts/src/assets/images/hobe/profile.png" alt="settings"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+        <div class="step-box">
+          <div class="step-box-title"><span class="lbl-click">change credentials(email and password)</span></div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">settings </span>then Click <span class="lbl-click">password </span></span></div>
+          <img src="../jts/src/assets/images/hobe/pass.png" alt="settings"
+            style="max-width:100%;height:auto;margin-top:.5rem">
+        </div>
+
+        <div class="step-box">
+          <div class="step-box-title">💵 Record a sale</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Sell</span> on an active batch card. A sale modal opens showing current price and
+              available quantity.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Enter <span
+                class="lbl-field">Quantity</span>. The expected total calculates automatically. Enter <span
+                class="lbl-field">Amount Paid</span> (can differ from expected — handles underpayment and
+              overpayment).</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Select <span
+                class="lbl-field">Payment Method</span>: Cash, Mobile Money, Card, or Bank Transfer.</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">Optionally select a <span
+                class="lbl-field">Customer</span> or leave as "Walk-in customer". Click <span class="lbl-click">Confirm
+                Sale</span>. A receipt shows payment status (Paid/Partial/Overpaid), amounts, and remaining batch
+              quantity.</span></div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">🔄 Handle pending balances</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click the orange <span
+                class="lbl-click">Pending</span> button. A modal opens with two tabs: <strong>Balance Due</strong>
+              (underpaid) and <strong>Change to Give</strong> (overpaid).</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text"><strong>Balance Due:</strong>
+              find the customer, click <span class="lbl-click">Collect</span>. Enter amount received. Click <span
+                class="lbl-click">Confirm</span>.</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text"><strong>Change to Give:</strong>
+              after returning change to the customer, click <span class="lbl-click">Mark Returned</span> to close the
+              record.</span></div>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 17. JOB FLOW ═══ -->
+    <div class="sec-title" id="jobflow">
+      <div class="sec-icon sec-icon-blue">🔄</div>
+      <div class="sec-text">
+        <h2>17. Job Status Flow</h2>
+        <p>How a job moves through the system</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>A job moves through these stages in order. You cannot skip stages. Each must be completed before the next begins.
+    </p>
+
+    <div class="flow-wrap">
+      <div class="flow">
+        <span class="flow-step s-pending">Pending</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-confirmed">Confirmed</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-composition">In Composition</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-montage">In Montage</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-printing">In Printing</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-binding">In Binding</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-packaging">In Packaging</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-quality">Quality Check</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-ready">Ready for Delivery</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-delivered">Delivered</span><span class="flow-arrow">→</span>
+        <span class="flow-step s-completed">Completed</span>
+      </div>
+      <p style="font-size:.78rem;color:var(--gray-500);margin-top:.75rem;margin-bottom:0">Jobs can also be <span
+          class="sbadge s-rejected">Rejected</span> at the Pending or Confirmed stage.</p>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Meaning</th>
+          <th>Who advances it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="sbadge s-pending">Pending</span></td>
+          <td>Created, waiting for DAF approval</td>
+          <td>DAF approves → Confirmed</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-confirmed">Confirmed</span></td>
+          <td>Approved by DAF, waiting for production assignment</td>
+          <td>Production Manager assigns → first dept stage</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-composition">In Composition</span></td>
+          <td>Design/layout department working</td>
+          <td>Supervisor marks dept done → Montage</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-montage">In Montage</span></td>
+          <td>Montage assembly in progress</td>
+          <td>Supervisor marks dept done → Printing</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-printing">In Printing</span></td>
+          <td>Printing in progress</td>
+          <td>Supervisor marks dept done → Binding</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-binding">In Binding</span></td>
+          <td>Binding in progress</td>
+          <td>Supervisor marks dept done → Packaging</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-packaging">In Packaging</span></td>
+          <td>Packaging in progress</td>
+          <td>Supervisor marks dept done → Quality Check</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-quality">Quality Check</span></td>
+          <td>Quality inspection being done</td>
+          <td>Supervisor marks dept done → Ready for Delivery</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-ready">Ready for Delivery</span></td>
+          <td>Production complete, awaiting pickup/delivery</td>
+          <td>Reception marks Delivered</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-delivered">Delivered</span></td>
+          <td>Given to customer</td>
+          <td>System/Admin marks Completed</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-completed">Completed</span></td>
+          <td>Job fully closed</td>
+          <td>Final state</td>
+        </tr>
+        <tr>
+          <td><span class="sbadge s-rejected">Rejected</span></td>
+          <td>Not approved or cancelled</td>
+          <td>Terminal state</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box"><span class="box-icon">🔗</span>
+      <div class="box-content">
+        <p><strong>The full chain:</strong> Worker clicks Complete → Supervisor clicks Mark Done → Production Manager
+          assigns to next dept → Next dept Supervisor assigns a worker → Worker works → Repeat until Completed.</p>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 18. REPORTS ═══ -->
+    <div class="sec-title" id="reports-guide">
+      <div class="sec-icon sec-icon-blue">📈</div>
+      <div class="sec-text">
+        <h2>18. Reports Module</h2>
+        <p>Generating and receiving reports</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Almost every role has a <strong>Reports ▾</strong> section in the sidebar with two sub-items: <strong>Generate
+        Reports</strong> and <strong>My Reports</strong>.</p>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--green-100)">📝</div>
+        <div>
+          <div class="pc-title">Generate Reports (Submit a new report)</div>
+          <div class="pc-route">Sidebar → Reports ▾ → Generate Reports</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="step-box">
+          <div class="step-box-title">📋 Create and submit a report</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Generate Report</span> or <span class="lbl-click">New Report</span>. The modal opens
+              with the report title pre-filled.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Fill <span
+                class="lbl-field">Purpose / Subject</span>* (e.g., "Monthly summary for management").</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text"><strong>Records
+                section:</strong> Each row has: Record/Item · Quantity · Amount (RWF). Click <span class="lbl-click">+
+                Add Row</span> for more. Click the X on a row to remove it.</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">(Optional) <strong>Attach
+                File:</strong> Click the file picker and select a PDF, Word, Excel, or image file.</span></div>
+          <div class="step-item"><span class="step-num">5</span><span class="step-text">(Optional)
+              <strong>Notes:</strong> add any extra remarks.</span></div>
+          <div class="step-item"><span class="step-num">6</span><span class="step-text"><strong>Visible To*</strong>
+              (required): Click role pills to select which roles can see this report. At least one must be selected.
+              E.g., click "admin" and "daf" to share with both.</span></div>
+          <div class="step-item"><span class="step-num">7</span><span class="step-text">Click <span
+                class="lbl-click">Submit Report</span>. It is now visible to selected roles in their "Received Reports"
+              tab.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--blue-100)">📂</div>
+        <div>
+          <div class="pc-title">My Reports</div>
+          <div class="pc-route">Sidebar → Reports ▾ → My Reports</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0">Two tabs: <strong>My Reports</strong> (reports you
+            submitted) and <strong>Received Reports</strong> (reports others shared with your role). Click any report
+            card to expand it. <strong>Received Reports</strong> tab has filters: search by title/sender, filter by
+            Sender Role, date From/To range.</p>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 19. MY LEAVE ═══ -->
+    <div class="sec-title" id="leave">
+      <div class="sec-icon sec-icon-blue">🏖️</div>
+      <div class="sec-text">
+        <h2>19. My Leave</h2>
+        <p>Requesting and tracking leave (all roles)</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+
+    <div class="page-card">
+      <div class="pc-header">
+        <div class="pc-icon" style="background:var(--teal-100)">🏖️</div>
+        <div>
+          <div class="pc-title">My Leave Page</div>
+          <div class="pc-route">Sidebar → My Leave</div>
+        </div>
+      </div>
+      <div class="pc-body">
+        <div class="screen-mock">
+          <div class="screen-mock-title">What you see</div>
+          <p style="font-size:.82rem;color:var(--gray-600);margin:0"><strong>Request Leave</strong> button. Three
+            summary cards: Pending (yellow) · Approved (green) · Rejected (red) counts. Filter tabs: All / Pending /
+            Approved / Rejected. Leave request cards showing: Leave Type, Status badge, date submitted, period (start →
+            end), duration in days, reason, rejection reason (if rejected).</p>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">📋 Request leave</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Click <span
+                class="lbl-click">Request Leave</span>. The request modal opens.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Select <span
+                class="lbl-field">Leave Type</span>: Annual Leave, Sick Leave, Maternity Leave, Paternity Leave,
+              Emergency Leave, Unpaid Leave, or Other (type your own custom leave type).</span></div>
+          <div class="step-item"><span class="step-num">3</span><span class="step-text">Select <span
+                class="lbl-field">Start Date</span> and <span class="lbl-field">End Date</span>. Duration in days shows
+              automatically.</span></div>
+          <div class="step-item"><span class="step-num">4</span><span class="step-text">Type a <span
+                class="lbl-field">Reason</span>* (required).</span></div>
+          <div class="step-item"><span class="step-num">5</span><span class="step-text">(Optional) Attach a document:
+              click the upload area and select a PDF, JPG, or PNG file (max 5 MB, e.g., medical certificate for sick
+              leave).</span></div>
+          <div class="step-item"><span class="step-num">6</span><span class="step-text">Click <span
+                class="lbl-click">Submit Request</span>. HR or Admin will review and respond.</span></div>
+        </div>
+        <div class="step-box">
+          <div class="step-box-title">❌ Cancel a pending request</div>
+          <div class="step-item"><span class="step-num">1</span><span class="step-text">Find the leave request with
+              status <strong>Pending</strong>. Click the red <span class="lbl-click">Cancel</span> button.
+              Confirm.</span></div>
+          <div class="step-item"><span class="step-num">2</span><span class="step-text">Only Pending requests can be
+              cancelled. Approved or Rejected ones cannot be modified.</span></div>
+        </div>
+      </div>
+    </div>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 20. NOTIFICATIONS ═══ -->
+    <div class="sec-title" id="notifications">
+      <div class="sec-icon sec-icon-blue">🔔</div>
+      <div class="sec-text">
+        <h2>20. Notifications</h2>
+        <p>Staying informed (all roles)</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+    <p>Each role has a <strong>🔔 Notifications</strong> button at the bottom of the sidebar. A red badge shows the
+      unread count, refreshing automatically every 30 seconds.</p>
+    <div class="step-box">
+      <div class="step-box-title">🔔 View notifications</div>
+      <div class="step-item"><span class="step-num">1</span><span class="step-text">Click the 🔔 Notifications button at
+          the bottom of the sidebar. The Notifications page loads.</span></div>
+      <div class="step-item"><span class="step-num">2</span><span class="step-text">Notifications are listed newest
+          first. Unread ones are highlighted. Click any to mark it as read and view details.</span></div>
+    </div>
+    <p><strong>Common notification types:</strong> new job assigned to your department · job status changed · payment
+      recorded · leave approved/rejected · stock running low · report submitted.</p>
+    <a href="#" class="back-top">↑ Back to top</a>
+
+    <!-- ═══ 21. TROUBLESHOOTING ═══ -->
+    <div class="sec-title" id="faq">
+      <div class="sec-icon sec-icon-blue">❓</div>
+      <div class="sec-text">
+        <h2>21. Troubleshooting &amp; Quick Reference</h2>
+        <p>Common problems and fast solutions</p>
+      </div>
+    </div>
+    <div class="sec-divider"></div>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Problem</th>
+          <th>Solution</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Cannot log in</strong></td>
+          <td>Check email spelling and that Caps Lock is off. If still failing, ask admin to reset your password.</td>
+        </tr>
+        <tr>
+          <td><strong>Page is blank or not loading</strong></td>
+          <td>Press <kbd>F5</kbd> to refresh. Check your internet connection. Try closing and reopening the browser tab.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Sidebar items are missing</strong></td>
+          <td>Your role may not have that permission. Ask the Administrator to enable it in UI Permissions.</td>
+        </tr>
+        <tr>
+          <td><strong>Worker sees "Employee profile not linked"</strong></td>
+          <td>Ask Admin or HR to link the worker's employee record to their login account (HR → Employees → Link
+            button).</td>
+        </tr>
+        <tr>
+          <td><strong>Supervisor sees "not assigned to department"</strong></td>
+          <td>Ask Admin to assign your user account to a department.</td>
+        </tr>
+        <tr>
+          <td><strong>Supervisor "Mark Done" button is not available</strong></td>
+          <td>The worker must click Complete on their task card first. Only then does Mark Done appear.</td>
+        </tr>
+        <tr>
+          <td><strong>Job not appearing for Production Manager</strong></td>
+          <td>The job must be DAF-approved first (status = Confirmed). Pending jobs do not appear in Job Planning.</td>
+        </tr>
+        <tr>
+          <td><strong>Cannot create a job — no customers in list</strong></td>
+          <td>Add a customer first (type = BUSINESS) in the Customers page, then create the job.</td>
+        </tr>
+        <tr>
+          <td><strong>PDF download does not work</strong></td>
+          <td>Your browser may be blocking pop-ups. Allow pop-ups for this site in your browser settings.</td>
+        </tr>
+        <tr>
+          <td><strong>Data is not saving</strong></td>
+          <td>Check internet connection. Try again. If the problem persists, contact support.</td>
+        </tr>
+        <tr>
+          <td><strong>Leave request shows a rejection reason</strong></td>
+          <td>Your manager provided the reason when rejecting. Read it and submit a new request if appropriate.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub-head">Quick Reference — Common Actions</h3>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>I want to…</th>
+          <th>Where to go</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Log out</td>
+          <td>Sidebar bottom ⚙️ Settings → Profile → Logout</td>
+        </tr>
+        <tr>
+          <td>Change my password</td>
+          <td>Sidebar bottom ⚙️ Settings → Profile → password fields</td>
+        </tr>
+        <tr>
+          <td>View notifications</td>
+          <td>Sidebar bottom 🔔 Notifications</td>
+        </tr>
+        <tr>
+          <td>Create a job</td>
+          <td>Admin or Sales: Sidebar → Jobs → Create Job</td>
+        </tr>
+        <tr>
+          <td>Create a price quote (performa)</td>
+          <td>Sales: Sidebar → Performa Invoice (auto-created with each job)</td>
+        </tr>
+        <tr>
+          <td>Approve a job</td>
+          <td>DAF: Sidebar → Job Approvals → select job → Approve</td>
+        </tr>
+        <tr>
+          <td>Assign job to department</td>
+          <td>Production Manager: Sidebar → Job Planning → 👁 → Assign to Department</td>
+        </tr>
+        <tr>
+          <td>Assign job to a worker</td>
+          <td>Supervisor: Sidebar → Jobs → ⋮ → Assign</td>
+        </tr>
+        <tr>
+          <td>Start working on a job</td>
+          <td>Worker: Sidebar → Task Board → Start button</td>
+        </tr>
+        <tr>
+          <td>Complete a job task</td>
+          <td>Worker: Sidebar → Task Board → Complete button (must be In Progress first)</td>
+        </tr>
+        <tr>
+          <td>Mark department work done</td>
+          <td>Supervisor: Sidebar → Jobs → ⋮ → Mark Done (only after worker completes)</td>
+        </tr>
+        <tr>
+          <td>Record a payment</td>
+          <td>Reception: Sidebar → Payments → Add Payment</td>
+        </tr>
+        <tr>
+          <td>Create an invoice</td>
+          <td>Accountant: Sidebar → Invoices → Create Invoice</td>
+        </tr>
+        <tr>
+          <td>Request materials</td>
+          <td>Worker or Hobe: Sidebar → Material Requests / Requests → New Request</td>
+        </tr>
+        <tr>
+          <td>Request leave</td>
+          <td>Any role: Sidebar → My Leave → Request Leave</td>
+        </tr>
+        <tr>
+          <td>Submit a report</td>
+          <td>Any role: Sidebar → Reports ▾ → Generate Reports → Submit</td>
+        </tr>
+        <tr>
+          <td>View reports sent to me</td>
+          <td>Any role: Sidebar → Reports ▾ → My Reports → Received Reports tab</td>
+        </tr>
+        <tr>
+          <td>Add an employee</td>
+          <td>HR: Sidebar → Employees → Add Employee</td>
+        </tr>
+        <tr>
+          <td>Process payroll</td>
+          <td>HR: Sidebar → Payroll → New Payroll → Create → Approve → Mark Paid</td>
+        </tr>
+        <tr>
+          <td>Sell a hobe item</td>
+          <td>Hobe: Sidebar → Trade → click batch card → Sell</td>
+        </tr>
+        <tr>
+          <td>Create a user account</td>
+          <td>Admin: Sidebar → Users → Create User</td>
+        </tr>
+        <tr>
+          <td>Configure permissions</td>
+          <td>Admin: Sidebar → UI Permissions</td>
+        </tr>
+        <tr>
+          <td>Change system settings</td>
+          <td>Admin: Sidebar bottom ⚙️ Settings</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="info-box"><span class="box-icon">💬</span>
+      <div class="box-content">
+        <p><strong>Need help?</strong> Contact your system administrator directly, or email developer support:
+          <strong>support@santech.com</strong>
+        </p>
+      </div>
+    </div>
+
+    <div class="doc-footer">
+      <span>© 2026 Pallotti Presse — All rights reserved</span>
+      <span>User Guide v3.0 · June 2026 · Based on actual system code</span>
+    </div>
+
+  </div><!-- /.content -->
+  </div><!-- /.main -->
+
+  <script>
+    // Mobile sidebar toggle
+    const toggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+    document.querySelectorAll('.sb-nav a').forEach(l => {
+      l.addEventListener('click', () => { if (window.innerWidth <= 1000) sidebar.classList.remove('open'); });
+    });
+
+    // Active nav highlight on scroll
+    const sections = document.querySelectorAll('[id]');
+    const navLinks = document.querySelectorAll('.sb-nav a');
+    function setActiveNav() {
+      let current = '';
+      sections.forEach(s => {
+        const t = s.getBoundingClientRect().top;
+        if (t <= 120) current = s.id;
+      });
+      navLinks.forEach(l => {
+        l.classList.remove('active');
+        if (l.getAttribute('href') === '#' + current) l.classList.add('active');
+      });
+    }
+    window.addEventListener('scroll', setActiveNav, { passive: true });
+    setActiveNav();
+
+    // Smooth scroll for nav links
+    document.querySelectorAll('.sb-nav a[href^="#"], .back-top[href^="#"]').forEach(l => {
+      l.addEventListener('click', e => {
+        const href = l.getAttribute('href');
+        if (href === '#') { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+        const target = document.querySelector(href);
+        if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      });
+    });
+  </script>
+</body>
+
+</html>

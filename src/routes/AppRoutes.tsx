@@ -77,6 +77,7 @@ import { MaterialRequestPage } from "../pages/worker";
 import CustomerPage from "../pages/admin/customaPage";
 import VisitorPage from "../pages/receptionalist/VisitorPage";
 import MyReportsPage from "../pages/shared/MyReportsPage";
+import UserGuidesPage from "../pages/UserGuidesPage";
 import ReceptionReportsPage from "../pages/receptionalist/ReceptionReportsPage";
 import JobManagementPage from "../pages/sales/JobManagementPage";
 import HRPage from "../pages/HR/HRPage";
@@ -259,6 +260,19 @@ export default function AppRoutes() {
       <Route element={<Layout />}>
         {/* Add public page routes here if needed */}
       </Route>
+
+      {/* User Guide Routes */}
+      <Route path="/reception/guide" element={<ProtectedRoute allowedRoles={["receptionist"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/sales/guide" element={<ProtectedRoute allowedRoles={["sales"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/guide" element={<ProtectedRoute allowedRoles={["daf"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/hobe/guide" element={<ProtectedRoute allowedRoles={["hobe"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/supervisor/guide" element={<ProtectedRoute allowedRoles={["supervisor"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/worker/guide" element={<ProtectedRoute allowedRoles={["worker"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/hr/guide" element={<ProtectedRoute allowedRoles={["hr"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/stock/guide" element={<ProtectedRoute allowedRoles={["stock"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/production-manager/guide" element={<ProtectedRoute allowedRoles={["production-manager"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/guide" element={<ProtectedRoute allowedRoles={["accountant"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/admin/guide" element={<ProtectedRoute allowedRoles={["admin"]}><UserGuidesPage /></ProtectedRoute>} />
 
       {/* Default redirect to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />

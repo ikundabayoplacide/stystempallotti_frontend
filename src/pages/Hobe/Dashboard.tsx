@@ -59,7 +59,7 @@ export default function HobeDashboard() {
   const totalRevenue = recentSales.reduce((s, r) => s + Number(r.amountPaid), 0);
 
   return (
-    <DashboardLayout notificationCount={0}>
+    <DashboardLayout userRole="hobe">
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}

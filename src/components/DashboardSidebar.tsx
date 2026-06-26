@@ -12,6 +12,7 @@ import {
   HiOutlineDocumentText,
   HiOutlineHome,
   HiOutlineMenu,
+  HiOutlineQuestionMarkCircle,
   HiOutlineUsers,
   HiOutlineViewGrid,
   HiOutlineX
@@ -294,6 +295,20 @@ export default function DashboardSidebar({
     worker: "/worker/notifications",
   };
 
+  const guidePath: Record<UserRole, string> = {
+    admin: "/admin/guide",
+    receptionist: "/reception/guide",
+    sales: "/sales/guide",
+    hr: "/hr/guide",
+    hobe: "/hobe/guide",
+    daf: "/finance/daf/guide",
+    accountant: "/finance/accountant1/guide",
+    "production-manager": "/production-manager/guide",
+    stock: "/stock/guide",
+    supervisor: "/supervisor/guide",
+    worker: "/worker/guide",
+  };
+
   const settingsPath: Record<UserRole, string> = {
     admin: "/admin/settings",
     receptionist: "/reception/profile",
@@ -475,6 +490,18 @@ export default function DashboardSidebar({
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
+          </button>
+          <button
+            onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(guidePath[userRole]); if (window.innerWidth < 1024) onMobileClose(); }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+              location.pathname === guidePath[userRole]
+                ? "bg-primary-500 text-secondary-200"
+                : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
+            } ${isCollapsed ? "justify-center" : ""}`}
+            title={isCollapsed ? "User Guide" : undefined}
+          >
+            <HiOutlineQuestionMarkCircle className="w-5 h-5 flex-shrink-0" />
+            {!isCollapsed && <span className="font-semibold text-sm">User Guide</span>}
           </button>
           <button
             onClick={(e) => { (e.currentTarget as HTMLButtonElement).blur(); isUserClick.current = true; navigate(settingsPath[userRole]); if (window.innerWidth < 1024) onMobileClose(); }}
