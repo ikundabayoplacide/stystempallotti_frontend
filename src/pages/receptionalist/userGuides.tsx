@@ -73,11 +73,19 @@ export default function ReceptionistUserGuide() {
       <div className="sec-title" id="reception">
         <div className="sec-icon sec-icon-blue">🏢</div>
         <div className="sec-text">
-          <h2>7. Receptionist</h2>
+          <h2>Receptionist</h2>
           <p>Front desk operations</p>
         </div>
       </div>
       <div className="sec-divider" />
+
+      <div className="info-box" style={{ marginBottom: '1rem' }}>
+        <span className="box-icon">📌</span>
+        <div className="box-content">
+          <p><strong>On this page you will:</strong> register and check in visitors/customers, collect job payments, record deliveries, make boutique sales, record petty cash expenses, request leave, and generate reports.</p>
+        </div>
+      </div>
+
       <p>Your sidebar: <strong>Dashboard, Visitor, Payments, Deliveries, Boutique, Boutique Stock, Expenses, My Leave, Reports ▾.</strong></p>
 
       {/* Dashboard */}
@@ -105,52 +113,53 @@ export default function ReceptionistUserGuide() {
             Table of today's visitors: Name, Phone, Visiting, Purpose, Time In, Time Out. <strong>Register Visitor</strong> button.
           </ScreenMock>
           <div className="step-box">
-            <div className="step-box-title">📋 Add new customer</div>
+            <div className="step-box-title">📋 Register a visitor / customer</div>
             <StepItem num={1}>
-              Click <Lbl>Add new customer</Lbl>. Fill: Visitor Name, Phone, Person/Department Visiting, Purpose.
-              Time In sets automatically. Click <Lbl>Add customer</Lbl>.
+              Click <Lbl>Register Visitor</Lbl>. Fill: Full Name, Phone, Category, Client Type, Address, Notes.
+              Click <Lbl>Add Customer</Lbl>.
             </StepItem>
             <img src={addvisitorImg} alt="Visitor Registration Form" style={imgStyle} />
             <StepItem num={2}>
-              When the visitor comes, find their row and click <Lbl>Check in</Lbl> to record the Time .
+              To record a visit, find the customer row and click the green <Lbl>Check In</Lbl> icon to check in, or the orange <Lbl>Check Out</Lbl> icon to check out.
             </StepItem>
-            <img src={checkInImg} alt="Visitor Check Out" style={imgStyle} />
+            <img src={checkInImg} alt="Visitor Check In / Check Out" style={imgStyle} />
           </div>
         </div>
       </div>
 
       {/* Payments */}
       <PageCard iconBg="var(--green-100)" icon="💵" title="Payments" img={paymentImg} imgAlt="Payments">
-        <p>When job completed, it will need to be paid at Recepitionlist and account</p>
+        <p>When a job is completed, it will need to be paid at the Reception desk.</p>
         <ScreenMock>
-          List of payments: Date, Customer, Job, Amount, Payment Method, Receipt #. Search box. <strong>Add Payment</strong> button.
+          Table of all jobs: Job #, Title, Customer, Amount, Paid, Balance, Status, Payment. Search box.
         </ScreenMock>
         <div className="step-box">
           <div className="step-box-title">💳 Record a payment</div>
           <img src={paynowImg} alt="Add Payment Form" style={imgStyle} />
-          <StepItem num={1}>Click <Lbl>collect payment </Lbl></StepItem>
-          <StepItem num={2}>Select the <Field>payment full</Field> Or Partial</StepItem>
-          <StepItem num={3}> Select <Field>Payment Method</Field>: Cash, Mobile Money, Bank Transfer, or Cheque.
-          </StepItem>
-          <StepItem num={4}> Click <Lbl>confrim payment</Lbl>. A receipt number is generated automatically.</StepItem>
+          <StepItem num={1}>Find the job in the table, then click <Lbl>Collect Payment</Lbl></StepItem>
+          <StepItem num={2}>Select the payment type: <Field>Full Payment</Field> or <Field>Partial Payment</Field></StepItem>
+          <StepItem num={3}>Select <Field>Payment Method</Field>: Cash, Mobile Money, Bank Transfer, or Card.</StepItem>
+          <StepItem num={4}>Click <Lbl>Confirm Payment</Lbl>. A receipt number is generated automatically.</StepItem>
         </div>
       </PageCard>
 
       {/* Deliveries */}
       <PageCard iconBg="var(--orange-100)" icon="📦" title="Deliveries" img={deliversImg} imgAlt="Deliveries">
-        <p>Here after job completed and paid, they will need to be delivered.</p>
+        <p>Jobs that are ready for delivery and fully paid appear here for handoff to the client.</p>
         <ScreenMock>
-          List of deliveries: Item, Supplier/Customer, Date, Status (Pending / Received / Delivered). <strong>New Delivery</strong> button.
+          Two tables: <strong>Ready for Delivery</strong> (paid jobs) and <strong>Already Delivered</strong>. Each row shows Job #, Title, Customer, Amount, Payment, Due Date.
         </ScreenMock>
         <div className="step-box">
           <div className="step-box-title">📋 Record a delivery</div>
-          <img src={recordDeriveredImg} alt="Add Delivery Form" style={imgStyle} />
+          <img src={recordDeriveredImg} alt="Mark Delivered Form" style={imgStyle} />
           <StepItem num={1}>
-            Click <Lbl>mark delivered</Lbl>. Select type: <strong>Incoming</strong> (supplies arriving) or <strong>Outgoing</strong> (finished jobs leaving).
+            Find the job in the <strong>Ready for Delivery</strong> table and click <Lbl>Mark Delivered</Lbl>.
           </StepItem>
-          <StepItem num={2}>Fill Shipper name, phone number.</StepItem>
+          <StepItem num={2}>
+            Select who is receiving it: <Field>Owner</Field> (the customer picks it up) or <Field>Shipper</Field> (a third party). If Shipper, fill in their name and phone number.
+          </StepItem>
           <StepItem num={3}>
-            When the physical delivery happens, find the record and click <Lbl>Mark as Received</Lbl> or <Lbl>Mark as Delivered</Lbl>.
+            Click <Lbl>Confirm Delivery</Lbl>. The job moves to the Already Delivered table.
           </StepItem>
         </div>
       </PageCard>
@@ -164,14 +173,13 @@ export default function ReceptionistUserGuide() {
         <div className="step-box">
           <div className="step-box-title">🛒 Make a boutique sale</div>
           <StepItem num={1}>
-            Click <Lbl>on card of product</Lbl>
+            Click on any <Lbl>product card</Lbl> to open the sale form.
             <img src={tradeImg} alt="Boutique Sale Form" style={imgStyle} />
             <div className="step-item">
-              <span className="step-text">Select payment method, record payment amount. Click <Lbl>Confirm Sale</Lbl>. A receipt can be printed.</span>
+              <span className="step-text">Enter quantity and amount paid, select payment method. Click <Lbl>Confirm Sale</Lbl>. A receipt summary is shown.</span>
             </div>
           </StepItem><br />
-          <StepItem num={2}>Click <Lbl>add quantity</Lbl></StepItem>
-          <p>When the product is in stock, you can add more quantity to the sale.</p>
+          <StepItem num={2}>To restock a product, click <Lbl>Add Qty</Lbl> on its card.</StepItem>
           <img src={addQuantityImg} alt="Add Quantity Form" style={imgStyle} />
         </div>
      
@@ -185,40 +193,50 @@ export default function ReceptionistUserGuide() {
         <div className="step-box">
           <div className="step-box-title">➕ Record an expense</div>
           <StepItem num={1}>
-            Click <Lbl>Add record</Lbl>. Fill: Description, Amount (RWF), Category (e.g., Office Supplies, Transport, Cleaning). Click <Lbl>Record cash Outflow</Lbl>.
+            Click <Lbl>New Record</Lbl>. Fill: Description, Category, Recipient Name, Phone, Role, Quantity, Unit Cost, Purpose. Click <Lbl>Record Cash Outflow</Lbl>.
           </StepItem>
           <img src={addnewexpenseImg} alt="Add Expense Form" style={imgStyle} />
         </div>
         <div className="step-box">
           <div className="step-box-title"><Lbl>Approve expense</Lbl></div>
-          <StepItem num={1}>Click <Lbl>(...) under section</Lbl> then you get modal <Lbl>yes, approve</Lbl>.</StepItem>
+          <StepItem num={1}>Click the <Lbl>⋯ dots menu</Lbl> on the record row, then click <Lbl>Approve</Lbl>. Confirm with <Lbl>Yes, Approve</Lbl>.</StepItem>
           <img src={yesapproveImg} alt="Approve Expense" style={imgStyle} />
         </div>
       </PageCard>
 
       {/* Leave */}
-      <div className="step-box">
-        <div className="step-box-title">My Leave</div>
-        <StepItem num={1}>Click <Lbl>Leave</Lbl></StepItem>
-        <img src={leaveImg} alt="Leave" style={imgStyle} />
-      </div>
-
-      <div className="step-box">
-        <div className="step-box-title"><Lbl>Request for Leave</Lbl></div>
-        <StepItem num={1}>Click <Lbl>Request Leave</Lbl> complete the form and submit.</StepItem>
-        <img src={requestleaveImg} alt="Request Leave" style={imgStyle} />
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--gold-pale)' }}>🌴</div>
+          <div>
+            <div className="pc-title">My Leave</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>View your leave history and submit a leave request.</p>
+          </div>
+        </div>
+        <div className="pc-body">
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>View Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>My Leave</Lbl> in the sidebar to see your leave balance and history.</StepItem>
+            <img src={leaveImg} alt="Leave" style={imgStyle} />
+          </div>
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>Request Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>Request Leave</Lbl>, complete the form (leave type, dates, reason), and submit.</StepItem>
+            <img src={requestleaveImg} alt="Request Leave" style={imgStyle} />
+          </div>
+        </div>
       </div>
 
       {/* Reports */}
       <div className="step-box-title">📋 ABOUT REPORTS</div>
       <div className="step-box">
-        <div className="step-box-title"><Lbl>Shop reports</Lbl></div>
-        <StepItem num={1}>Click <Lbl>shop sales</Lbl> tab to get the report about all boutique transactions.</StepItem>
+        <div className="step-box-title"><Lbl>Shop Sales Reports</Lbl></div>
+        <StepItem num={1}>Click <Lbl>Reports</Lbl> in the sidebar, then click the <Lbl>Shop Sales</Lbl> tab to see all boutique transactions.</StepItem>
         <img src={shoprreportsImg} alt="Shop Reports" style={imgStyle} />
       </div>
       <div className="step-box">
-        <div className="step-box-title"><Lbl>Visitor reports</Lbl></div>
-        <StepItem num={2}>Click <Lbl>visitors</Lbl> tab to get the report about all visitors that came in.</StepItem>
+        <div className="step-box-title"><Lbl>Visitor Reports</Lbl></div>
+        <StepItem num={1}>Click the <Lbl>Visitors</Lbl> tab to see a report of all visitors that came in.</StepItem>
         <img src={visitorImg} alt="Visitor Reports" style={imgStyle} />
       </div>
 

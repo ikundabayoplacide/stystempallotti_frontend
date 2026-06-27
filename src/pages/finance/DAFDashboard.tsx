@@ -115,7 +115,10 @@ export default function DAFDashboard() {
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {/* Total Revenue */}
-        <Card className="!p-4 overflow-hidden">
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+          onClick={() => navigate("/finance/daf/reports")}
+        >
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-green-100 shrink-0">
               <HiOutlineCurrencyDollar className="w-4.5 h-4.5 text-green-600" />
@@ -137,7 +140,10 @@ export default function DAFDashboard() {
         </Card>
 
         {/* Pending Approvals */}
-        <Card className="!p-4 overflow-hidden">
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all"
+          onClick={() => navigate("/finance/daf/approvals")}
+        >
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-yellow-100 shrink-0">
               <HiOutlineClock className="w-4.5 h-4.5 text-yellow-600" />
@@ -157,7 +163,10 @@ export default function DAFDashboard() {
         </Card>
 
         {/* Active Employees */}
-        <Card className="!p-4 overflow-hidden">
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+          onClick={() => navigate("/finance/daf/hr")}
+        >
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary-100 shrink-0">
               <HiOutlineUsers className="w-4.5 h-4.5 text-primary-500" />
@@ -177,7 +186,10 @@ export default function DAFDashboard() {
         </Card>
 
         {/* Confirmed Jobs */}
-        <Card className="!p-4 overflow-hidden">
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+          onClick={() => navigate("/finance/daf/approvals")}
+        >
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-100 shrink-0">
               <HiOutlineBriefcase className="w-4.5 h-4.5 text-blue-500" />
@@ -337,7 +349,10 @@ export default function DAFDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-yellow-50 border border-yellow-200 flex items-center gap-4">
+            <div
+              onClick={() => navigate("/finance/daf/approvals")}
+              className="p-4 rounded-xl bg-yellow-50 border border-yellow-200 flex items-center gap-4 cursor-pointer hover:border-yellow-400 hover:shadow-sm transition-all"
+            >
               <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center shrink-0">
                 <HiOutlineClock className="w-5 h-5 text-yellow-600" />
               </div>
@@ -352,7 +367,10 @@ export default function DAFDashboard() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-4">
+            <div
+              onClick={() => navigate("/finance/daf/approvals")}
+              className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-4 cursor-pointer hover:border-green-400 hover:shadow-sm transition-all"
+            >
               <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
                 <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
               </div>
@@ -367,7 +385,10 @@ export default function DAFDashboard() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-4">
+            <div
+              onClick={() => navigate("/finance/daf/approvals")}
+              className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-center gap-4 cursor-pointer hover:border-red-400 hover:shadow-sm transition-all"
+            >
               <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
                 <HiOutlineXCircle className="w-5 h-5 text-red-500" />
               </div>

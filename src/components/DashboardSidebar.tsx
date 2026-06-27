@@ -46,7 +46,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/admin", icon: HiOutlineHome },
     { label: "Users", path: "/admin/users", icon: HiOutlineUsers, permissionKey: "users.view" },
     { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers, permissionKey: "customers.view" },
-    { label: "Employees", path: "/admin/employees", icon: HiOutlineUsers },
     { label: "Casual Workers", path: "/admin/abanyabiraka", icon: HiOutlineUsers },
     { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/admin/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
@@ -60,8 +59,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Leave Management", path: "/admin/leave", icon: HiOutlineCalendar },
     { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText, permissionKey: "reports.view" },
     { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid, permissionKey: "ui_permissions.view" },
-
-
   ],
   receptionist: [
     { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
@@ -96,6 +93,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   hr: [
     { label: "Dashboard", path: "/hr", icon: HiOutlineHome },
     { label: "Employees", path: "/hr/employees", icon: HiOutlineUsers },
+    { label: "Job Approvals", path: "/finance/daf/approvals", icon: HiOutlineClipboardList },
+    { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
     { label: "Casual Workers", path: "/hr/abanyabiraka", icon: HiOutlineUsers },
     { label: "Payroll", path: "/hr/payroll", icon: HiOutlineCurrencyDollar },
     { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
@@ -110,6 +109,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   hobe: [
     { label: "Dashboard", path: "/hobe", icon: HiOutlineHome },
     { label: "Trade", path: "/hobe/trade", icon: HiOutlineCube },
+    {label: "Job", path: "/hobe/jobs", icon: HiOutlineBriefcase },
     { label: "Requests", path: "/hobe/requests", icon: HiOutlineClipboardList },
     { label: "My Leave", path: "/hobe/leave", icon: HiOutlineCalendar },
     {
@@ -124,9 +124,11 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Job Approvals", path: "/finance/daf/approvals", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     // { label: "Finance Control", path: "/finance/daf/control", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
     { label: "Employees", path: "/finance/daf/hr", icon: HiOutlineUsers, permissionKey: "hr.view" },
+    {label: "Causal Workers", path: "/finance/daf/abanyabiraka", icon: HiOutlineCurrencyDollar},
+    {label: "Payroll", path: "/finance/daf/payroll", icon: HiOutlineCurrencyDollar },
     // { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
-    { label: "My Leave", path: "/finance/daf/leave", icon: HiOutlineCalendar },
+    { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
         { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },

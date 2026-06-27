@@ -60,6 +60,14 @@ export default function AccountantUserGuide() {
         </div>
       </div>
       <div className="sec-divider" />
+
+      <div className="info-box" style={{ marginBottom: '1rem' }}>
+        <span className="box-icon">📌</span>
+        <div className="box-content">
+          <p><strong>On this page you will:</strong> collect payments from customers for print jobs, generate invoices after full payment, monitor boutique and hobe sales operations, record and track debt recoveries, request leave, and review or generate reports.</p>
+        </div>
+      </div>
+
       <p>
         Your sidebar: <strong>Dashboard, Payments, Invoices, Documents, Operations, Recovery, My Leave, Reports ▾.</strong>{' '}
         As an accountant you collect payments from customers, generate invoices, monitor boutique and hobe sales,
@@ -279,16 +287,26 @@ export default function AccountantUserGuide() {
       </div>
 
       {/* ── Leave ─────────────────────────────────────────────────────── */}
-      <div className="step-box">
-        <div className="step-box-title">Leave</div>
-        <StepItem num={1}>Click <Lbl>My Leave</Lbl> in the sidebar to see your leave history and balance.</StepItem>
-        <img src={leaveDetailsImg} alt="Leave Details" style={imgStyle} />
-      </div>
-
-      <div className="step-box">
-        <div className="step-box-title"><Lbl>Ask for Leave</Lbl></div>
-        <StepItem num={1}>Click <Lbl>Request</Lbl>, fill in the leave type, dates and reason, then submit.</StepItem>
-        <img src={requestLeaveImg} alt="Request Leave" style={imgStyle} />
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--gold-pale)' }}>🌴</div>
+          <div>
+            <div className="pc-title">My Leave</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>View your leave history and submit a leave request.</p>
+          </div>
+        </div>
+        <div className="pc-body">
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>View Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>My Leave</Lbl> in the sidebar to see your leave history and balance.</StepItem>
+            <img src={leaveDetailsImg} alt="Leave Details" style={imgStyle} />
+          </div>
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>Request Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>Request Leave</Lbl>, fill in the leave type, dates and reason, then submit.</StepItem>
+            <img src={requestLeaveImg} alt="Request Leave" style={imgStyle} />
+          </div>
+        </div>
       </div>
 
       {/* ── Reports ───────────────────────────────────────────────────── */}

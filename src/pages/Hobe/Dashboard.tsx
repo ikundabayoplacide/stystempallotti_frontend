@@ -19,12 +19,15 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.R
   "sold-out":{ label: "Sold Out",  color: "bg-gray-100 text-gray-500",       icon: <HiOutlineCube className="w-3.5 h-3.5" /> },
 };
 
-function StatCard({ label, value, sub, color = "text-secondary-100", icon: Icon }: {
+function StatCard({ label, value, sub, color = "text-secondary-100", icon: Icon, onClick }: {
   label: string; value: string | number; sub?: string; color?: string;
-  icon: React.ElementType;
+  icon: React.ElementType; onClick?: () => void;
 }) {
   return (
-    <Card className="!p-5">
+    <Card
+      className={`!p-5 ${onClick ? "cursor-pointer hover:border-primary-300 hover:shadow-md transition-all" : ""}`}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs text-custom-700 mb-1">{label}</p>
@@ -90,6 +93,7 @@ export default function HobeDashboard() {
             label="Total Batches"
             value={isLoading ? "—" : totalBatches}
             icon={HiOutlineClipboardList}
+            onClick={() => navigate("/hobe/trade")}
           />
           <StatCard
             label="Qty in Shop"
@@ -97,6 +101,7 @@ export default function HobeDashboard() {
             sub="units remaining"
             color="text-primary-500"
             icon={HiOutlineCube}
+            onClick={() => navigate("/hobe/trade")}
           />
           <StatCard
             label="Total Sold"
@@ -104,6 +109,7 @@ export default function HobeDashboard() {
             sub="units across all batches"
             color="text-emerald-600"
             icon={HiOutlineCash}
+            onClick={() => navigate("/hobe/report")}
           />
           <StatCard
             label="Revenue Collected"
@@ -111,20 +117,21 @@ export default function HobeDashboard() {
             sub="from recent sales"
             color="text-emerald-600"
             icon={HiOutlineCurrencyDollar}
+            onClick={() => navigate("/hobe/report")}
           />
         </div>
 
         {/* ── Batch Status Breakdown ───────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-4">
-          <Card className="!p-4 text-center">
+          <Card className="!p-4 text-center cursor-pointer hover:border-primary-300 hover:shadow-md transition-all" onClick={() => navigate("/hobe/trade")}>
             <p className="text-xs text-custom-700 mb-1">Active Batches</p>
             <p className="text-2xl font-bold text-emerald-600">{isLoading ? "—" : activeBatches}</p>
           </Card>
-          <Card className="!p-4 text-center">
+          <Card className="!p-4 text-center cursor-pointer hover:border-primary-300 hover:shadow-md transition-all" onClick={() => navigate("/hobe/trade")}>
             <p className="text-xs text-custom-700 mb-1">Expired Batches</p>
             <p className="text-2xl font-bold text-red-500">{isLoading ? "—" : expiredBatches}</p>
           </Card>
-          <Card className="!p-4 text-center">
+          <Card className="!p-4 text-center cursor-pointer hover:border-primary-300 hover:shadow-md transition-all" onClick={() => navigate("/hobe/trade")}>
             <p className="text-xs text-custom-700 mb-1">Sold Out</p>
             <p className="text-2xl font-bold text-gray-500">{isLoading ? "—" : soldOutBatches}</p>
           </Card>

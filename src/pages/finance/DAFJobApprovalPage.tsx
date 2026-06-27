@@ -283,7 +283,7 @@ export default function DAFJobApprovalPage() {
   const totalPendingValue = pendingJobs.reduce((sum, j) => sum + (Number(j.amount) || 0), 0);
 
   return (
-    <DashboardLayout userRole="daf" userName="DAF" notificationCount={pendingJobs.length}>
+    <DashboardLayout>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}

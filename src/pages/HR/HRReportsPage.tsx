@@ -7,6 +7,11 @@ import {
   HiOutlineDocumentDownload,
   HiOutlineDocumentText,
   HiOutlineRefresh,
+  HiOutlineArchive,
+  HiOutlineBriefcase,
+  HiOutlineCheckCircle,
+  HiOutlineExclamationCircle,
+  HiOutlineXCircle,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -16,6 +21,8 @@ import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetPayrollsQuery } from "../../store/services/payrollService";
 import { useGetAllLeavesQuery } from "../../store/services/leaveService";
 import { useGetCasualWorkersQuery } from "../../store/services/casualWorkersService";
+import { useGetLeadsQuery, useGetProcurementStatsQuery, type MarketStage } from "../../store/services/procurementService";
+import { useGetJobsQuery } from "../../store/services/jobsService";
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
 
@@ -1120,15 +1127,429 @@ function CasualWorkersReport() {
   );
 }
 
+// ─── Job Approval Report ─────────────────────────────────────────────────────
+
+const jobStatusColor: Record<string, string> = {
+  pending:   "bg-yellow-100 text-yellow-700",
+  confirmed: "bg-blue-100 text-blue-700",
+  rejected:  "bg-red-100 text-red-700",
+  delivered: "bg-emerald-100 text-emerald-700",
+  completed: "bg-green-100 text-green-700",
+};
+
+function JobApprovalReport() {
+  const [period, setPeriod]         = useState<Period>("month");
+  const [page, setPage]             = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo]     = useState("");
+  const [useCustom, setUseCustom]   = useState(false);
+
+  const range = useCustom && customFrom && customTo
+    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    : getDateRange(period);
+
+  const { data: pendingData,   isLoading, refetch: r1 } = useGetJobsQuery({ status: "pending",   limit: 500 });
+  const { data: confirmedData, refetch: r2 }            = useGetJobsQuery({ status: "confirmed", limit: 500 });
+  const { data: rejectedData,  refetch: r3 }            = useGetJobsQuery({ status: "rejected",  limit: 500 });
+
+  const refetch = () => { r1(); r2(); r3(); };
+
+  const allJobs = [
+    ...(pendingData?.jobs   ?? []),
+    ...(confirmedData?.jobs ?? []),
+    ...(rejectedData?.jobs  ?? []),
+  ];
+
+  const jobs = allJobs.filter((j) => {
+    const d = new Date(j.createdAt);
+    return d >= new Date(range.from) && d <= new Date(range.to);
+  });
+
+  const totalPages   = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const paginated    = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pending      = jobs.filter((j) => j.status === "pending");
+  const confirmed    = jobs.filter((j) => j.status === "confirmed");
+  const rejected     = jobs.filter((j) => j.status === "rejected");
+  const totalValue   = confirmed.reduce((s, j) => s + (Number(j.amount) || 0), 0);
+  const pendingValue = pending.reduce((s, j) => s + (Number(j.amount) || 0), 0);
+
+  const getExportData = () => ({
+    headers: ["Job #", "Title", "Customer", "Amount (RWF)", "Status", "Payment", "Deadline", "Created"],
+    rows: jobs.map((j) => [
+      `#${j.jobNumber}`,
+      j.title,
+      j.customer?.name ?? "—",
+      (Number(j.amount) || 0).toLocaleString(),
+      j.status,
+      j.paymentStatus === "paid" ? "Paid" : "Unpaid",
+      j.dueDate ? j.dueDate.split("T")[0] : "—",
+      new Date(j.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+    ]),
+    summary: [
+      { label: `Total Jobs: ${jobs.length}`, value: "" },
+      { label: "Pending",         value: String(pending.length) },
+      { label: "Confirmed",       value: String(confirmed.length) },
+      { label: "Rejected",        value: String(rejected.length) },
+      { label: "Pending Value",   value: `${pendingValue.toLocaleString()} RWF` },
+      { label: "CONFIRMED VALUE", value: `${totalValue.toLocaleString()} RWF`, bold: true },
+    ] as SummaryRow[],
+  });
+
+  return (
+    <Section icon={HiOutlineBriefcase} title="Job Approval Report" color="bg-blue-100 text-blue-600">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <input type="date" value={customFrom}
+            onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom}
+            onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          {useCustom && (
+            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }}
+              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors">Clear</button>
+          )}
+          <button onClick={refetch} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="HR Job Approval Report" getExportData={getExportData} />
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="Total Jobs"  value={jobs.length} />
+        <StatCard label="Pending"     value={pending.length}   color="text-yellow-600"
+          sub={`${pendingValue.toLocaleString()} RWF`} />
+        <StatCard label="Confirmed"   value={confirmed.length} color="text-blue-600"
+          sub={`${totalValue.toLocaleString()} RWF`} />
+        <StatCard label="Rejected"    value={rejected.length}  color="text-red-600" />
+      </div>
+
+      {/* Table */}
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {["Job #", "Title & Client", "Amount", "Status", "Payment", "Deadline", "Created"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+              ) : jobs.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No jobs in this period</td></tr>
+              ) : paginated.map((j) => (
+                <tr key={j.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">#{j.jobNumber}</td>
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm font-semibold text-secondary-100">{j.title}</p>
+                    <p className="text-xs text-custom-700">{j.customer?.name ?? "—"}</p>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">
+                    {j.amount != null ? `${(Number(j.amount) || 0).toLocaleString()} RWF` : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${jobStatusColor[j.status] ?? "bg-gray-100 text-gray-700"}`}>
+                      {j.status === "pending"   && <HiOutlineExclamationCircle className="inline w-3 h-3 mr-1" />}
+                      {j.status === "confirmed" && <HiOutlineCheckCircle       className="inline w-3 h-3 mr-1" />}
+                      {j.status === "rejected"  && <HiOutlineXCircle           className="inline w-3 h-3 mr-1" />}
+                      {j.status}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${j.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
+                      {j.paymentStatus === "paid" ? "Paid" : "Unpaid"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">
+                    {j.dueDate ? j.dueDate.split("T")[0] : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">
+                    {new Date(j.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Summary */}
+      {jobs.length > 0 && (
+        <div className="flex justify-end mt-1">
+          <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
+            <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
+            {[
+              { label: "Total Jobs",      value: String(jobs.length),                  cls: "text-secondary-100" },
+              { label: "Pending",         value: String(pending.length),               cls: "text-yellow-600" },
+              { label: "Confirmed",       value: String(confirmed.length),             cls: "text-blue-600" },
+              { label: "Rejected",        value: String(rejected.length),              cls: "text-red-600" },
+              { label: "Confirmed Value", value: `${totalValue.toLocaleString()} RWF`, cls: "text-primary-600" },
+            ].map(({ label, value, cls }) => (
+              <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
+                <span className="text-custom-700 text-xs">{label}</span>
+                <span className={`font-bold text-xs ${cls}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {jobs.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-xs text-custom-700">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, jobs.length)} of {jobs.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setPage(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"}`}>
+                {n}
+              </button>
+            ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+// ─── Procurement Report ──────────────────────────────────────────────────────
+
+const STAGE_LABELS: Record<MarketStage, string> = {
+  prospect:    "Prospect",
+  contacted:   "Contacted",
+  negotiating: "Negotiating",
+  won:         "Won",
+  lost:        "Lost",
+};
+
+const STAGE_COLORS: Record<MarketStage, string> = {
+  prospect:    "bg-gray-100 text-gray-600",
+  contacted:   "bg-blue-100 text-blue-700",
+  negotiating: "bg-yellow-100 text-yellow-700",
+  won:         "bg-emerald-100 text-emerald-700",
+  lost:        "bg-red-100 text-red-700",
+};
+
+function ProcurementReport() {
+  const [page, setPage]           = useState(1);
+  const [stageFilter, setStageFilter] = useState<MarketStage | "">("");
+  const [customFrom, setCustomFrom]   = useState("");
+  const [customTo, setCustomTo]       = useState("");
+
+  const { data: leadsData, isLoading, refetch } = useGetLeadsQuery({ limit: 500, ...(stageFilter ? { stage: stageFilter } : {}) });
+  const { data: stats } = useGetProcurementStatsQuery();
+
+  const allLeads = leadsData?.leads ?? [];
+  const leads = allLeads.filter((l) => {
+    if (!customFrom && !customTo) return true;
+    const d = new Date(l.createdAt);
+    if (customFrom && d < new Date(customFrom)) return false;
+    if (customTo   && d > new Date(customTo + "T23:59:59.000Z")) return false;
+    return true;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(leads.length / PAGE_SIZE));
+  const paginated  = leads.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const wonValue = leads.filter((l) => l.stage === "won").reduce((s, l) => s + Number(l.estimatedValue ?? 0), 0);
+  const inProgress = leads.filter((l) => l.stage !== "won" && l.stage !== "lost").length;
+  const wonCount   = leads.filter((l) => l.stage === "won").length;
+  const lostCount  = leads.filter((l) => l.stage === "lost").length;
+
+  const getExportData = () => ({
+    headers: ["Company", "Contact", "Phone", "Sector", "Stage", "Est. Value (RWF)", "Location", "Next Follow-up", "Created"],
+    rows: leads.map((l) => [
+      l.company,
+      l.contactPerson,
+      l.phone ?? "—",
+      l.sector,
+      STAGE_LABELS[l.stage],
+      l.estimatedValue != null ? Number(l.estimatedValue).toLocaleString() : "—",
+      l.location ?? "—",
+      l.nextFollowUp ? l.nextFollowUp.slice(0, 10) : "—",
+      new Date(l.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+    ]),
+    summary: [
+      { label: `Total Leads: ${leads.length}`, value: "" },
+      { label: "In Progress", value: String(inProgress) },
+      { label: "Won",         value: String(wonCount) },
+      { label: "Lost",        value: String(lostCount) },
+      { label: "WON VALUE",   value: `${wonValue.toLocaleString()} RWF`, bold: true },
+    ] as SummaryRow[],
+  });
+
+  return (
+    <Section icon={HiOutlineArchive} title="Procurement (Market Leads)" color="bg-indigo-100 text-indigo-600">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={stageFilter}
+            onChange={(e) => { setStageFilter(e.target.value as MarketStage | ""); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
+          >
+            <option value="">All stages</option>
+            {(Object.keys(STAGE_LABELS) as MarketStage[]).map((s) => (
+              <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+            ))}
+          </select>
+          <input type="date" value={customFrom}
+            onChange={(e) => { setCustomFrom(e.target.value); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom}
+            onChange={(e) => { setCustomTo(e.target.value); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          {(customFrom || customTo) && (
+            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setPage(1); }}
+              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors">Clear</button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="Procurement Report" getExportData={getExportData} />
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <StatCard label="Total Leads"  value={leads.length} />
+        <StatCard label="In Progress"  value={inProgress}  color="text-blue-600" />
+        <StatCard label="Won"          value={wonCount}    color="text-emerald-600" />
+        <StatCard label="Lost"         value={lostCount}   color="text-red-600" />
+        <StatCard label="Won Value"    value={`${wonValue.toLocaleString()} RWF`} color="text-indigo-600" />
+      </div>
+
+      {/* Pipeline badges from stats */}
+      {stats?.pipeline && stats.pipeline.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {stats.pipeline.map((p) => (
+            <div key={p.stage} className={`px-3 py-1.5 rounded-xl text-xs font-semibold ${STAGE_COLORS[p.stage] ?? "bg-gray-100 text-gray-600"}`}>
+              {STAGE_LABELS[p.stage]}: {p.count} {p.totalValue > 0 ? `· ${Number(p.totalValue).toLocaleString()} RWF` : ""}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Table */}
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {["Company", "Contact", "Sector", "Stage", "Est. Value", "Location", "Next Follow-up", "Created"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+              ) : leads.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No procurement leads found</td></tr>
+              ) : paginated.map((l) => (
+                <tr key={l.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm font-semibold text-secondary-100">{l.company}</p>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm text-secondary-100">{l.contactPerson}</p>
+                    {l.phone && <p className="text-xs text-custom-700">{l.phone}</p>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100 capitalize">{l.sector}</td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STAGE_COLORS[l.stage] ?? "bg-gray-100 text-gray-600"}`}>
+                      {STAGE_LABELS[l.stage]}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">
+                    {l.estimatedValue != null ? `${Number(l.estimatedValue).toLocaleString()} RWF` : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-custom-700">{l.location ?? "—"}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700 whitespace-nowrap">
+                    {l.nextFollowUp ? l.nextFollowUp.slice(0, 10) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700 whitespace-nowrap">
+                    {new Date(l.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Summary */}
+      {leads.length > 0 && (
+        <div className="flex justify-end mt-1">
+          <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
+            <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
+            {[
+              { label: "Total Leads",  value: String(leads.length), cls: "text-secondary-100" },
+              { label: "Won",          value: String(wonCount),     cls: "text-emerald-600" },
+              { label: "Lost",         value: String(lostCount),   cls: "text-red-500" },
+              { label: "WON VALUE",    value: `${wonValue.toLocaleString()} RWF`, cls: "text-indigo-600" },
+            ].map(({ label, value, cls }) => (
+              <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
+                <span className="text-custom-700 text-xs">{label}</span>
+                <span className={`font-bold text-xs ${cls}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {leads.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-xs text-custom-700">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, leads.length)} of {leads.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setPage(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"}`}>
+                {n}
+              </button>
+            ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "employees" | "casual" | "payroll" | "leave";
+type Tab = "employees" | "casual" | "payroll" | "leave" | "procurement" | "jobs";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
-  { value: "employees", label: "Employees",        icon: HiOutlineUsers },
-  { value: "casual",    label: "Casual Workers",   icon: HiOutlineUserGroup },
-  { value: "payroll",   label: "Payroll",          icon: HiOutlineCurrencyDollar },
-  { value: "leave",     label: "Leave",            icon: HiOutlineCalendar },
+  { value: "employees",   label: "Employees",      icon: HiOutlineUsers },
+  { value: "casual",      label: "Casual Workers", icon: HiOutlineUserGroup },
+  { value: "payroll",     label: "Payroll",        icon: HiOutlineCurrencyDollar },
+  { value: "leave",       label: "Leave",          icon: HiOutlineCalendar },
+  { value: "procurement", label: "Procurement",    icon: HiOutlineArchive },
+  { value: "jobs",        label: "Job Approval",   icon: HiOutlineBriefcase },
 ];
 
 export default function HRReportsPage() {
@@ -1166,10 +1587,12 @@ export default function HRReportsPage() {
         </div>
 
         {/* Tab content */}
-        {tab === "employees" && <EmployeesReport />}
-        {tab === "casual"    && <CasualWorkersReport />}
-        {tab === "payroll"   && <PayrollReport />}
-        {tab === "leave"     && <LeaveReport />}
+        {tab === "employees"   && <EmployeesReport />}
+        {tab === "casual"      && <CasualWorkersReport />}
+        {tab === "payroll"     && <PayrollReport />}
+        {tab === "leave"       && <LeaveReport />}
+        {tab === "procurement" && <ProcurementReport />}
+        {tab === "jobs"        && <JobApprovalReport />}
       </div>
     </DashboardLayout>
   );

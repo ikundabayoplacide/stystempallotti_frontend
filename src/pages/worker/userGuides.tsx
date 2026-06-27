@@ -45,11 +45,19 @@ export default function WorkerUserGuide() {
       <div className="sec-title" id="worker">
         <div className="sec-icon sec-icon-blue">🔧</div>
         <div className="sec-text">
-          <h2>13. Worker</h2>
+          <h2>Worker</h2>
           <p>Task board and material requests</p>
         </div>
       </div>
       <div className="sec-divider" />
+
+      <div className="info-box" style={{ marginBottom: '1rem' }}>
+        <span className="box-icon">📌</span>
+        <div className="box-content">
+          <p><strong>On this page you will:</strong> view and work through jobs on your task board (start, pause, resume, complete), request materials from the general stock, request leave, and generate or review your reports.</p>
+        </div>
+      </div>
+
       <p>Your sidebar: <strong>My Jobs, Task Board, Material Requests, My Leave, Reports ▾.</strong></p>
       <img src={dashboardImg} alt="Worker Dashboard" style={imgStyle} />
 
@@ -142,16 +150,26 @@ export default function WorkerUserGuide() {
       </div>
 
       {/* Leave */}
-      <div className="step-box">
-        <div className="step-box-title">My Leave</div>
-        <p>Manage your leave requests.</p>
-        <img src={leavePageImg} alt="Leave Page" style={imgStyle} />
-      </div>
-
-      <div className="step-box">
-        <div className="step-box-title"><Lbl>Ask for Leave</Lbl></div>
-        <StepItem num={1}>Click <Lbl>Request</Lbl>, complete the form and submit.</StepItem>
-        <img src={requestLeaveImg} alt="Request Leave" style={imgStyle} />
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--gold-pale)' }}>🌴</div>
+          <div>
+            <div className="pc-title">My Leave</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>View your leave history and submit a leave request.</p>
+          </div>
+        </div>
+        <div className="pc-body">
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>View Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>My Leave</Lbl> in the sidebar to see your leave balance and history.</StepItem>
+            <img src={leavePageImg} alt="Leave Page" style={imgStyle} />
+          </div>
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>Request Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>Request Leave</Lbl>, complete the form (leave type, dates, reason), and submit.</StepItem>
+            <img src={requestLeaveImg} alt="Request Leave" style={imgStyle} />
+          </div>
+        </div>
       </div>
 
       {/* Reports */}
@@ -165,26 +183,26 @@ export default function WorkerUserGuide() {
 
       <div className="step-box">
         <div className="step-box-title"><Lbl>Material Requests Report</Lbl></div>
-        <p>View your material request reports.</p>
+        <p>View your material request history and statuses.</p>
         <img src={materialReportImg} alt="Material Report" style={imgStyle} />
       </div>
 
       <div className="step-box">
-        <div className="step-box-title"><Lbl>Generate Reports</Lbl></div>
-        <StepItem num={1}>Click <Lbl>generate reports</Lbl> and fill out the form.</StepItem>
+        <div className="step-box-title"><Lbl>Generate Report</Lbl></div>
+        <StepItem num={1}>Click <Lbl>Generate Report</Lbl>, fill the form, select who will receive it, and submit.</StepItem>
         <img src={generateReportImg} alt="Generate Report" style={imgStyle} />
       </div>
 
       <div className="step-box-title">📋 MY REPORTS</div>
       <div className="step-box">
-        <div className="step-box-title"><Lbl>My reports</Lbl></div>
-        <StepItem num={1}>Click <Lbl>my reports</Lbl> on sidebar.</StepItem>
+        <div className="step-box-title"><Lbl>My Reports</Lbl></div>
+        <StepItem num={1}>Click <Lbl>My Reports</Lbl> on sidebar to see reports you have generated.</StepItem>
         <img src={myReportsImg} alt="My Reports" style={imgStyle} />
       </div>
 
       <div className="step-box">
         <div className="step-box-title"><Lbl>Assigned Reports</Lbl></div>
-        <StepItem num={1}>Click <Lbl>reports assigned</Lbl> to view reports assigned to you.</StepItem>
+        <StepItem num={1}>Click <Lbl>Assigned Reports</Lbl> to view reports assigned to you by others.</StepItem>
         <img src={reportAssignedImg} alt="Assigned Reports" style={imgStyle} />
       </div>
     </div>

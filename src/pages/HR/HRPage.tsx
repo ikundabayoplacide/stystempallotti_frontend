@@ -72,12 +72,16 @@ export default function HRPage() {
         {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Total Employees", value: stats.total, icon: HiOutlineUsers, color: "bg-blue-50 text-blue-600" },
-            { label: "Active", value: stats.active, icon: HiOutlineCheckCircle, color: "bg-green-50 text-green-600" },
-            { label: "Inactive", value: stats.inactive, icon: HiOutlineBan, color: "bg-red-50 text-red-600" },
-            { label: "New / Interns", value: stats.intern, icon: HiOutlineUserAdd, color: "bg-purple-50 text-purple-600" },
-          ].map(({ label, value, icon: Icon, color }) => (
-            <Card key={label} className="!p-5 flex items-center gap-4">
+            { label: "Total Employees", value: stats.total,    icon: HiOutlineUsers,       color: "bg-blue-50 text-blue-600",   path: "/hr/employees" },
+            { label: "Active",          value: stats.active,   icon: HiOutlineCheckCircle, color: "bg-green-50 text-green-600", path: "/hr/employees" },
+            { label: "Inactive",        value: stats.inactive, icon: HiOutlineBan,         color: "bg-red-50 text-red-600",     path: "/hr/employees" },
+            { label: "New / Interns",   value: stats.intern,   icon: HiOutlineUserAdd,     color: "bg-purple-50 text-purple-600", path: "/hr/employees" },
+          ].map(({ label, value, icon: Icon, color, path }) => (
+            <Card
+              key={label}
+              className="!p-5 flex items-center gap-4 cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
+              onClick={() => navigate(path)}
+            >
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
                 <Icon className="h-6 w-6" />
               </div>
@@ -152,11 +156,15 @@ export default function HRPage() {
             <div className="mt-6 pt-4 border-t border-custom-200">
               <p className="text-xs font-bold text-custom-500 uppercase tracking-wider mb-3">Active vs Inactive</p>
               <div className="flex gap-4">
-                <div className="flex-1 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-center">
+                <div className="flex-1 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-center cursor-pointer hover:shadow-sm hover:border-green-400 transition-all"
+            onClick={() => navigate("/hr/employees")}
+          >
                   <p className="text-2xl font-bold text-green-600">{isLoading ? "—" : stats.active}</p>
                   <p className="text-xs text-green-700 font-medium mt-0.5">Active</p>
                 </div>
-                <div className="flex-1 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-center">
+                <div className="flex-1 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-center cursor-pointer hover:shadow-sm hover:border-red-400 transition-all"
+            onClick={() => navigate("/hr/employees")}
+          >
                   <p className="text-2xl font-bold text-red-600">{isLoading ? "—" : stats.inactive}</p>
                   <p className="text-xs text-red-700 font-medium mt-0.5">Inactive</p>
                 </div>
@@ -179,12 +187,16 @@ export default function HRPage() {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { label: "Draft", value: payrollDraft, color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
-              { label: "Approved", value: payrollApproved, color: "bg-blue-50 text-blue-700 border-blue-200" },
-              { label: "Paid", value: payrollPaid, color: "bg-green-50 text-green-700 border-green-200" },
-              { label: "Net (approved+paid)", value: `${totalNetThisMonth.toLocaleString()} RWF`, color: "bg-purple-50 text-purple-700 border-purple-200" },
+              { label: "Draft",                value: payrollDraft,                                        color: "bg-yellow-50 text-yellow-700 border-yellow-200" },
+              { label: "Approved",             value: payrollApproved,                                     color: "bg-blue-50 text-blue-700 border-blue-200" },
+              { label: "Paid",                 value: payrollPaid,                                         color: "bg-green-50 text-green-700 border-green-200" },
+              { label: "Net (approved+paid)",  value: `${totalNetThisMonth.toLocaleString()} RWF`,         color: "bg-purple-50 text-purple-700 border-purple-200" },
             ].map(({ label, value, color }) => (
-              <div key={label} className={`rounded-xl border px-4 py-3 ${color}`}>
+              <div
+                key={label}
+                className={`rounded-xl border px-4 py-3 cursor-pointer hover:shadow-sm hover:scale-[1.02] transition-all ${color}`}
+                onClick={() => navigate("/hr/payroll")}
+              >
                 <p className="text-xs font-semibold opacity-70">{label}</p>
                 <p className="text-xl font-bold mt-1">{value}</p>
               </div>

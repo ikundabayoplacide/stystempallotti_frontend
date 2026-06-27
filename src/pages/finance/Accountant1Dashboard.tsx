@@ -7,6 +7,7 @@ import {
     HiOutlineRefresh,
     HiOutlineSearch,
 } from "react-icons/hi";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui";
 import { useGetInvoicesQuery } from "../../store/services/invoicesService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
@@ -19,6 +20,7 @@ const statusColor: Record<string, string> = {
 
 export default function Accountant1Dashboard() {
   const today = new Date().toISOString().split("T")[0];
+  const navigate = useNavigate();
 
   const { data: invoicesData, isLoading: loadingInvoices } = useGetInvoicesQuery({ limit: 10 });
   const { data: paymentsData, isLoading: loadingPayments } = useGetPaymentsQuery(
@@ -34,10 +36,10 @@ export default function Accountant1Dashboard() {
   const todayAmount  = payments.reduce((s, p) => s + Number(p.amountPaid), 0);
 
   const kpis = [
-    { label: "Total Invoices",        value: total,                                          icon: HiOutlineDocumentText,  color: "text-primary-500",  bg: "bg-primary-100" },
-    { label: "Paid",                  value: paidCount,                                      icon: HiOutlineCheckCircle,   color: "text-green-600",    bg: "bg-green-100" },
-    { label: "Pending",               value: pendingCount,                                   icon: HiOutlineClock,         color: "text-yellow-600",   bg: "bg-yellow-100" },
-    { label: "Collected Today (RWF)", value: todayAmount.toLocaleString(),                   icon: HiOutlineCurrencyDollar,color: "text-green-600",    bg: "bg-green-100" },
+    { label: "Total Invoices",        value: total,                     icon: HiOutlineDocumentText,   color: "text-primary-500",  bg: "bg-primary-100",  ring: "hover:ring-primary-400",  path: "/finance/accountant1/invoices" },
+    { label: "Paid",                  value: paidCount,                 icon: HiOutlineCheckCircle,    color: "text-green-600",    bg: "bg-green-100",    ring: "hover:ring-green-400",    path: "/finance/accountant1/invoices" },
+    { label: "Pending",               value: pendingCount,              icon: HiOutlineClock,          color: "text-yellow-600",   bg: "bg-yellow-100",   ring: "hover:ring-yellow-400",   path: "/finance/accountant1/invoices" },
+    { label: "Collected Today (RWF)", value: todayAmount.toLocaleString(), icon: HiOutlineCurrencyDollar, color: "text-green-600", bg: "bg-green-100",    ring: "hover:ring-green-400",    path: "/finance/accountant1/payments" },
   ];
 
   const [search, setSearch] = useState("");
@@ -59,8 +61,12 @@ export default function Accountant1Dashboard() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {kpis.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="!p-4 flex flex-col gap-3">
+        {kpis.map(({ label, value, icon: Icon, color, bg, ring, path }) => (
+          <Card
+            key={label}
+            className={`!p-4 flex flex-col gap-3 cursor-pointer hover:ring-2 transition-all ${ring}`}
+            onClick={() => navigate(path)}
+          >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
               <Icon className={`w-5 h-5 ${color}`} />
             </div>
@@ -82,15 +88,23 @@ export default function Accountant1Dashboard() {
             <h2 className="font-bold text-secondary-100">Recent Invoices</h2>
             <span className="text-xs text-custom-500">({total} total)</span>
           </div>
-          <div className="relative w-full xs:w-64">
-            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
-            <input
-              type="text"
-              placeholder="Search invoices..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative w-full xs:w-64">
+              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+              <input
+                type="text"
+                placeholder="Search invoices..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => navigate("/finance/accountant1/invoices")}
+              className="text-xs font-semibold text-primary-500 hover:underline whitespace-nowrap"
+            >
+              View all →
+            </button>
           </div>
         </div>
 

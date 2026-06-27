@@ -172,10 +172,10 @@ export default function ReceptionDashboardV2() {
         <div className="flex gap-3 overflow-x-auto pb-1">
           <PipelineStep label="Total Jobs" count={totalJobs} icon={HiOutlineClipboardList}
             iconBg="bg-primary-100" iconColor="text-primary-500" accent="bg-primary-400"
-            path="/reception" />
+            path="/reception/reports" />
           <PipelineStep label="Pending" count={pendingCount} icon={HiOutlineClock}
             iconBg="bg-gray-100" iconColor="text-gray-500" accent="bg-gray-400"
-            path="/reception" />
+            path="/reception/payments" />
           <PipelineStep label="Ready for Delivery" count={readyForDelivCount} icon={HiOutlineTruck}
             iconBg="bg-orange-100" iconColor="text-orange-500" accent="bg-orange-400"
             path="/reception/deliveries" />

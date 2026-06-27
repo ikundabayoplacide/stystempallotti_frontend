@@ -1,4 +1,6 @@
 import dashboardImg from '../../assets/images/hobe/dashboard.png';
+import jobsImg from '../../assets/images/hobe/jobs.png';
+import createJobImg from '../../assets/images/hobe/createJOb.png';
 import tradeImg from '../../assets/images/hobe/trade.png';
 import newBatchImg from '../../assets/images/hobe/newBatch.png';
 import collectayasigayeImg from '../../assets/images/hobe/collectayasigaye.png';
@@ -49,17 +51,26 @@ export default function HobeUserGuide() {
       <div className="sec-title" id="hobe">
         <div className="sec-icon sec-icon-blue">🛒</div>
         <div className="sec-text">
-          <h2>16. Hobe (Trade)</h2>
+          <h2>Hobe (Trade)</h2>
           <p>Batch trading and stock requests</p>
         </div>
       </div>
       <div className="sec-divider" />
+
+      <div className="info-box" style={{ marginBottom: '1rem' }}>
+        <span className="box-icon">📌</span>
+        <div className="box-content">
+          <p><strong>On this page you will:</strong> view and create jobs, add and manage trade batches, record sales (including partial and overpayments), collect outstanding balances, handle pending changes to give back, submit stock requests, request leave, and generate reports.</p>
+        </div>
+      </div>
+
       <p>
-        Your sidebar: <strong>Dashboard, Trade, Requests, My Leave, Reports ▾.</strong> The Hobe module handles trading
+        Your sidebar: <strong>Dashboard, Jobs, Trade, Requests, My Leave, Reports ▾.</strong> The Hobe module handles trading
         goods in batches, recording sales, and managing outstanding payments (underpaid and overpaid).
       </p>
-      <img src={dashboardImg} alt="Hobe Dashboard" style={imgStyle} />
+      <img src={dashboardImg} alt="Hobe Dashboard" style={imgStyle} /><br /><br />
 
+<p> THis is about trade management</p>
       {/* Trade */}
       <div className="page-card">
         <div className="pc-header">
@@ -146,6 +157,27 @@ export default function HobeUserGuide() {
         </div>
       </div>
 
+
+      {/* Jobs */}
+      <p>When there is new hobe job available and managed , hobe manager will be created</p>
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--blue-100)' }}>📋</div>
+          <div>
+            <div className="pc-title">Jobs</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>List of all jobs assigned to the Hobe department. You can view job details and track their status.</p>
+            <img src={jobsImg} alt="Hobe Jobs" style={imgStyle} />
+          </div>
+        </div>
+        <div className="pc-body">
+          <div className="step-box">
+            <div className="step-box-title">➕ Create a Job</div>
+            <StepItem num={1}>Click <Lbl>Create Job</Lbl> to open the job creation form.</StepItem>
+            <StepItem num={2}>Fill in all required job details, then click <Lbl>Submit</Lbl>.</StepItem>
+            <img src={createJobImg} alt="Create Job" style={imgStyle} />
+          </div>
+        </div>
+      </div>
       {/* Requests */}
       <div className="step-box">
         <div className="step-box-title">Request something (if it happens)</div>
@@ -164,40 +196,50 @@ export default function HobeUserGuide() {
       </div>
 
       {/* Leave */}
-      <div className="step-box">
-        <div className="step-box-title">Leave</div>
-        <StepItem num={1}>Click <Lbl>Leave</Lbl>.</StepItem>
-        <img src={allleaveImg} alt="All Leave" style={imgStyle} />
-      </div>
-
-      <div className="step-box">
-        <div className="step-box-title"><Lbl>Ask for Leave</Lbl></div>
-        <StepItem num={1}>Click <Lbl>Request</Lbl>, complete the form and submit.</StepItem>
-        <img src={hobeLeaveImg} alt="Request Leave" style={imgStyle} />
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--gold-pale)' }}>🌴</div>
+          <div>
+            <div className="pc-title">My Leave</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>View your leave history and submit a leave request.</p>
+          </div>
+        </div>
+        <div className="pc-body">
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>View Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>My Leave</Lbl> in the sidebar to see your leave balance and history.</StepItem>
+            <img src={allleaveImg} alt="All Leave" style={imgStyle} />
+          </div>
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>Request Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>Request Leave</Lbl>, complete the form (leave type, dates, reason), and submit.</StepItem>
+            <img src={hobeLeaveImg} alt="Request Leave" style={imgStyle} />
+          </div>
+        </div>
       </div>
 
       {/* Reports */}
       <div className="step-box-title">📋 ABOUT REPORTS</div>
       <div className="step-box">
-        <div className="step-box-title"><Lbl>Hobe reports</Lbl></div>
+        <div className="step-box-title"><Lbl>Sales Reports</Lbl></div>
         <StepItem num={1}>
-          Click <Lbl>sales reports</Lbl> tab to get the report about all hobe transactions.
+          Click <Lbl>Reports</Lbl> in the sidebar, then click the <Lbl>Sales Reports</Lbl> tab to see all hobe transactions.
         </StepItem>
         <img src={hobereportImg} alt="Hobe Report" style={imgStyle} />
       </div>
 
       <div className="step-box">
-        <div className="step-box-title"><Lbl>Generate reports</Lbl></div>
+        <div className="step-box-title"><Lbl>Generate Report</Lbl></div>
         <StepItem num={1}>
-          Click <Lbl>generate reports</Lbl> — fill the modal, select who will see your report, then submit.
+          Click <Lbl>Generate Report</Lbl> — fill the modal, select who will receive your report, then submit.
         </StepItem>
         <img src={generatehobereportImg} alt="Generate Report" style={imgStyle} />
       </div>
 
       <div className="step-box-title">📋 MY REPORTS</div>
       <div className="step-box">
-        <div className="step-box-title"><Lbl>My reports</Lbl></div>
-        <StepItem num={1}>Click <Lbl>my reports</Lbl> on sidebar.</StepItem>
+        <div className="step-box-title"><Lbl>My Reports</Lbl></div>
+        <StepItem num={1}>Click <Lbl>My Reports</Lbl> on sidebar to see reports you have generated.</StepItem>
         <img src={myhobereportsImg} alt="My Reports" style={imgStyle} />
       </div>
 

@@ -3,6 +3,8 @@ import jobsImg from '../../assets/images/supervisor/jobs.png';
 import employeeImg from '../../assets/images/supervisor/employee.png';
 import requestLeaveImg from '../../assets/images/supervisor/requestLeave.png';
 import myReportsImg from '../../assets/images/supervisor/myreports.png';
+import assignedReportsImg from '../../assets/images/supervisor/assignedreports.png';
+import reportsImg from '../../assets/images/supervisor/reports.png';
 import notificationsImg from '../../assets/images/supervisor/notifications.png';
 import profileImg from '../../assets/images/supervisor/profile.png';
 import passImg from '../../assets/images/supervisor/pass.png';
@@ -37,13 +39,21 @@ export default function SupervisorUserGuide() {
       <div className="sec-title" id="supervisor">
         <div className="sec-icon sec-icon-blue">🎯</div>
         <div className="sec-text">
-          <h2>12. Supervisor</h2>
+          <h2>Supervisor</h2>
           <p>Department job management</p>
-          <img src={supervisorDashboardImg} alt="Supervisor Dashboard" style={imgStyle} />
         </div>
       </div>
       <div className="sec-divider" />
+
+      <div className="info-box" style={{ marginBottom: '1rem' }}>
+        <span className="box-icon">📌</span>
+        <div className="box-content">
+          <p><strong>On this page you will:</strong> assign jobs to workers in your department, track each job's progress, mark your department's work as done, view your employees, request leave, generate and review reports, and manage your account settings.</p>
+        </div>
+      </div>
+
       <p>Your sidebar: <strong>Dashboard, Jobs, Employees, Machines, Binding Stock, My Leave, Reports ▾.</strong></p>
+      <img src={supervisorDashboardImg} alt="Supervisor Dashboard" style={imgStyle} />
 
       <div className="warn-box">
         <span className="box-icon">⚠️</span>
@@ -105,25 +115,57 @@ export default function SupervisorUserGuide() {
       </div>
 
       {/* Employees */}
-      <div className="step-box">
-        <div className="step-box-title">Employees</div>
-        <p>Dashboard for employee tasks and activities.</p>
-        <img src={employeeImg} alt="Employee Dashboard" style={imgStyle} />
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--teal-100)' }}>👥</div>
+          <div>
+            <div className="pc-title">Employees</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>View all employees in your department and their current task status.</p>
+          </div>
+        </div>
+        <div className="pc-body">
+          <img src={employeeImg} alt="Employees" style={imgStyle} />
+        </div>
       </div>
 
       {/* Leave */}
-      <div className="step-box">
-        <div className="step-box-title">My Leave</div>
-        <p>Manage your leave requests and approvals.</p>
-        <img src={requestLeaveImg} alt="Request Leave" style={imgStyle} />
+      <div className="page-card">
+        <div className="pc-header">
+          <div className="pc-icon" style={{ background: 'var(--gold-pale)' }}>🌴</div>
+          <div>
+            <div className="pc-title">My Leave</div>
+            <p style={{ fontSize: '.8rem', margin: '.2rem 0 0', color: 'var(--color-custom-700)' }}>View your leave history and request new leave.</p>
+          </div>
+        </div>
+        <div className="pc-body">
+          <div className="step-box">
+            <div className="step-box-title"><Lbl>Request Leave</Lbl></div>
+            <StepItem num={1}>Click <Lbl>My Leave</Lbl> in the sidebar to see your leave balance and history.</StepItem>
+            <img src={requestLeaveImg} alt="Leave Page" style={imgStyle} />
+            <StepItem num={2}>Click <Lbl>Request Leave</Lbl>, complete the form (leave type, dates, reason), and submit.</StepItem>
+          </div>
+        </div>
       </div>
 
       {/* Reports */}
+      <div className="step-box-title">📋 ABOUT REPORTS</div>
+      <div className="step-box">
+        <div className="step-box-title"><Lbl>Reports</Lbl></div>
+        <StepItem num={1}>Click <Lbl>Reports</Lbl> on the sidebar to view department job reports.</StepItem>
+        <img src={reportsImg} alt="Reports" style={imgStyle} />
+      </div>
+
       <div className="step-box-title">📋 MY REPORTS</div>
       <div className="step-box">
-        <div className="step-box-title"><Lbl>My reports</Lbl></div>
-        <StepItem num={1}>Click <Lbl>my reports</Lbl> on sidebar.</StepItem>
+        <div className="step-box-title"><Lbl>My Reports</Lbl></div>
+        <StepItem num={1}>Click <Lbl>My Reports</Lbl> on sidebar to see reports you have generated.</StepItem>
         <img src={myReportsImg} alt="My Reports" style={imgStyle} />
+      </div>
+
+      <div className="step-box">
+        <div className="step-box-title"><Lbl>Assigned Reports</Lbl></div>
+        <StepItem num={1}>Click <Lbl>Assigned Reports</Lbl> to view reports assigned to you by others.</StepItem>
+        <img src={assignedReportsImg} alt="Assigned Reports" style={imgStyle} />
       </div>
 
       <div className="step-box-title">📋 Notifications</div>

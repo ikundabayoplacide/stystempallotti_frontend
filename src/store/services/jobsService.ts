@@ -64,6 +64,7 @@ export interface Job {
   status: JobStatus;
   state?: JobState;
   rejectReason?: string;
+  jobFor?: "hobe" | "general" | null;
   paymentStatus?: PaymentStatus;
   amount?: number;
   paymentMethod?: PaymentMethod;
@@ -121,9 +122,15 @@ export interface UpdateJobItemPayload {
 
 export interface CreateJobPayload {
   title: string;
-  customerId: string;
+  customerId?: string;          // required for general jobs
+  owner?: {                     // required for hobe jobs (backend auto-creates customer)
+    fullName: string;
+    phone: string;
+    email?: string;
+  };
   description?: string;
   jobType?: string;
+  jobFor?: "hobe" | "general";
   quantity?: number;
   size?: string;
   colorMode?: string;
@@ -181,6 +188,9 @@ export interface GetJobsParams {
   priority?: JobPriority;
   customerId?: string;
   departmentAssignedToId?: string;
+  createdById?: string;
+  jobType?: string;
+  jobFor?: "hobe" | "general";
 }
 
 export interface GetCompletedPaidJobsParams {

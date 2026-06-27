@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  HiOutlineBriefcase,
   HiOutlineChartBar,
   HiOutlineRefresh,
   HiOutlineDocumentDownload,
@@ -15,6 +16,7 @@ import {
   useGetHobeSalesQuery,
   useGetHobesQuery,
 } from "../../store/services/hobeService";
+import { useGetJobsQuery } from "../../store/services/jobsService";
 import { GenerateReportModal } from "../../components";
 import { useGetMyGeneralStockSortiesQuery } from "../../store/services/generalStockService";
 import { useAuth } from "../../context/AuthContext";
@@ -630,14 +632,187 @@ function RequestsReport() {
     </div>
   );
 }
+// ─── Jobs Report ─────────────────────────────────────────────────────────────
+
+const JOB_STATUS_COLOR: Record<string, string> = {
+  pending:              "bg-yellow-100 text-yellow-700",
+  confirmed:            "bg-blue-100 text-blue-700",
+  "ready-for-delivery": "bg-emerald-100 text-emerald-700",
+  delivered:            "bg-green-100 text-green-700",
+  completed:            "bg-gray-100 text-gray-700",
+  rejected:             "bg-red-100 text-red-700",
+};
+
+function JobsReport() {
+  const [statusFilter, setStatusFilter] = useState("");
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading, refetch } = useGetJobsQuery({ limit: 500 });
+  const allJobs = (data?.jobs ?? []).filter((j) => (j as any).jobFor === "hobe" || j.jobType === "hobe");
+
+  const filtered = statusFilter ? allJobs.filter((j) => j.status === statusFilter) : allJobs;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const pending   = allJobs.filter((j) => j.status === "pending").length;
+  const ready     = allJobs.filter((j) => j.status === "ready-for-delivery").length;
+  const delivered = allJobs.filter((j) => j.status === "delivered").length;
+  const completed = allJobs.filter((j) => j.status === "completed").length;
+  const totalAmount = allJobs.reduce((s, j) => s + (j.amount ?? 0), 0);
+  const paidAmount  = allJobs.filter((j) => j.paymentStatus === "paid").reduce((s, j) => s + (j.amount ?? 0), 0);
+
+  const getExportData = () => ({
+    headers: ["Job #", "Title", "Customer", "Amount (RWF)", "Status", "Payment", "Due Date", "Created"],
+    rows: allJobs.map((j) => [
+      j.jobNumber,
+      j.title,
+      j.customer?.name ?? "—",
+      j.amount != null ? Number(j.amount).toLocaleString() : "—",
+      j.status,
+      j.paymentStatus ?? "unpaid",
+      j.dueDate?.split("T")[0] ?? "—",
+      new Date(j.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+    ]),
+    summary: [
+      { label: "Total Jobs",    value: String(allJobs.length) },
+      { label: "Total Amount",  value: `${totalAmount.toLocaleString()} RWF` },
+      { label: "Total Paid",    value: `${paidAmount.toLocaleString()} RWF`, bold: true },
+    ] as SummaryRow[],
+  });
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary-100 text-primary-600">
+            <HiOutlineBriefcase className="w-4 h-4" />
+          </div>
+          <h2 className="text-base font-bold text-secondary-100">Jobs</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => refetch()}
+            className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="Hobe Jobs Report" getExportData={getExportData} />
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <StatCard label="Pending"   value={pending}   color="text-yellow-600" />
+        <StatCard label="Ready"     value={ready}      color="text-emerald-600" />
+        <StatCard label="Delivered" value={delivered}  color="text-green-600" />
+        <StatCard label="Completed" value={completed}  color="text-gray-700" />
+      </div>
+
+      {/* Financial summary */}
+      <div className="grid grid-cols-2 gap-4">
+        <StatCard label="Total Amount" value={`${Math.round(totalAmount).toLocaleString()} RWF`} color="text-secondary-100" />
+        <StatCard label="Total Paid"   value={`${Math.round(paidAmount).toLocaleString()} RWF`}  color="text-emerald-600"
+          sub={paidAmount < totalAmount ? `Unpaid: ${Math.round(totalAmount - paidAmount).toLocaleString()} RWF` : undefined} />
+      </div>
+
+      {/* Filter */}
+      <div className="flex items-center gap-2">
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="ready-for-delivery">Ready for Delivery</option>
+          <option value="delivered">Delivered</option>
+          <option value="completed">Completed</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      {/* Table */}
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {["Job #", "Title", "Customer", "Amount", "Status", "Payment"].map((h) => (
+                  <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+                <th className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase" translate="no">Due Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No jobs found</td></tr>
+              ) : paginated.map((j) => (
+                <tr key={j.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">{j.jobNumber}</td>
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm font-semibold text-secondary-100">{j.title}</p>
+                    {j.jobType && <p className="text-xs text-custom-700">{j.jobType}</p>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm text-secondary-100">{j.customer?.name ?? "—"}</p>
+                    {j.customer?.phone && <p className="text-xs text-custom-700">{j.customer.phone}</p>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">
+                    {j.amount != null ? `${Math.round(Number(j.amount)).toLocaleString()} RWF` : "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${JOB_STATUS_COLOR[j.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {j.status.replace(/-/g, " ")}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      j.paymentStatus === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
+                    }`}>
+                      {j.paymentStatus === "paid" ? "Paid" : "Unpaid"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">
+                    {j.dueDate ? j.dueDate.split("T")[0] : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Pagination */}
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-custom-700">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setPage(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                  n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+                }`}>{n}</button>
+            ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "sales" | "batches" | "requests" | "my-reports";
+type Tab = "sales" | "batches" | "requests" | "jobs" | "my-reports";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
-  { value: "sales",      label: "Sales Report",  icon: HiOutlineCube },
-  { value: "batches",    label: "Batch Overview", icon: HiOutlineChartBar },
-  { value: "requests",   label: "Requests",       icon: HiOutlineClipboardList },
+  { value: "sales",    label: "Sales Report",  icon: HiOutlineCube },
+  { value: "batches",  label: "Batch Overview", icon: HiOutlineChartBar },
+  { value: "jobs",     label: "Jobs",           icon: HiOutlineBriefcase },
+  { value: "requests", label: "Requests",       icon: HiOutlineClipboardList },
 ];
 
 export default function ReportsPage({ initialTab = "sales" }: { initialTab?: Tab }) {
@@ -677,9 +852,10 @@ export default function ReportsPage({ initialTab = "sales" }: { initialTab?: Tab
           ))}
         </div>
 
-        {(localTab || activeTab) === "sales"      && <HobeSalesReport />}
-        {(localTab || activeTab) === "batches"    && <BatchOverviewReport />}
-        {(localTab || activeTab) === "requests"   && <RequestsReport />}
+        {(localTab || activeTab) === "sales"    && <HobeSalesReport />}
+        {(localTab || activeTab) === "batches"  && <BatchOverviewReport />}
+        {(localTab || activeTab) === "jobs"     && <JobsReport />}
+        {(localTab || activeTab) === "requests" && <RequestsReport />}
       </div>
     </DashboardLayout>
   );
