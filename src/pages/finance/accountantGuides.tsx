@@ -18,6 +18,7 @@ import requestLeaveImg from '../../assets/images/accountant/requestLeave.png';
 import notificationsImg from '../../assets/images/accountant/notifications.png';
 import profileDataImg from '../../assets/images/accountant/profiledata.png';
 import passwordImg from '../../assets/images/accountant/password.png';
+import logoutImg from '../../assets/images/accountant/logout.png';
 
 const imgStyle: React.CSSProperties = { maxWidth: '100%', height: 'auto', marginTop: '.5rem' };
 
@@ -368,6 +369,14 @@ export default function AccountantUserGuide() {
         </p>
         <StepItem num={1}>Click <Lbl>settings</Lbl> then click <Lbl>password</Lbl>.</StepItem>
         <img src={passwordImg} alt="Change Password" style={imgStyle} />
+      </div>
+
+      <div className="step-box">
+        <div className="step-box-title">🚪 How to log out</div>
+        <StepItem num={1}>Click your <strong>avatar / name</strong> in the top-right corner of the page header. A dropdown menu opens.</StepItem>
+        <img src={logoutImg} alt="Logout dropdown" style={imgStyle} />
+        <StepItem num={2}>Click <Lbl>Logout</Lbl> (shown in red at the bottom of the dropdown).</StepItem>
+        <StepItem num={3}>You are immediately signed out and redirected to the login page.</StepItem>
       </div>
 
     </div>

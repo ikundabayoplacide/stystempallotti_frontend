@@ -13,6 +13,7 @@ import generateReportImg from '../../assets/images/worker/generatereport.png';
 import notificationsImg  from '../../assets/images/worker/notifications.png';
 import profileImg        from '../../assets/images/worker/profile.png';
 import passwordImg       from '../../assets/images/worker/password.png';
+import logoutImg         from '../../assets/images/worker/logout.png';
 
 const imgStyle: React.CSSProperties = {
   maxWidth: '100%',
@@ -336,6 +337,14 @@ export default function WorkerUserGuide() {
             <img src={passwordImg} alt="Change password page" style={imgStyle} />
             <StepItem num={2}>Enter your <Field>Current Password</Field>, then your <Field>New Password</Field>, and confirm it.</StepItem>
             <StepItem num={3}>Click <Lbl>Update Password</Lbl>. You will stay logged in with the new password.</StepItem>
+          </div>
+
+          <div className="step-box">
+            <div className="step-box-title">🚪 How to log out</div>
+            <StepItem num={1}>Click your <strong>avatar / name</strong> in the top-right corner of the page header. A dropdown menu opens.</StepItem>
+            <img src={logoutImg} alt="Logout dropdown" style={imgStyle} />
+            <StepItem num={2}>Click <Lbl>Logout</Lbl> (shown in red at the bottom of the dropdown).</StepItem>
+            <StepItem num={3}>You are immediately signed out and redirected to the login page.</StepItem>
           </div>
 
         </div>

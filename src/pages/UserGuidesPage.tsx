@@ -11,6 +11,7 @@ import WorkerUserGuide from './worker/userGuides';
 import StockUserGuide from './stock/userGuides';
 import ProductionManagerUserGuide from './production-manager/userGuides';
 import HRUserGuide from './HR/userGuides';
+import AdminUserGuide from './admin/userGuides';
 
 function GuideContent({ role }: { role: string }) {
   switch (role) {
@@ -24,6 +25,7 @@ function GuideContent({ role }: { role: string }) {
     case 'stock':              return <StockUserGuide />;
     case 'production-manager': return <ProductionManagerUserGuide />;
     case 'hr':                 return <HRUserGuide />;
+    case 'admin':              return <AdminUserGuide />;
     default: return (
       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--gray-500)' }}>
         No user guide available for your role.

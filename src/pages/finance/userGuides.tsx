@@ -17,6 +17,7 @@ import receivedReportImg from '../../assets/images/daf/receivedreport.png';
 import notificationImg from '../../assets/images/daf/notification.png';
 import profileImg      from '../../assets/images/daf/profile.png';
 import passwordImg     from '../../assets/images/daf/password.png';
+import logoutImg       from '../../assets/images/daf/logout.png';
 
 const imgStyle: React.CSSProperties = {
   maxWidth: '100%',
@@ -576,6 +577,14 @@ export default function DAFUserGuide() {
             <StepItem num={4}>Enter a <strong>New Password</strong> and repeat it in the <strong>Confirm Password</strong> field.</StepItem>
             <StepItem num={5}>Click <Btn>Update Password</Btn>.</StepItem>
             <Note>Choose a strong password. You will be asked to log in again after changing it.</Note>
+          </div>
+
+          <div className="step-box">
+            <div className="step-box-title">🚪 How to log out</div>
+            <StepItem num={1}>Click your <strong>avatar / name</strong> in the top-right corner of the page header. A dropdown menu opens.</StepItem>
+            <img src={logoutImg} alt="Logout dropdown" style={imgStyle} />
+            <StepItem num={2}>Click <Btn>Logout</Btn> (shown in red at the bottom of the dropdown).</StepItem>
+            <StepItem num={3}>You are immediately signed out and redirected to the login page.</StepItem>
           </div>
         </div>
       </div>
