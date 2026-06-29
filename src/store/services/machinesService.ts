@@ -22,6 +22,7 @@ export interface MachineWorker {
   id: string;          // employee id
   fullName: string;
   phoneNumber?: string;
+  departmentId?: string | null;
   department?: { id: string; name: string } | null;
   MachineAssignment?: { id: string; assignedAt: string; note?: string };
 }
@@ -98,8 +99,12 @@ export const machinesApi = createApi({
     getMachineAssignments: builder.query<MachineAssignment[], string>({
       query: (machineId) => `/machine-assignments/machine/${machineId}`,
       transformResponse: (res: any) => {
-        const d = res?.data ?? res;
-        return Array.isArray(d) ? d : [];
+        // Backend returns { data: { machine, assignments: [...] } }
+        const d = res?.data;
+        if (d && Array.isArray(d.assignments)) return d.assignments;
+        // Fallback: maybe it returns the array directly
+        if (Array.isArray(d)) return d;
+        return [];
       },
       providesTags: (_r, _e, machineId) => [{ type: "MachineAssignment", id: machineId }],
     }),
@@ -134,6 +139,21 @@ export const machinesApi = createApi({
         { type: "Machine", id: "LIST" },
       ],
     }),
+
+    // PUT /machine-assignments/:id/reassign  (admin, supervisor)
+    reassignWorker: builder.mutation<MachineAssignment, { assignmentId: string; machineId: string; newEmployeeId: string }>({
+      query: ({ assignmentId, newEmployeeId }) => ({
+        url: `/machine-assignments/${assignmentId}/reassign`,
+        method: "PUT",
+        body: { newEmployeeId },
+      }),
+      transformResponse: (res: any) => res?.data ?? res,
+      invalidatesTags: (_r, _e, { machineId }) => [
+        { type: "MachineAssignment", id: machineId },
+        { type: "Machine", id: machineId },
+        { type: "Machine", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -147,4 +167,5 @@ export const {
   useGetEmployeeMachinesQuery,
   useAssignWorkerMutation,
   useRemoveWorkerMutation,
+  useReassignWorkerMutation,
 } = machinesApi;

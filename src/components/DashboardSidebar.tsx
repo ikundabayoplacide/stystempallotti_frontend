@@ -23,12 +23,15 @@ import { type UserRole } from "../context/AuthContext";
 import { useAppSelector } from "../store/hooks";
 import { useGetMyPermissionsQuery } from "../store/services/permissionsService";
 import { useGetUnreadCountQuery } from "../store/services/notificationsService";
+import { useGetDepartmentByIdQuery } from "../store/services/departmentsService";
 
 interface MenuItem {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   permissionKey?: string;
+  /** When true, only visible to supervisors in the binding department */
+  bindingOnly?: boolean;
   children?: { label: string; path: string; icon: React.ComponentType<{ className?: string }> }[];
 }
 
@@ -154,7 +157,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   "production-manager": [
     { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
     { label: "Job Planning", path: "/production-manager/planning", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    { label: "General Stock", path: "/production-manager/general-stock", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    // { label: "General Stock", path: "/production-manager/general-stock", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
     { label: "My Leave", path: "/production-manager/leave", icon: HiOutlineCalendar },
     { label: "Reports", path: "/production-manager/reports", icon: HiOutlineChartBar, children: [
@@ -179,8 +182,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/supervisor", icon: HiOutlineHome },
     { label: "Jobs", path: "/supervisor/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Employees", path: "/supervisor/employees", icon: HiOutlineUsers },
-    { label: "Machines", path: "/supervisor/machines", icon: HiOutlineCog },
-    { label: "Binding Stock", path: "/supervisor/binding-stock", icon: HiOutlineArchive },
+    { label: "Machines", path: "/supervisor/machines", icon: HiOutlineCog, bindingOnly: true },
+    { label: "Binding Stock", path: "/supervisor/binding-stock", icon: HiOutlineArchive, bindingOnly: true },
     { label: "My Leave", path: "/supervisor/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/supervisor/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
@@ -231,6 +234,17 @@ export default function DashboardSidebar({
     }
   }, [location.pathname]);
   const { token } = useAppSelector((state) => state.auth);
+  const departmentId = useAppSelector((state) => state.auth.user?.departmentId);
+
+  // Fetch the supervisor's department to check if they're in binding
+  const { data: myDepartment } = useGetDepartmentByIdQuery(departmentId ?? "", {
+    skip: !departmentId || userRole !== "supervisor",
+  });
+
+  const isBindingSupervisor =
+    userRole === "supervisor" &&
+    !!myDepartment &&
+    myDepartment.name.toLowerCase().includes("binding");
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(() => {
     // Auto-open dropdowns whose children match the current path on mount
     const initial = new Set<string>();
@@ -270,7 +284,9 @@ export default function DashboardSidebar({
   const items = useMemo(() => {
     const base = menuItems[userRole] ?? [];
     const filtered = base.filter(
-      (item) => !item.permissionKey || grantedSet.has(item.permissionKey)
+      (item) =>
+        (!item.permissionKey || grantedSet.has(item.permissionKey)) &&
+        (!item.bindingOnly || isBindingSupervisor)
     );
     console.log(
       `[sidebar] visible items (${filtered.length}/${base.length}):`,
@@ -281,7 +297,7 @@ export default function DashboardSidebar({
         .map((i) => `${i.label}(${i.permissionKey})`)
     );
     return filtered;
-  }, [userRole, grantedSet]);
+  }, [userRole, grantedSet, isBindingSupervisor]);
 
   const notifPath: Record<UserRole, string> = {
     admin: "/admin/notifications",

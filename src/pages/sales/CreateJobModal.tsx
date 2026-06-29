@@ -560,7 +560,7 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
 
                   <div>
                     <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Due Date</label>
-                    <Input name="dueDate" type="date" value={form.dueDate} onChange={handleFieldChange} fullWidth />
+                    <Input name="dueDate" type="date" min={new Date().toISOString().split("T")[0]} value={form.dueDate} onChange={handleFieldChange} fullWidth />
                   </div>
 
                   <div>

@@ -10,7 +10,6 @@ import {
   HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineThumbDown,
-  HiOutlineThumbUp,
   HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
@@ -18,7 +17,6 @@ import { Card } from "../../components/ui";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import type { Job, JobState } from "../../store/services/jobsService";
 import {
-  useApproveJobMutation,
   useAssignJobMutation,
   useCompleteJobMutation,
   useGetJobDetailsQuery,
@@ -85,9 +83,8 @@ const IN_PRODUCTION_STATUSES = new Set([
 ]);
 
 const ASSIGNABLE_STATUSES  = new Set(["confirmed", "in-composition", "in-montage", "in-printing", "in-binding", "in-packaging"]);
-const APPROVABLE_STATUSES  = new Set(["pending"]);
-const REJECTABLE_STATUSES  = new Set(["pending", "confirmed"]);
-const EDITABLE_STATUSES    = new Set(["pending", "confirmed"]);
+const REJECTABLE_STATUSES  = new Set(["confirmed"]);
+const EDITABLE_STATUSES    = new Set(["confirmed"]);
 const COMPLETABLE_STATES = new Set([
   "composition-done", "montage-done", "printing-done",
   "binding-done", "packaging-done", "qualitycheck-done",
@@ -95,7 +92,7 @@ const COMPLETABLE_STATES = new Set([
 
 const PAGE_SIZE = 5;
 
-type ModalType = "assign" | "approve" | "reject" | "edit" | "complete" | null;
+type ModalType = "assign" | "reject" | "edit" | "complete" | null;
 
 // ─── Job Details Modal ────────────────────────────────────────────────────────
 
@@ -266,7 +263,6 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
 
   if (job.status === "delivered") return null;
 
-  const canApprove   = APPROVABLE_STATUSES.has(job.status);
   const canAssign    = ASSIGNABLE_STATUSES.has(job.status);
   const canReject    = REJECTABLE_STATUSES.has(job.status);
   const canEdit      = EDITABLE_STATUSES.has(job.status);
@@ -274,7 +270,6 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
 
   type ActionDef = { label: string; type: ModalType; icon: React.ReactNode; cls: string };
   const actions: ActionDef[] = [
-    ...(canApprove  ? [{ label: "Approve",  type: "approve"  as ModalType, icon: <HiOutlineThumbUp className="h-4 w-4" />,    cls: "text-green-700 hover:bg-green-50" }] : []),
     ...(canAssign   ? [{ label: job.departmentAssignedToId ? "Reassign" : "Assign", type: "assign" as ModalType, icon: <HiOutlineClipboardList className="h-4 w-4" />, cls: "text-primary-700 hover:bg-primary-50" }] : []),
     ...(canComplete ? [{ label: "Complete", type: "complete" as ModalType, icon: <HiOutlineCheckCircle className="h-4 w-4" />, cls: "text-blue-700 hover:bg-blue-50" }] : []),
     ...(canEdit     ? [{ label: "Edit",     type: "edit"     as ModalType, icon: <HiOutlinePencil className="h-4 w-4" />,     cls: "text-secondary-100 hover:bg-custom-50" }] : []),
@@ -325,7 +320,6 @@ export default function JobAssignmentPage() {
 
   const { data: allData, isLoading, isFetching, refetch } = useGetJobsQuery({ limit: 1000, search: search || undefined });
   const { data: departments = [] }               = useGetDepartmentsQuery();
-  const [approveJob,  { isLoading: isApproving }]   = useApproveJobMutation();
   const [rejectJob,   { isLoading: isRejecting }]   = useRejectJobMutation();
   const [assignJob,   { isLoading: isAssigning }]   = useAssignJobMutation();
   const [reassignJob, { isLoading: isReassigning }] = useReassignJobMutation();
@@ -377,16 +371,6 @@ export default function JobAssignmentPage() {
     }
   };
 
-  const handleApprove = async () => {
-    if (!activeJob) return;
-    try {
-      await approveJob(activeJob.id).unwrap();
-      closeAndRefetch();
-    } catch (err: any) {
-      setError(err?.data?.message ?? "Failed to approve job");
-    }
-  };
-
   const handleReject = async () => {
     if (!activeJob) return;
     try {
@@ -417,7 +401,7 @@ export default function JobAssignmentPage() {
     }
   };
 
-  const isSaving = isApproving || isRejecting || isAssigning || isReassigning || isUpdatingJob || isCompleting;
+  const isSaving = isRejecting || isAssigning || isReassigning || isUpdatingJob || isCompleting;
 
   return (
     <DashboardLayout userRole="production-manager" userName="Production Manager" notificationCount={pendingCount}>
@@ -622,7 +606,6 @@ export default function JobAssignmentPage() {
                 <div>
                   <h3 className="text-xl font-bold text-secondary-100">
                     {modalType === "assign"  && (activeJob.departmentAssignedToId ? "Reassign Job" : "Assign Job")}
-                    {modalType === "approve" && "Approve Job"}
                     {modalType === "reject"  && "Reject Job"}
                     {modalType === "edit"    && "Edit Job"}
                     {modalType === "complete" && "Complete Job"}
@@ -682,22 +665,6 @@ export default function JobAssignmentPage() {
                     className="w-full px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50"
                   >
                     {isSaving ? "Saving…" : "Confirm Complete"}
-                  </button>
-                </div>
-              )}
-
-              {modalType === "approve" && (
-                <div className="space-y-4">
-                  <p className="text-sm text-custom-700">
-                    Current status: <span className="font-semibold text-secondary-100">{activeJob.status}</span>.<br />
-                    Approving will move this job to <span className="font-semibold text-green-600">confirmed</span>.
-                  </p>
-                  <button
-                    onClick={handleApprove}
-                    disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold disabled:opacity-50"
-                  >
-                    {isSaving ? "Saving…" : "Confirm Approval"}
                   </button>
                 </div>
               )}

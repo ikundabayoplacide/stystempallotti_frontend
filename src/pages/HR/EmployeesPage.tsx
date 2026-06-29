@@ -521,12 +521,7 @@ function LinkUserModal({ employee, onClose }: { employee: any; onClose: () => vo
                 ))}
               </select>
             )}
-          </div>
-          {employee.userId && (
-            <p className="text-xs text-custom-500">
-              Currently linked to user ID: <span className="font-mono text-secondary-100">{employee.userId}</span>
-            </p>
-          )}
+          </div> 
           {error && (
             <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
               {(error as any)?.data?.message ?? "Failed to link user."}

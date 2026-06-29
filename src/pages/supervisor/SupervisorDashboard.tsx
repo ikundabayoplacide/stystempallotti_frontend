@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
+  HiOutlineArchive,
   HiOutlineCheckCircle,
   HiOutlineClipboardList,
   HiOutlineClock,
+  HiOutlineCog,
   HiOutlineExclamationCircle,
-  HiOutlineFlag,
   HiOutlineRefresh,
   HiOutlineUsers,
 } from "react-icons/hi";
@@ -13,6 +15,8 @@ import { Card } from "../../components/ui";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
+import { useGetMachinesQuery } from "../../store/services/machinesService";
+import { useGetBindingStockItemsQuery } from "../../store/services/bindingStockService";
 import { jobStatusConfig } from "../../types/JobStatus";
 import type { RootState } from "../../store";
 
@@ -76,6 +80,7 @@ function WorkloadBar({ jobCount }: { jobCount: number }) {
 
 export default function SupervisorDashboard() {
   const [jobPage, setJobPage] = useState(1);
+  const navigate = useNavigate();
 
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const myDeptId    = currentUser?.departmentId;
@@ -106,13 +111,22 @@ export default function SupervisorDashboard() {
     (j) => new Date(j.updatedAt).toDateString() === new Date().toDateString()
   );
   const activeCount = jobs.filter((j) => j.status !== "completed" && j.status !== "rejected").length;
-  const doneCount   = jobs.filter((j) => j.state && (j.state as string).endsWith("-done")).length;
 
   const busyWorkers = useMemo(
     () => workers.filter((w) => (w.assignedJobs?.length ?? (w.jobId ? 1 : 0)) > 0).length,
     [workers]
   );
   const busyPct = workers.length > 0 ? Math.round((busyWorkers / workers.length) * 100) : 0;
+
+  const { data: machinesData = [] } = useGetMachinesQuery();
+  const isBindingDept = !!myDept && myDept.name.toLowerCase().includes("binding");
+  const { data: stockData } = useGetBindingStockItemsQuery(
+    { limit: 200 },
+    { skip: !isBindingDept }
+  );
+  const lowStockCount = isBindingDept
+    ? (stockData?.data ?? []).filter((i) => i.stockStatus === "low" || i.stockStatus === "out-of-stock").length
+    : 0;
 
   const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
   const pagedJobs  = useMemo(
@@ -121,10 +135,54 @@ export default function SupervisorDashboard() {
   );
 
   const kpis = [
-    { label: "Active Jobs",     value: activeCount,           icon: HiOutlineClock,             color: "text-blue-600",    bg: "bg-blue-100"    },
-    { label: "Dept Done",       value: doneCount,             icon: HiOutlineFlag,              color: "text-green-600",   bg: "bg-green-100"   },
-    { label: "Completed Today", value: completedToday.length, icon: HiOutlineCheckCircle,       color: "text-primary-600", bg: "bg-primary-100" },
-    { label: "Urgent",          value: urgentJobs.length,     icon: HiOutlineExclamationCircle, color: "text-red-500",     bg: "bg-red-100"     },
+    {
+      label: "Active Jobs",
+      value: activeCount,
+      icon: HiOutlineClock,
+      color: "text-blue-600",
+      bg: "bg-blue-100",
+      to: "/supervisor/jobs",
+    },
+    {
+      label: "Total Employees",
+      value: workers.length,
+      icon: HiOutlineUsers,
+      color: "text-indigo-600",
+      bg: "bg-indigo-100",
+      to: "/supervisor/employees",
+    },
+    {
+      label: "Total Machines",
+      value: machinesData.length,
+      icon: HiOutlineCog,
+      color: "text-purple-600",
+      bg: "bg-purple-100",
+      to: "/supervisor/machines",
+    },
+    {
+      label: "Completed Today",
+      value: completedToday.length,
+      icon: HiOutlineCheckCircle,
+      color: "text-emerald-600",
+      bg: "bg-emerald-100",
+      to: "/supervisor/jobs",
+    },
+    {
+      label: "Urgent",
+      value: urgentJobs.length,
+      icon: HiOutlineExclamationCircle,
+      color: urgentJobs.length > 0 ? "text-red-600" : "text-custom-700",
+      bg: urgentJobs.length > 0 ? "bg-red-100" : "bg-custom-100",
+      to: "/supervisor/jobs",
+    },
+    ...(isBindingDept ? [{
+      label: "Low Stock",
+      value: lowStockCount,
+      icon: HiOutlineArchive,
+      color: lowStockCount > 0 ? "text-yellow-600" : "text-custom-700",
+      bg: lowStockCount > 0 ? "bg-yellow-100" : "bg-custom-100",
+      to: "/supervisor/binding-stock",
+    }] : []),
   ];
 
   if (!myDeptId) {
@@ -159,14 +217,18 @@ export default function SupervisorDashboard() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {kpis.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="!p-4 flex flex-col gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {kpis.map(({ label, value, icon: Icon, color, bg, to }) => (
+          <Card
+            key={label}
+            className="!p-4 flex flex-col gap-3 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all duration-200 group"
+            onClick={() => navigate(to)}
+          >
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
               <Icon className={`w-5 h-5 ${color}`} />
             </div>
             <div>
-              <p className="text-xs text-custom-700">{label}</p>
+              <p className="text-xs text-custom-700 group-hover:text-primary-500 transition-colors">{label}</p>
               <p className="text-2xl font-bold text-secondary-100">{value}</p>
             </div>
           </Card>

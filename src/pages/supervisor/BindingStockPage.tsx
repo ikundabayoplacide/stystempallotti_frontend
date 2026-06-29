@@ -58,28 +58,36 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
   const [updateItem, { isLoading: updating }]  = useUpdateBindingStockItemMutation();
 
   const [form, setForm] = useState({
-    itemName:     item?.itemName     ?? "",
-    description:  item?.description  ?? "",
-    category:     item?.category     ?? "",
-    unit:         item?.unit         ?? "",
-    currentStock: item?.currentStock ?? 0,
-    alarmStock:   item?.alarmStock   ?? 0,
+    itemName:     item?.itemName                         ?? "",
+    description:  item?.description                      ?? "",
+    category:     item?.category                         ?? "",
+    unit:         item?.unit                             ?? "",
+    currentStock: item?.currentStock != null ? String(item.currentStock) : "",
+    alarmStock:   item?.alarmStock   != null ? String(item.alarmStock)   : "",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((p) => ({ ...p, [k]: k === "currentStock" || k === "alarmStock" ? Number(e.target.value) : e.target.value }));
+    setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.itemName.trim() || !form.category.trim() || !form.unit.trim()) {
       toast.error("Item name, category, and unit are required"); return;
     }
+    const payload = {
+      itemName:     form.itemName,
+      description:  form.description,
+      category:     form.category,
+      unit:         form.unit,
+      currentStock: form.currentStock === "" ? 0 : Number(form.currentStock),
+      alarmStock:   form.alarmStock   === "" ? 0 : Number(form.alarmStock),
+    };
     try {
       if (isEdit) {
-        await updateItem({ id: item!.id, ...form }).unwrap();
+        await updateItem({ id: item!.id, ...payload }).unwrap();
         toast.success("Item updated");
       } else {
-        await createItem(form).unwrap();
+        await createItem(payload).unwrap();
         toast.success("Item created");
       }
       onSuccess();
@@ -111,12 +119,12 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
             </div>
             <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock Level</label>
-              <input type="number" min={0} value={form.alarmStock} onChange={set("alarmStock")} className={cls} />
+              <input type="text" inputMode="numeric" pattern="[0-9]*" min={0} value={form.alarmStock} onChange={set("alarmStock")} placeholder="e.g. 5" className={cls} />
             </div>
             {!isEdit && (
               <div>
                 <label className="block text-xs font-semibold text-secondary-100 mb-1">Initial Stock</label>
-                <input type="number" min={0} value={form.currentStock} onChange={set("currentStock")} className={cls} />
+                <input type="text" inputMode="numeric" pattern="[0-9]*" min={0} value={form.currentStock} onChange={set("currentStock")} placeholder="e.g. 100" className={cls} />
               </div>
             )}
           </div>
@@ -195,6 +203,8 @@ function ItemsTab() {
   const [showForm, setShowForm]       = useState(false);
   const [editItem, setEditItem]       = useState<BindingStockItem | null>(null);
   const [restockItem, setRestockItem] = useState<BindingStockItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BindingStockItem | null>(null);
+  const [deleting, setDeleting]       = useState(false);
   const [search, setSearch]           = useState("");
 
   const { data, isLoading, refetch } = useGetBindingStockItemsQuery({ limit: 200 });
@@ -205,13 +215,18 @@ function ItemsTab() {
     return !q || i.itemName.toLowerCase().includes(q) || i.category.toLowerCase().includes(q);
   });
 
-  const handleDelete = async (item: BindingStockItem) => {
-    if (!confirm(`Delete "${item.itemName}"? This cannot be undone.`)) return;
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteItem(item.id).unwrap();
+      await deleteItem(deleteTarget.id).unwrap();
       toast.success("Item deleted");
+      setDeleteTarget(null);
+      refetch();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to delete");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -288,7 +303,7 @@ function ItemsTab() {
                         className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                         <HiOutlinePencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => handleDelete(item)} title="Delete"
+                      <button onClick={() => setDeleteTarget(item)} title="Delete"
                         className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
                         <HiOutlineTrash className="w-3.5 h-3.5" />
                       </button>
@@ -315,6 +330,145 @@ function ItemsTab() {
           onSuccess={() => { setRestockItem(null); refetch(); }}
         />
       )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+          <Card className="!p-6 max-w-sm w-full">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <HiOutlineTrash className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Delete Item</h3>
+                <p className="text-sm text-custom-700 mt-1">
+                  Delete <span className="font-semibold text-secondary-100">"{deleteTarget.itemName}"</span>? This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors"
+              >
+                {deleting
+                  ? <HiOutlineRefresh className="w-4 h-4 animate-spin" />
+                  : <HiOutlineTrash className="w-4 h-4" />}
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Confirm Action Modal ─────────────────────────────────────────────────────
+
+interface ConfirmActionModalProps {
+  action: "approve" | "reject";
+  sortie: BindingStockSortie;
+  isLoading: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+function ConfirmActionModal({ action, sortie, isLoading, onConfirm, onClose }: ConfirmActionModalProps) {
+  const isApprove = action === "approve";
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-md w-full">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isApprove ? "bg-emerald-100" : "bg-red-100"
+            }`}>
+              {isApprove
+                ? <HiOutlineCheck className="w-5 h-5 text-emerald-600" />
+                : <HiOutlineBan   className="w-5 h-5 text-red-500" />}
+            </div>
+            <h3 className="text-lg font-bold text-secondary-100">
+              {isApprove ? "Approve Request" : "Reject Request"}
+            </h3>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100 ml-2">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Details */}
+        <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-2 mb-5 text-sm">
+          <div className="flex justify-between">
+            <span className="text-custom-700">Item</span>
+            <span className="font-semibold text-secondary-100">{sortie.stockItem?.itemName ?? "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-custom-700">Requested by</span>
+            <span className="font-semibold text-secondary-100">{sortie.requester?.name ?? "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-custom-700">Quantity</span>
+            <span className="font-semibold text-secondary-100">
+              {parseFloat(sortie.quantityOut)} {sortie.stockItem?.unit ?? ""}
+            </span>
+          </div>
+          {sortie.reason && (
+            <div className="flex justify-between gap-4">
+              <span className="text-custom-700">Reason</span>
+              <span className="text-secondary-100 text-right italic">"{sortie.reason}"</span>
+            </div>
+          )}
+        </div>
+
+        <p className="text-sm text-custom-700 mb-5">
+          {isApprove
+            ? "Are you sure you want to approve this stock request? The quantity will be deducted from binding stock."
+            : "Are you sure you want to reject this stock request? This action cannot be undone."}
+        </p>
+
+        {/* Actions */}
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isLoading}
+            className={`px-4 py-2 rounded-xl text-white text-sm font-semibold transition-colors disabled:opacity-40 flex items-center gap-2 ${
+              isApprove
+                ? "bg-emerald-500 hover:bg-emerald-600"
+                : "bg-red-500 hover:bg-red-600"
+            }`}
+          >
+            {isLoading ? (
+              <HiOutlineRefresh className="w-4 h-4 animate-spin" />
+            ) : isApprove ? (
+              <HiOutlineCheck className="w-4 h-4" />
+            ) : (
+              <HiOutlineBan className="w-4 h-4" />
+            )}
+            {isLoading
+              ? isApprove ? "Approving..." : "Rejecting..."
+              : isApprove ? "Yes, Approve" : "Yes, Reject"}
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -323,6 +477,11 @@ function ItemsTab() {
 
 function SortiesTab() {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
+  const [confirmModal, setConfirmModal] = useState<{
+    action: "approve" | "reject";
+    sortie: BindingStockSortie;
+  } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const { data, isLoading, refetch } = useGetBindingStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
@@ -333,27 +492,38 @@ function SortiesTab() {
   const sorties: BindingStockSortie[] = data?.data ?? [];
   const pending  = sorties.filter((s) => s.status === "pending").length;
 
-  const handleApprove = async (id: string) => {
+  const handleConfirm = async () => {
+    if (!confirmModal) return;
+    setActionLoading(true);
     try {
-      await approve(id).unwrap();
-      toast.success("Request approved");
+      if (confirmModal.action === "approve") {
+        await approve(confirmModal.sortie.id).unwrap();
+        toast.success("Request approved");
+      } else {
+        await reject(confirmModal.sortie.id).unwrap();
+        toast.success("Request rejected");
+      }
+      setConfirmModal(null);
+      refetch();
     } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to approve");
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    if (!confirm("Reject this stock request?")) return;
-    try {
-      await reject(id).unwrap();
-      toast.success("Request rejected");
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to reject");
+      toast.error(err?.data?.message ?? `Failed to ${confirmModal.action}`);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   return (
     <div className="space-y-4">
+      {confirmModal && (
+        <ConfirmActionModal
+          action={confirmModal.action}
+          sortie={confirmModal.sortie}
+          isLoading={actionLoading}
+          onConfirm={handleConfirm}
+          onClose={() => !actionLoading && setConfirmModal(null)}
+        />
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as SortieStatus | "")}
           className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
@@ -406,11 +576,11 @@ function SortiesTab() {
               </div>
               {sortie.status === "pending" && (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleApprove(sortie.id)}
+                  <button onClick={() => setConfirmModal({ action: "approve", sortie })}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors">
                     <HiOutlineCheck className="w-3.5 h-3.5" /> Approve
                   </button>
-                  <button onClick={() => handleReject(sortie.id)}
+                  <button onClick={() => setConfirmModal({ action: "reject", sortie })}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
                     <HiOutlineBan className="w-3.5 h-3.5" /> Reject
                   </button>

@@ -8,16 +8,22 @@ import ReceptionistUserGuide from './receptionalist/userGuides';
 import SalesUserGuide from './sales/userGuides';
 import SupervisorUserGuide from './supervisor/userGuides';
 import WorkerUserGuide from './worker/userGuides';
+import StockUserGuide from './stock/userGuides';
+import ProductionManagerUserGuide from './production-manager/userGuides';
+import HRUserGuide from './HR/userGuides';
 
 function GuideContent({ role }: { role: string }) {
   switch (role) {
-    case 'receptionist': return <ReceptionistUserGuide />;
-    case 'sales':        return <SalesUserGuide />;
-    case 'accountant':   return <AccountantUserGuide />;
-    case 'daf':          return <DAFUserGuide />;
-    case 'hobe':         return <HobeUserGuide />;
-    case 'supervisor':   return <SupervisorUserGuide />;
-    case 'worker':       return <WorkerUserGuide />;
+    case 'receptionist':       return <ReceptionistUserGuide />;
+    case 'sales':              return <SalesUserGuide />;
+    case 'accountant':         return <AccountantUserGuide />;
+    case 'daf':                return <DAFUserGuide />;
+    case 'hobe':               return <HobeUserGuide />;
+    case 'supervisor':         return <SupervisorUserGuide />;
+    case 'worker':             return <WorkerUserGuide />;
+    case 'stock':              return <StockUserGuide />;
+    case 'production-manager': return <ProductionManagerUserGuide />;
+    case 'hr':                 return <HRUserGuide />;
     default: return (
       <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--gray-500)' }}>
         No user guide available for your role.

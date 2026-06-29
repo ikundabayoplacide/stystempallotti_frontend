@@ -6,6 +6,7 @@ import {
   HiOutlinePlus,
   HiOutlineRefresh,
   HiOutlineSearch,
+  HiOutlineSwitchHorizontal,
   HiOutlineTrash,
   HiOutlineUserAdd,
   HiOutlineUsers,
@@ -21,9 +22,11 @@ import {
   useCreateMachineMutation,
   useGetMachineAssignmentsQuery,
   useGetMachinesQuery,
+  useReassignWorkerMutation,
   useRemoveWorkerMutation,
   useUpdateMachineMutation,
   type Machine,
+  type MachineAssignment,
   type MachineStatus,
 } from "../../store/services/machinesService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
@@ -165,6 +168,12 @@ function AssignWorkerModal({
 }) {
   const [employeeId, setEmployeeId] = useState("");
   const [note, setNote]             = useState("");
+  const [confirmRemove, setConfirmRemove] = useState<{ assignmentId: string; name: string } | null>(null);
+  const [removing, setRemoving]     = useState(false);
+  // reassign state: which assignment row is open + selected new employee
+  const [reassignRow, setReassignRow] = useState<string | null>(null); // assignmentId
+  const [newEmployeeId, setNewEmployeeId] = useState("");
+  const [reassigning, setReassigning]    = useState(false);
 
   const { data: assignments = [], isLoading: loadingAssignments, refetch } =
     useGetMachineAssignmentsQuery(machine.id);
@@ -172,12 +181,13 @@ function AssignWorkerModal({
   const { data: empRes } = useGetAllEmployeesQuery({ isActive: true, limit: 500 });
   const allEmployees = empRes?.data ?? [];
 
-  // Exclude already-assigned employees
+  // Employees not yet assigned to this machine
   const assignedIds = new Set(assignments.map((a) => a.employeeId));
   const available   = allEmployees.filter((e) => !assignedIds.has(e.id));
 
-  const [assign, { isLoading: assigning }] = useAssignWorkerMutation();
-  const [remove, { isLoading: removing }]  = useRemoveWorkerMutation();
+  const [assign,   { isLoading: assigning }] = useAssignWorkerMutation();
+  const [remove]                             = useRemoveWorkerMutation();
+  const [reassign]                           = useReassignWorkerMutation();
 
   const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,16 +202,41 @@ function AssignWorkerModal({
     }
   };
 
-  const handleRemove = async (assignmentId: string) => {
-    if (!confirm("Remove this worker from the machine?")) return;
+  const handleConfirmRemove = async () => {
+    if (!confirmRemove) return;
+    setRemoving(true);
     try {
-      await remove({ assignmentId, machineId: machine.id }).unwrap();
+      await remove({ assignmentId: confirmRemove.assignmentId, machineId: machine.id }).unwrap();
       toast.success("Worker removed");
+      setConfirmRemove(null);
       refetch();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to remove worker");
+    } finally {
+      setRemoving(false);
     }
   };
+
+  const handleReassign = async (assignmentId: string) => {
+    if (!newEmployeeId) { toast.error("Select a replacement employee"); return; }
+    setReassigning(true);
+    try {
+      await reassign({ assignmentId, machineId: machine.id, newEmployeeId }).unwrap();
+      toast.success("Worker reassigned");
+      setReassignRow(null);
+      setNewEmployeeId("");
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to reassign worker");
+    } finally {
+      setReassigning(false);
+    }
+  };
+
+  // For a given assignment row, employees available as replacements = everyone except
+  // the current worker AND everyone else already assigned to this machine
+  const reassignOptions = (currentEmployeeId: string) =>
+    allEmployees.filter((e) => e.id !== currentEmployeeId && !assignedIds.has(e.id));
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -219,34 +254,40 @@ function AssignWorkerModal({
         {/* Assign form */}
         <form onSubmit={handleAssign} className="space-y-3 mb-6">
           <p className="text-xs font-bold text-secondary-100 uppercase tracking-wide">Assign New Worker</p>
-          <div className="flex gap-2">
-            <select
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
-            >
-              <option value="">Select employee…</option>
-              {available.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.fullName}{emp.department ? ` — ${emp.department.name}` : ""}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              disabled={!employeeId || assigning}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
-            >
-              <HiOutlineUserAdd className="w-4 h-4" />
-              {assigning ? "…" : "Assign"}
-            </button>
-          </div>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Optional note"
-            className={cls}
-          />
+          {available.length === 0 && !loadingAssignments ? (
+            <p className="text-xs text-custom-700 py-2">All active employees are already assigned to this machine.</p>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <select
+                  value={employeeId}
+                  onChange={(e) => setEmployeeId(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                >
+                  <option value="">Select employee…</option>
+                  {available.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.fullName}{emp.department ? ` — ${emp.department.name}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={!employeeId || assigning}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
+                >
+                  <HiOutlineUserAdd className="w-4 h-4" />
+                  {assigning ? "…" : "Assign"}
+                </button>
+              </div>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Optional note"
+                className={cls}
+              />
+            </>
+          )}
         </form>
 
         {/* Current workers */}
@@ -262,29 +303,92 @@ function AssignWorkerModal({
               <p className="text-sm text-secondary-100 font-semibold">No workers assigned</p>
             </div>
           ) : (
-            assignments.map((a) => (
-              <div key={a.id}
-                className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 bg-custom-50">
-                <div>
-                  <p className="text-sm font-semibold text-secondary-100">
-                    {a.employee?.fullName ?? "—"}
-                  </p>
-                  <p className="text-xs text-custom-700">
-                    {a.employee?.department?.name ?? "—"}
-                    {a.employee?.phoneNumber ? ` · ${a.employee.phoneNumber}` : ""}
-                  </p>
-                  {a.note && <p className="text-xs text-custom-500 italic mt-0.5">"{a.note}"</p>}
+            assignments.map((a: MachineAssignment) => {
+              const isReassigning = reassignRow === a.id;
+              const options = reassignOptions(a.employeeId);
+              return (
+                <div key={a.id} className="rounded-xl border border-custom-200 bg-custom-50 overflow-hidden">
+                  {/* Worker row */}
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-secondary-100">
+                        {a.employee?.fullName ?? "—"}
+                      </p>
+                      <p className="text-xs text-custom-700">
+                        {a.employee?.department?.name ?? a.employee?.phoneNumber ?? "—"}
+                        {a.employee?.department?.name && a.employee?.phoneNumber ? ` · ${a.employee.phoneNumber}` : ""}
+                      </p>
+                      {a.note && <p className="text-xs text-custom-500 italic mt-0.5">"{a.note}"</p>}
+                      <p className="text-xs text-custom-400 mt-0.5">
+                        Assigned {new Date(a.assignedAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Reassign toggle */}
+                      <button
+                        onClick={() => {
+                          setReassignRow(isReassigning ? null : a.id);
+                          setNewEmployeeId("");
+                        }}
+                        title="Reassign to different worker"
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isReassigning
+                            ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                            : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                        }`}
+                      >
+                        <HiOutlineSwitchHorizontal className="w-4 h-4" />
+                      </button>
+                      {/* Remove */}
+                      <button
+                        onClick={() => setConfirmRemove({ assignmentId: a.id, name: a.employee?.fullName ?? "this worker" })}
+                        disabled={removing}
+                        className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-40"
+                        title="Remove"
+                      >
+                        <HiOutlineTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Inline reassign panel */}
+                  {isReassigning && (
+                    <div className="px-4 pb-3 pt-0 border-t border-custom-200 bg-style-500 space-y-2">
+                      <p className="text-xs font-semibold text-secondary-100 pt-2">
+                        Replace <span className="text-primary-500">{a.employee?.fullName}</span> with:
+                      </p>
+                      <div className="flex gap-2">
+                        <select
+                          value={newEmployeeId}
+                          onChange={(e) => setNewEmployeeId(e.target.value)}
+                          className="flex-1 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                        >
+                          <option value="">Select replacement…</option>
+                          {options.map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.fullName}{emp.department ? ` — ${emp.department.name}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleReassign(a.id)}
+                          disabled={!newEmployeeId || reassigning}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-40 transition-colors"
+                        >
+                          {reassigning
+                            ? <HiOutlineRefresh className="w-4 h-4 animate-spin" />
+                            : <HiOutlineSwitchHorizontal className="w-4 h-4" />}
+                          {reassigning ? "…" : "Reassign"}
+                        </button>
+                      </div>
+                      {options.length === 0 && (
+                        <p className="text-xs text-custom-700">No other employees available for reassignment.</p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={() => handleRemove(a.id)}
-                  disabled={removing}
-                  className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-40"
-                  title="Remove"
-                >
-                  <HiOutlineTrash className="w-4 h-4" />
-                </button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -295,6 +399,42 @@ function AssignWorkerModal({
           Close
         </button>
       </Card>
+
+      {/* Remove confirmation modal */}
+      {confirmRemove && (
+        <div className="fixed inset-0 bg-secondary-100/60 z-60 flex items-center justify-center p-4">
+          <Card className="!p-6 max-w-sm w-full">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <HiOutlineTrash className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Remove Worker</h3>
+                <p className="text-sm text-custom-700 mt-1">
+                  Remove <span className="font-semibold text-secondary-100">{confirmRemove.name}</span> from <span className="font-semibold text-secondary-100">{machine.name}</span>?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setConfirmRemove(null)}
+                disabled={removing}
+                className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRemove}
+                disabled={removing}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors"
+              >
+                {removing ? <HiOutlineRefresh className="w-4 h-4 animate-spin" /> : <HiOutlineTrash className="w-4 h-4" />}
+                {removing ? "Removing…" : "Yes, Remove"}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -310,7 +450,10 @@ function MachineCard({
   onEdit: (m: Machine) => void;
   onManageWorkers: (m: Machine) => void;
 }) {
-  const workerCount = machine.workers?.length ?? 0;
+  const { data: assignments = [], isLoading: loadingAssignments } =
+    useGetMachineAssignmentsQuery(machine.id);
+
+  const workerCount = loadingAssignments ? (machine.workers?.length ?? 0) : assignments.length;
 
   return (
     <Card className="!p-5 flex flex-col gap-4">
@@ -335,6 +478,25 @@ function MachineCard({
         <p className="text-xs text-custom-500 italic border-l-2 border-custom-200 pl-2">
           {machine.note}
         </p>
+      )}
+
+      {/* Assigned workers list */}
+      {!loadingAssignments && assignments.length > 0 && (
+        <div className="space-y-1">
+          {assignments.map((a) => (
+            <div key={a.id} className="flex items-center gap-2 px-2 py-1 rounded-lg bg-custom-50 text-xs">
+              <div className="w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                <span className="text-primary-600 font-bold text-[10px]">
+                  {(a.employee?.fullName ?? "?").charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <span className="font-semibold text-secondary-100 truncate">{a.employee?.fullName ?? "—"}</span>
+              {a.employee?.department?.name && (
+                <span className="text-custom-500 truncate">{a.employee.department.name}</span>
+              )}
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="flex items-center justify-between text-xs text-custom-700">
