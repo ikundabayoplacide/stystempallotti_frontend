@@ -56,7 +56,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Machines", path: "/admin/machines", icon: HiOutlineCog },
     { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase, permissionKey: "quotations.view" },
     { label: "Finance", path: "/admin/finance", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
-    { label: "Stock", path: "/admin/stock", icon: HiOutlineArchive, permissionKey: "stock.view" },
+    {
+      label: "Stock", path: "/admin/stock", icon: HiOutlineArchive, children: [
+        { label: "General Stock",  path: "/admin/stock/general",  icon: HiOutlineArchive },
+        { label: "Boutique Stock", path: "/admin/stock/boutique", icon: HiOutlineArchive },
+        { label: "Binding Stock",  path: "/admin/stock/binding",  icon: HiOutlineArchive },
+      ]
+    },
     // { label: "Reports", path: "/admin/reports", icon: HiOutlineChartBar, permissionKey: "reports.view" },
     // { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
     { label: "Leave Management", path: "/admin/leave", icon: HiOutlineCalendar },

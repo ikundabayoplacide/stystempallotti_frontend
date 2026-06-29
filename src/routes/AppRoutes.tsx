@@ -17,6 +17,9 @@ import {
   UIPermissionsPage,
   UserManagementPage,
   WorkflowConfigPage,
+  AdminGeneralStockPage,
+  AdminBoutiqueStockPage,
+  AdminBindingStockPage,
 } from "../pages/admin";
 
 // Sales Officer Pages
@@ -113,6 +116,9 @@ export default function AppRoutes() {
       <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><FinancePage /></ProtectedRoute>} />
       <Route path="/admin/sales" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSalesPage /></ProtectedRoute>} />
       <Route path="/admin/stock" element={<ProtectedRoute allowedRoles={["admin"]}><AdminStockPage /></ProtectedRoute>} />
+      <Route path="/admin/stock/general" element={<ProtectedRoute allowedRoles={["admin"]}><AdminGeneralStockPage /></ProtectedRoute>} />
+      <Route path="/admin/stock/boutique" element={<ProtectedRoute allowedRoles={["admin"]}><AdminBoutiqueStockPage /></ProtectedRoute>} />
+      <Route path="/admin/stock/binding" element={<ProtectedRoute allowedRoles={["admin"]}><AdminBindingStockPage /></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={["admin"]} pageId="reports"><AdminReportsPage /></ProtectedRoute>} />
       <Route path="/admin/reports/view" element={<ProtectedRoute allowedRoles={["admin"]} pageId="reports"><AdminViewReportsPage /></ProtectedRoute>} />
       <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={["admin"]}><SystemSettingsPage /></ProtectedRoute>} />

@@ -20,4 +20,7 @@ export { default as UserManagementPage } from './UserManagementPage';
 export { default as WorkflowConfigPage } from './WorkflowConfigPage';
 export { default as DepartmentsPage } from './DepartmentsPage';
 export { default as AdminLeaveManagementPage } from './LeaveManagementPage';
+export { default as AdminGeneralStockPage } from './AdminGeneralStockPage';
+export { default as AdminBoutiqueStockPage } from './AdminBoutiqueStockPage';
+export { default as AdminBindingStockPage } from './AdminBindingStockPage';
 
