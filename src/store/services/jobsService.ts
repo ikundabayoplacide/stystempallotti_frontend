@@ -13,6 +13,7 @@ export type JobStatus =
   | "in-packaging"
   | "quality-check"
   | "ready-for-delivery"
+  | "partial-delivered"
   | "delivered"
   | "completed"
   | "rejected";
@@ -84,6 +85,9 @@ export interface Job {
   completedAt?: string | null;
   deliveredByName?: string;
   deliveredByContact?: string;
+  quantityDelivered?: number;
+  quantityRemaining?: number;
+  fullyDelivered?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -448,7 +452,7 @@ export const jobsApi = createApi({
     }),
 
     // PATCH /jobs/:id/deliver
-    deliverJob: builder.mutation<Job, { id: string; deliveredByName?: string; deliveredByContact?: string }>({
+    deliverJob: builder.mutation<Job, { id: string; quantityDelivered: number; deliveredByName?: string; deliveredByContact?: string }>({
       query: ({ id, ...body }) => ({ url: `/jobs/${id}/deliver`, method: "PATCH", body }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
       invalidatesTags: (_r, _e, { id }) => [

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { toast } from "react-toastify";
 import {
   HiOutlineDocumentText,
   HiOutlineChevronDown,
@@ -7,13 +8,17 @@ import {
   HiOutlineInbox,
   HiOutlineRefresh,
   HiOutlineX,
+  HiOutlinePencilAlt,
+  HiOutlineTrash,
 } from "react-icons/hi";
-import { DashboardLayout } from "../../components";
+import { DashboardLayout, EditReportModal } from "../../components";
 import { Card } from "../../components/ui";
 import {
   useGetMyReportsQuery,
   useGetAssignedReportsQuery,
+  useDeleteReportMutation,
 } from "../../store/services/reportsService";
+import type { Report } from "../../store/services/reportsService";
 import { useAuth } from "../../context/AuthContext";
 
 const PAGE_SIZE = 10;
@@ -25,11 +30,15 @@ function ReportCard({
   expanded,
   onToggle,
   showSender = false,
+  onEdit,
+  onDelete,
 }: {
   report: any;
   expanded: boolean;
   onToggle: () => void;
   showSender?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <Card className="!p-0 overflow-hidden">
@@ -69,9 +78,29 @@ function ReportCard({
               })}
             </p>
           </div>
-          {expanded
-            ? <HiOutlineChevronUp className="w-4 h-4 text-custom-700" />
-            : <HiOutlineChevronDown className="w-4 h-4 text-custom-700" />}
+          <div className="flex items-center gap-1">
+            {onEdit && (
+              <span
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="p-1.5 rounded-lg text-custom-700 hover:bg-primary-100 hover:text-primary-600 transition-colors"
+                title="Edit report"
+              >
+                <HiOutlinePencilAlt className="w-4 h-4" />
+              </span>
+            )}
+            {onDelete && (
+              <span
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="p-1.5 rounded-lg text-custom-700 hover:bg-red-100 hover:text-red-600 transition-colors"
+                title="Delete report"
+              >
+                <HiOutlineTrash className="w-4 h-4" />
+              </span>
+            )}
+            {expanded
+              ? <HiOutlineChevronUp className="w-4 h-4 text-custom-700" />
+              : <HiOutlineChevronDown className="w-4 h-4 text-custom-700" />}
+          </div>
         </div>
       </button>
 
@@ -155,62 +184,85 @@ function ReportCard({
 // ─── Tab: My Reports ──────────────────────────────────────────────────────────
 
 function MyReports() {
-  const [page, setPage]       = useState(1);
+  const [page, setPage]         = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
 
   const { data, isLoading, refetch } = useGetMyReportsQuery({ page, limit: PAGE_SIZE });
+  const [deleteReport] = useDeleteReportMutation();
   const reports    = data?.reports    ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total      = data?.total      ?? 0;
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this report? This action cannot be undone.")) return;
+    try {
+      await deleteReport(id).unwrap();
+      toast.success("Report deleted successfully");
+    } catch {
+      toast.error("Failed to delete report");
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-custom-700">
-          <span className="font-semibold text-secondary-100">{total}</span> report{total !== 1 ? "s" : ""} submitted
-        </p>
-        <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
-          <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
-        </button>
-      </div>
-
-      {isLoading ? (
-        <Card className="!p-6 text-center text-custom-700 text-sm">Loading…</Card>
-      ) : reports.length === 0 ? (
-        <Card className="!p-10 text-center">
-          <HiOutlineDocumentText className="w-10 h-10 text-custom-400 mx-auto mb-3" />
-          <p className="text-secondary-100 font-semibold">No reports yet</p>
-          <p className="text-sm text-custom-700 mt-1">Reports you submit will appear here.</p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {reports.map((r) => (
-            <ReportCard
-              key={r.id}
-              report={r}
-              expanded={expanded === r.id}
-              onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
-            />
-          ))}
-        </div>
+    <>
+      {editingReport && (
+        <EditReportModal
+          report={editingReport}
+          onClose={() => setEditingReport(null)}
+        />
       )}
 
-      {totalPages > 1 && (
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-custom-700">Page {page} of {totalPages}</p>
-          <div className="flex gap-2">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
-              Prev
-            </button>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
-              Next
-            </button>
-          </div>
+          <p className="text-xs text-custom-700">
+            <span className="font-semibold text-secondary-100">{total}</span> report{total !== 1 ? "s" : ""} submitted
+          </p>
+          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
         </div>
-      )}
-    </div>
+
+        {isLoading ? (
+          <Card className="!p-6 text-center text-custom-700 text-sm">Loading…</Card>
+        ) : reports.length === 0 ? (
+          <Card className="!p-10 text-center">
+            <HiOutlineDocumentText className="w-10 h-10 text-custom-400 mx-auto mb-3" />
+            <p className="text-secondary-100 font-semibold">No reports yet</p>
+            <p className="text-sm text-custom-700 mt-1">Reports you submit will appear here.</p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {reports.map((r) => (
+              <ReportCard
+                key={r.id}
+                report={r}
+                expanded={expanded === r.id}
+                onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+                onEdit={() => setEditingReport(r)}
+                onDelete={() => handleDelete(r.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-custom-700">Page {page} of {totalPages}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
+                Prev
+              </button>
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

@@ -115,17 +115,18 @@ export const reportsApi = createApi({
 
     // PUT /reports/:id
     updateReport: builder.mutation<Report, { id: string } & Partial<CreateReportPayload>>({
-      query: ({ id, title, purpose, items, notes, attachment }) => {
+      query: ({ id, title, purpose, items, notes, attachment, visibleTo }) => {
         const form = new FormData();
         if (title)   form.append("title", title);
         if (purpose) form.append("purpose", purpose);
         if (items)   form.append("items", JSON.stringify(items));
-        if (notes)   form.append("notes", notes);
+        if (notes !== undefined) form.append("notes", notes);
         if (attachment) form.append("attachment", attachment);
+        if (visibleTo !== undefined) form.append("visibleTo", JSON.stringify(visibleTo));
         return { url: `/reports/${id}`, method: "PUT", body: form };
       },
       transformResponse: (res: any) => res.data ?? res,
-      invalidatesTags: (_r, _e, { id }) => [{ type: "Report", id }, { type: "Report", id: "LIST" }],
+      invalidatesTags: (_r, _e, { id }) => [{ type: "Report", id }, { type: "Report", id: "LIST" }, { type: "Report", id: "MY" }, { type: "Report", id: "ASSIGNED" }],
     }),
 
     // DELETE /reports/:id

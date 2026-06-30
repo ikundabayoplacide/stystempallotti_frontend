@@ -363,7 +363,7 @@ export default function VisitorPage() {
       : undefined;
     const payload: CreateCustomerPayload & { tin?: string; companyType?: string; groupeSize?: string } = {
       name: formData.name,
-      email: formData.email.trim() ? formData.email.toLowerCase() : "",
+      email: formData.email.trim() ? formData.email.toLowerCase() : undefined,
       phone: formData.phone,
       company: formData.clientType === "company" ? formData.company || undefined
              : formData.clientType === "groupe" ? formData.groupeName || undefined

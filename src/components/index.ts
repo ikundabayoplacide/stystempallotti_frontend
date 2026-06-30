@@ -12,6 +12,7 @@ export { default as ProtectedRoute } from './ProtectedRoute';
 
 // Shared Modal Components
 export { default as GenerateReportModal } from './GenerateReportModal';
+export { default as EditReportModal } from './EditReportModal';
 
 // Workflow Components
 export { default as WorkflowRulesEngine } from './WorkflowRulesEngine';

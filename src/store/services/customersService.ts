@@ -23,7 +23,7 @@ export interface Customer {
 
 export interface CreateCustomerPayload {
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   company?: string;
   address?: string;

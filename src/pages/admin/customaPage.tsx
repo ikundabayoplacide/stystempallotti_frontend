@@ -5,6 +5,7 @@ import {
   HiOutlineChevronDoubleRight,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineEye,
   HiOutlineLocationMarker,
   HiOutlineLogin,
   HiOutlineLogout,
@@ -14,6 +15,7 @@ import {
   HiOutlinePhone,
   HiOutlinePlus,
   HiOutlineSearch,
+  HiOutlineTrash,
   HiOutlineUsers,
   HiOutlineX,
 } from "react-icons/hi";
@@ -23,6 +25,7 @@ import {
   useGetCustomersQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
+  useDeleteCustomerMutation,
   type CustomerType,
   type Customer,
   type CreateCustomerPayload,
@@ -252,6 +255,133 @@ function VisitModal({ customer, activeVisit, onClose, onDone }: VisitModalProps)
   );
 }
 
+// ─── View Modal ───────────────────────────────────────────────────────────────
+
+function ViewCustomerModal({ customer, onClose }: { customer: Customer; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-lg w-full">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+              <HiOutlineUsers className="w-5 h-5 text-primary-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-secondary-100">{customer.name}</h3>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ typeColor[customer.type] }`}>
+                {typeLabel[customer.type]}
+              </span>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3 text-sm">
+          {customer.email && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-50 border border-custom-200">
+              <HiOutlineMail className="w-4 h-4 text-custom-600 shrink-0" />
+              <div>
+                <p className="text-xs text-custom-600">Email</p>
+                <p className="font-semibold text-secondary-100">{customer.email}</p>
+              </div>
+            </div>
+          )}
+          {customer.phone && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-50 border border-custom-200">
+              <HiOutlinePhone className="w-4 h-4 text-custom-600 shrink-0" />
+              <div>
+                <p className="text-xs text-custom-600">Phone</p>
+                <p className="font-semibold text-secondary-100">{customer.phone}</p>
+              </div>
+            </div>
+          )}
+          {customer.company && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-50 border border-custom-200">
+              <HiOutlineOfficeBuilding className="w-4 h-4 text-custom-600 shrink-0" />
+              <div>
+                <p className="text-xs text-custom-600">Company</p>
+                <p className="font-semibold text-secondary-100">{customer.company}</p>
+                {(customer as any).tin && <p className="text-xs text-custom-500">TIN: {(customer as any).tin}</p>}
+              </div>
+            </div>
+          )}
+          {(customer.address || customer.city || customer.country) && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-custom-50 border border-custom-200">
+              <HiOutlineLocationMarker className="w-4 h-4 text-custom-600 shrink-0" />
+              <div>
+                <p className="text-xs text-custom-600">Address</p>
+                <p className="font-semibold text-secondary-100">
+                  {[customer.address, customer.city, customer.country].filter(Boolean).join(", ")}
+                </p>
+              </div>
+            </div>
+          )}
+          {customer.notes && (
+            <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+              <p className="text-xs text-custom-600 mb-1">Notes</p>
+              <p className="text-secondary-100 whitespace-pre-wrap">{customer.notes}</p>
+            </div>
+          )}
+          <div className="flex gap-4 pt-1">
+            <div>
+              <p className="text-xs text-custom-600">Status</p>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${ customer.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700" }`}>
+                {customer.isActive ? "Active" : "Inactive"}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs text-custom-600">Created</p>
+              <p className="text-xs font-semibold text-secondary-100">{new Date(customer.createdAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+
+        <button onClick={onClose}
+          className="mt-5 w-full px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold">
+          Close
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Delete Confirmation Modal ────────────────────────────────────────────────
+
+function DeleteCustomerModal({ customer, onClose, onConfirm, isDeleting }: {
+  customer: Customer; onClose: () => void; onConfirm: () => void; isDeleting: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-sm w-full">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+              <HiOutlineTrash className="w-5 h-5 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-secondary-100">Delete Customer</h3>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+        <p className="text-sm text-custom-700 mb-5">
+          Are you sure you want to delete{" "}
+          <span className="font-semibold text-secondary-100">{customer.name}</span>? This action cannot be undone.
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onClose} fullWidth>Cancel</Button>
+          <Button onClick={onConfirm} disabled={isDeleting} fullWidth
+            className="!bg-red-500 hover:!bg-red-600">
+            {isDeleting ? "Deleting…" : "Yes, Delete"}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Form state ───────────────────────────────────────────────────────────────
 
 interface FormData {
@@ -274,6 +404,8 @@ export default function CustomerPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [viewCustomer, setViewCustomer] = useState<Customer | null>(null);
+  const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [visitCustomer, setVisitCustomer] = useState<Customer | null>(null);
@@ -303,6 +435,7 @@ export default function CustomerPage() {
 
   const [createCustomer, { isLoading: isCreating }] = useCreateCustomerMutation();
   const [updateCustomer, { isLoading: isUpdating }] = useUpdateCustomerMutation();
+  const [deleteCustomerMutation, { isLoading: isDeleting }] = useDeleteCustomerMutation();
 
   const customers = data?.customers ?? [];
   const totalPages = data?.totalPages ?? 1;
@@ -316,7 +449,7 @@ export default function CustomerPage() {
     if (formData.clientType === "company" && !formData.company.trim()) { toast.error("Company name is required."); return; }
     const payload: CreateCustomerPayload & { tin?: string } = {
       name: formData.name,
-      email: formData.email.trim() ? formData.email.toLowerCase() : "",
+      email: formData.email.trim() ? formData.email.toLowerCase() : undefined,
       phone: formData.phone,
       company: formData.clientType === "company" ? formData.company || undefined : undefined,
       ...(formData.clientType === "company" && formData.tin.trim() && { tin: formData.tin }),
@@ -361,6 +494,15 @@ export default function CustomerPage() {
       address: customer.address ?? "", notes: customer.notes ?? "", type: customer.type,
     });
     setShowEditModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteCustomer) return;
+    try {
+      await deleteCustomerMutation(deleteCustomer.id).unwrap();
+      toast.success("Customer deleted successfully");
+      setDeleteCustomer(null);
+    } catch { toast.error("Failed to delete customer."); }
   };
 
   const closeModal = () => {
@@ -507,11 +649,11 @@ export default function CustomerPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {/* Check In / Check Out button */}
+                          <div className="flex items-center justify-end gap-1.5">
+                            {/* Check In / Check Out */}
                             <button
                               onClick={() => setVisitCustomer(customer)}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
+                              className={`p-2 rounded-lg text-xs font-semibold transition-colors ${
                                 isCheckedIn
                                   ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
                                   : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
@@ -519,12 +661,23 @@ export default function CustomerPage() {
                               title={isCheckedIn ? "Check Out" : "Check In"}
                             >
                               {isCheckedIn
-                                ? <><HiOutlineLogout className="w-3.5 h-3.5" /></>
-                                : <><HiOutlineLogin className="w-3.5 h-3.5" /></>}
+                                ? <HiOutlineLogout className="w-4 h-4" />
+                                : <HiOutlineLogin className="w-4 h-4" />}
                             </button>
+                            {/* View */}
+                            <button onClick={() => setViewCustomer(customer)}
+                              className="p-2 rounded-lg hover:bg-blue-50 transition-colors" title="View">
+                              <HiOutlineEye className="w-4 h-4 text-blue-500" />
+                            </button>
+                            {/* Edit */}
                             <button onClick={() => openEditModal(customer)}
                               className="p-2 rounded-lg hover:bg-primary-100 transition-colors" title="Edit">
                               <HiOutlinePencil className="w-4 h-4 text-primary-500" />
+                            </button>
+                            {/* Delete */}
+                            <button onClick={() => setDeleteCustomer(customer)}
+                              className="p-2 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                              <HiOutlineTrash className="w-4 h-4 text-red-500" />
                             </button>
                           </div>
                         </td>
@@ -539,6 +692,21 @@ export default function CustomerPage() {
             onPageChange={setPage} onPageSizeChange={(s) => { setPageSize(s); setPage(1); }} />
         </Card>
       </div>
+
+      {/* View Modal */}
+      {viewCustomer && (
+        <ViewCustomerModal customer={viewCustomer} onClose={() => setViewCustomer(null)} />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteCustomer && (
+        <DeleteCustomerModal
+          customer={deleteCustomer}
+          onClose={() => setDeleteCustomer(null)}
+          onConfirm={handleDelete}
+          isDeleting={isDeleting}
+        />
+      )}
 
       {/* Visit Modal */}
       {visitCustomer && (

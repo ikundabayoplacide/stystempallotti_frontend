@@ -9,6 +9,7 @@ export type JobStatus =
   | "in-packaging"
   | "quality-check"
   | "ready-for-delivery"
+  | "partial-delivered"
   | "delivered"
   | "completed"
   | "rejected";
@@ -71,6 +72,12 @@ export const jobStatusConfig: Record<
     bgColor: "bg-blue-100",
     description: "Ready to be delivered",
   },
+  "partial-delivered": {
+    label: "Partial Delivered",
+    color: "text-orange-600",
+    bgColor: "bg-orange-100",
+    description: "Partially delivered to client",
+  },
   delivered: {
     label: "Delivered",
     color: "text-green-600",
@@ -101,7 +108,8 @@ export const statusFlow: Record<JobStatus, JobStatus[]> = {
   "in-binding":         ["in-packaging"],
   "in-packaging":       ["quality-check"],
   "quality-check":      ["ready-for-delivery"],
-  "ready-for-delivery": ["delivered"],
+  "ready-for-delivery": ["partial-delivered", "delivered"],
+  "partial-delivered":   ["partial-delivered", "delivered"],
   delivered:            ["completed"],
   completed:            [],
   rejected:             [],
