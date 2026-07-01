@@ -36,6 +36,7 @@ const statusColors: Record<string, string> = {
   "out-of-stock": "bg-red-100 text-red-700",
 };
 
+
 const sortieStatusColors: Record<string, string> = {
   pending:  "bg-yellow-100 text-yellow-700",
   approved: "bg-emerald-100 text-emerald-700",
@@ -64,6 +65,7 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     unit:         item?.unit         ?? "",
     currentStock: item?.currentStock?.toString() ?? "",
     alarmStock:   item?.alarmStock?.toString()   ?? "",
+    amountPerUnit: item?.amountPerUnit?.toString() ?? "",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -75,7 +77,12 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
       toast.error("Item name, category, and unit are required"); return;
     }
     try {
-      const payload = { ...form, currentStock: Number(form.currentStock) || 0, alarmStock: Number(form.alarmStock) || 0 };
+      const payload = {
+        ...form,
+        currentStock: Number(form.currentStock) || 0,
+        alarmStock: Number(form.alarmStock) || 0,
+        amountPerUnit: form.amountPerUnit !== "" ? Number(form.amountPerUnit) : undefined,
+      };
       if (isEdit) {
         await updateItem({ id: item!.id, ...payload }).unwrap();
         toast.success("Item updated");
@@ -111,6 +118,10 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
               <input value={form.unit} onChange={set("unit")} placeholder="e.g. reams, pcs, box" className={cls} />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Per Unit (RWF)</label>
+              <input type="number" min={0} step="0.01" value={form.amountPerUnit} onChange={set("amountPerUnit")} placeholder="e.g. 1500" className={cls} />
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock Level</label>
               <input type="text" value={form.alarmStock} onChange={set("alarmStock")} placeholder="e.g. 10" className={cls} />
             </div>
@@ -121,6 +132,14 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
               </div>
             )}
           </div>
+          {form.amountPerUnit && form.currentStock && (
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-primary-50 border border-primary-200">
+              <span className="text-xs font-semibold text-primary-700">Total Stock Value</span>
+              <span className="text-sm font-bold text-primary-600">
+                {(Number(form.amountPerUnit) * Number(form.currentStock)).toLocaleString()} RWF
+              </span>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-secondary-100 mb-1">Description</label>
             <textarea value={form.description} onChange={set("description")} rows={2} placeholder="Optional description..."
@@ -199,9 +218,13 @@ function ItemsTab() {
   const [search, setSearch]           = useState("");
 
   const { data, isLoading, refetch } = useGetGeneralStockItemsQuery({ limit: 200 });
+  const { data: sortiesData } = useGetGeneralStockSortiesQuery({ status: "approved", limit: 1000 });
   const [deleteItem] = useDeleteGeneralStockItemMutation();
 
-  const items = (data?.data ?? []).filter((i) => {
+  const allItems = data?.data ?? [];
+  const totalDeducted = (sortiesData?.data ?? []).reduce((sum, s) => sum + parseFloat(s.quantityOut), 0);
+
+  const items = allItems.filter((i) => {
     const q = search.trim().toLowerCase();
     return !q || i.itemName.toLowerCase().includes(q) || i.category.toLowerCase().includes(q);
   });
@@ -231,16 +254,18 @@ function ItemsTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
-          { label: "Total Items",  value: items.length,                                                color: "text-secondary-100" },
-          { label: "Available",    value: items.filter((i) => i.stockStatus === "available").length,   color: "text-emerald-600" },
-          { label: "Low Stock",    value: items.filter((i) => i.stockStatus === "low").length,         color: "text-yellow-600" },
-          { label: "Out of Stock", value: items.filter((i) => i.stockStatus === "out-of-stock").length, color: "text-red-600" },
-        ].map(({ label, value, color }) => (
+          { label: "Total Items",   value: allItems.length,                                                                                color: "text-secondary-100", sub: undefined },
+          { label: "Available",     value: allItems.filter((i) => i.stockStatus === "available").length,                                   color: "text-emerald-600",   sub: undefined },
+          { label: "Low Stock",     value: allItems.filter((i) => i.stockStatus === "low").length,                                         color: "text-yellow-600",   sub: undefined },
+          { label: "Out of Stock",  value: allItems.filter((i) => i.stockStatus === "out-of-stock").length,                                 color: "text-red-600",       sub: undefined },
+          { label: "Items Deducted", value: totalDeducted,                                                                                color: "text-red-500",       sub: "from approved requests" },
+        ].map(({ label, value, color, sub }) => (
           <Card key={label} className="!p-4 text-center">
             <p className="text-xs text-custom-700 mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${color}`}>{isLoading ? "—" : value}</p>
+            <p className={`text-2xl font-bold ${color}`}>{isLoading ? "—" : value.toLocaleString()}</p>
+            {sub && <p className="text-[10px] text-custom-400 mt-0.5">{sub}</p>}
           </Card>
         ))}
       </div>
@@ -250,16 +275,16 @@ function ItemsTab() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Item Name", "Category", "Unit", "Stock", "Alarm", "Status", "Actions"].map((h) => (
+                {["Item Name", "Category", "Unit", "Stock", "Amount/Unit", "Total Value", "Alarm", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center">
+                <tr><td colSpan={9} className="px-4 py-10 text-center">
                   <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
                   <p className="text-sm text-secondary-100 font-semibold">No general stock items</p>
                   <p className="text-xs text-custom-700 mt-1">Add the first item using the button above</p>
@@ -273,6 +298,12 @@ function ItemsTab() {
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.category}</td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.unit}</td>
                   <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">{item.currentStock}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">
+                    {item.amountPerUnit != null ? `${Number(item.amountPerUnit).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">
+                    {item.amountPerUnit != null ? `${(Number(item.amountPerUnit) * item.currentStock).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
+                  </td>
                   <td className="px-3 py-2.5 text-sm text-custom-700">{item.alarmStock}</td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>

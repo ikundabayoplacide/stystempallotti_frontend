@@ -56,6 +56,15 @@ export interface CreateLeavePayload {
   documentUrl?: string;
 }
 
+export interface UpdateLeavePayload {
+  id: string;
+  type?: LeaveType;
+  startDate?: string;
+  endDate?: string;
+  reason?: string;
+  documentUrl?: string;
+}
+
 export interface ReviewLeavePayload {
   id: string;
   action: "approve" | "reject";
@@ -146,6 +155,17 @@ export const leaveApi = createApi({
       ],
     }),
 
+    // PUT /leaves/:id — edit a pending leave (owner only)
+    updateLeave: builder.mutation<LeaveRequest, UpdateLeavePayload>({
+      query: ({ id, ...body }) => ({ url: `/leaves/${id}`, method: "PUT", body }),
+      transformResponse: (res: any) => res?.data ?? res,
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "Leave", id },
+        { type: "Leave", id: "MY" },
+        { type: "Leave", id: "LIST" },
+      ],
+    }),
+
     // DELETE /leaves/:id — cancel a pending leave (own)
     cancelLeave: builder.mutation<void, string>({
       query: (id) => ({ url: `/leaves/${id}`, method: "DELETE" }),
@@ -168,6 +188,7 @@ export const {
   useGetAllLeavesQuery,
   useGetLeaveByIdQuery,
   useCreateLeaveMutation,
+  useUpdateLeaveMutation,
   useReviewLeaveMutation,
   useCancelLeaveMutation,
   useUploadLeaveDocumentMutation,

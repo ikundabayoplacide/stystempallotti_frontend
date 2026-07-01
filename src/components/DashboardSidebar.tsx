@@ -163,7 +163,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   "production-manager": [
     { label: "Dashboard", path: "/production-manager", icon: HiOutlineHome },
     { label: "Job Planning", path: "/production-manager/planning", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
-    // { label: "General Stock", path: "/production-manager/general-stock", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
+    { label: "General Stock", path: "/production-manager/general-stock", icon: HiOutlineArchive },
+    { label: "Binding Stock", path: "/production-manager/binding-stock", icon: HiOutlineArchive },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
     { label: "My Leave", path: "/production-manager/leave", icon: HiOutlineCalendar },
     { label: "Reports", path: "/production-manager/reports", icon: HiOutlineChartBar, children: [

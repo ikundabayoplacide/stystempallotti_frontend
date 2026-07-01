@@ -29,10 +29,23 @@ interface Props {
 }
 
 interface SelectedItem {
+  type: "stock";
   stockItem: StockItem;
   quantityNeeded: string;
   notes: string;
 }
+
+interface CustomItem {
+  type: "custom";
+  id: string; // local uuid
+  name: string;
+  unit: string;
+  unitCost: string;
+  quantityNeeded: string;
+  notes: string;
+}
+
+type AnyItem = SelectedItem | CustomItem;
 
 const selectCls =
   "w-full px-4 py-2.5 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 " +
@@ -158,7 +171,11 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   // ── Step 2 state ───────────────────────────────────────────────────────────
   const [itemSearch, setItemSearch] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<AnyItem[]>([]);
+  const [showCustomForm, setShowCustomForm] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customUnit, setCustomUnit] = useState("");
+  const [customUnitCost, setCustomUnitCost] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -207,7 +224,9 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   const customers = customersData?.customers ?? [];
 
   // Filter client-side from all loaded items
-  const addedIds = new Set(selectedItems.map((si) => si.stockItem.id));
+  const addedIds = new Set(
+    selectedItems.filter((si): si is SelectedItem => si.type === "stock").map((si) => si.stockItem.id)
+  );
   const filteredStockItems = (stockData?.data ?? []).filter((si) => {
     if (addedIds.has(si.id)) return false;
     if (!itemSearch.trim()) return true;
@@ -217,7 +236,12 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
 
   // ── Calculated total from items ────────────────────────────────────────────
   const itemsTotal = selectedItems.reduce((sum, si) => {
-    const cost = si.stockItem.unitCost ?? 0;
+    if (si.type === "stock") {
+      const cost = si.stockItem.unitCost ?? 0;
+      return sum + cost * (parseFloat(si.quantityNeeded) || 0);
+    }
+    // custom item — use user-entered unit cost
+    const cost = parseFloat(si.unitCost) || 0;
     return sum + cost * (parseFloat(si.quantityNeeded) || 0);
   }, 0);
 
@@ -253,27 +277,53 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
   const addItem = (stockItem: StockItem) => {
     setSelectedItems((prev) => [
       ...prev,
-      { stockItem, quantityNeeded: "1", notes: "" },
+      { type: "stock", stockItem, quantityNeeded: "1", notes: "" },
     ]);
     setItemSearch("");
   };
 
+  const addCustomItem = () => {
+    if (!customName.trim()) return;
+    const id = `custom-${Date.now()}-${Math.random()}`;
+    setSelectedItems((prev) => [
+      ...prev,
+      { type: "custom", id, name: customName.trim(), unit: customUnit.trim() || "units", unitCost: customUnitCost, quantityNeeded: "1", notes: "" },
+    ]);
+    setCustomName("");
+    setCustomUnit("");
+    setCustomUnitCost("");
+    setShowCustomForm(false);
+  };
+
   const updateItemQty = (id: string, qty: string) => {
     setSelectedItems((prev) =>
-      prev.map((si) =>
-        si.stockItem.id === id ? { ...si, quantityNeeded: qty } : si
-      )
+      prev.map((si) => {
+        if (si.type === "stock") return si.stockItem.id === id ? { ...si, quantityNeeded: qty } : si;
+        return si.id === id ? { ...si, quantityNeeded: qty } : si;
+      })
     );
   };
 
   const updateItemNotes = (id: string, notes: string) => {
     setSelectedItems((prev) =>
-      prev.map((si) => (si.stockItem.id === id ? { ...si, notes } : si))
+      prev.map((si) => {
+        if (si.type === "stock") return si.stockItem.id === id ? { ...si, notes } : si;
+        return si.id === id ? { ...si, notes } : si;
+      })
+    );
+  };
+
+  const updateCustomItemCost = (id: string, unitCost: string) => {
+    setSelectedItems((prev) =>
+      prev.map((si) => (si.type === "custom" && si.id === id ? { ...si, unitCost } : si))
     );
   };
 
   const removeItem = (id: string) => {
-    setSelectedItems((prev) => prev.filter((si) => si.stockItem.id !== id));
+    setSelectedItems((prev) => prev.filter((si) => {
+      if (si.type === "stock") return si.stockItem.id !== id;
+      return si.id !== id;
+    }));
   };
 
   const handleSubmit = async () => {
@@ -290,21 +340,41 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
       ...(form.colorMode   && { colorMode: form.colorMode }),
       ...(form.bindingType && { bindingType: form.bindingType }),
       priority: form.priority,
-      // use manually entered amount, or fall back to items total
       amount: form.amount ? parseFloat(form.amount) : itemsTotal > 0 ? itemsTotal : undefined,
-      ...(form.dueDate     && { dueDate: new Date(form.dueDate).toISOString() }),
-      ...(form.notes       && { notes: form.notes }),
+      ...(form.dueDate && { dueDate: new Date(form.dueDate).toISOString() }),
+      ...(form.notes   && { notes: form.notes }),
       ...(selectedItems.length > 0 && {
-        items: selectedItems.map((si) => ({
-          stockItemId: si.stockItem.id,
-          quantityNeeded: parseFloat(si.quantityNeeded) || 1,
-          ...(si.notes.trim() && { notes: si.notes }),
-        })),
+        items: selectedItems.map((si) => {
+          if (si.type === "stock") {
+            return {
+              stockItemId: si.stockItem.id,
+              quantityNeeded: parseFloat(si.quantityNeeded) || 1,
+              ...(si.notes.trim() && { notes: si.notes }),
+            };
+          }
+          // custom item — sent with itemName, unit, unitCost
+          return {
+            itemName: si.name,
+            unit: si.unit || undefined,
+            ...(si.unitCost && parseFloat(si.unitCost) > 0 && { unitCost: parseFloat(si.unitCost) }),
+            quantityNeeded: parseFloat(si.quantityNeeded) || 1,
+            ...(si.notes.trim() && { notes: si.notes }),
+          };
+        }),
       }),
       ...(documents.length > 0 && { documents }),
     };
 
     try {
+      console.log("=== CREATE JOB PAYLOAD (before send) ===", JSON.stringify(payload, null, 2));
+      console.log("=== ITEMS ARRAY ===", JSON.stringify(payload.items, null, 2));
+      if (payload.items) {
+        payload.items.forEach((item, i) => {
+          console.log(`item[${i}]:`, JSON.stringify(item));
+          console.log(`  has stockItemId: ${"stockItemId" in item}`, "value:", (item as any).stockItemId);
+          console.log(`  has itemName:    ${"itemName"    in item}`, "value:", (item as any).itemName);
+        });
+      }
       await createJob(payload).unwrap();
       onCreated();
     } catch (err: unknown) {
@@ -543,18 +613,17 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Priority</label>
-                      <SelectOrCustom
+                      <select
                         name="priority"
                         value={form.priority}
-                        onChange={(val) => setForm((p) => ({ ...p, priority: val as typeof form.priority }))}
-                        placeholder="Select priority"
-                        options={[
-                          { value: "low",    label: "Low" },
-                          { value: "normal", label: "Normal" },
-                          { value: "high",   label: "High" },
-                          { value: "urgent", label: "Urgent" },
-                        ]}
-                      />
+                        onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value as typeof form.priority }))}
+                        className={selectCls}
+                      >
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                      </select>
                     </div>
                   </div>
 
@@ -651,6 +720,64 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       </div>
                     )}
                   </div>
+
+                  {/* ── Add custom material ── */}
+                  {!showCustomForm ? (
+                    <button
+                      type="button"
+                      onClick={() => { setShowCustomForm(true); setShowDropdown(false); }}
+                      className="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-custom-400 text-custom-700 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-colors text-xs font-semibold"
+                    >
+                      <span className="text-base leading-none">＋</span>
+                      Add material not in stock
+                    </button>
+                  ) : (
+                    <div className="mt-2 p-3 rounded-xl border border-primary-300 bg-primary-50 space-y-2">
+                      <p className="text-xs font-bold text-primary-600">Custom material</p>
+                      <input
+                        type="text"
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                        placeholder="Material name *"
+                        autoFocus
+                        className="w-full px-3 py-2 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customUnit}
+                          onChange={(e) => setCustomUnit(e.target.value)}
+                          placeholder="Unit (sheets, kg…)"
+                          className="flex-1 w-24 px-1 py-2 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={customUnitCost}
+                          onChange={(e) => setCustomUnitCost(e.target.value)}
+                          placeholder="Unit cost (RWF)"
+                          className="flex-1 px-1 w-30 py-2 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={addCustomItem}
+                          disabled={!customName.trim()}
+                          className="flex-1 px-3 py-1.5 rounded-xl bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowCustomForm(false); setCustomName(""); setCustomUnit(""); setCustomUnitCost(""); }}
+                          className="px-3 py-1.5 rounded-xl border border-custom-300 text-custom-700 text-xs font-semibold hover:bg-custom-100 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Added items summary in left panel */}
@@ -666,21 +793,31 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       <p className="text-xs font-bold text-custom-700 uppercase tracking-wide px-2 mb-2">
                         Added ({selectedItems.length})
                       </p>
-                      {selectedItems.map((si) => (
-                        <div key={si.stockItem.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-custom-100">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-secondary-100 truncate">{si.stockItem.name}</p>
-                            <p className="text-xs text-custom-700">{si.quantityNeeded} {si.stockItem.unit}</p>
+                      {selectedItems.map((si) => {
+                        const key  = si.type === "stock" ? si.stockItem.id : si.id;
+                        const name = si.type === "stock" ? si.stockItem.name : si.name;
+                        const unit = si.type === "stock" ? si.stockItem.unit : si.unit;
+                        return (
+                          <div key={key} className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-custom-100">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-semibold text-secondary-100 truncate">{name}</p>
+                                {si.type === "custom" && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 shrink-0">custom</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-custom-700">{si.quantityNeeded} {unit}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(key)}
+                              className="p-1 rounded hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0 ml-2"
+                            >
+                              <HiOutlineX className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => removeItem(si.stockItem.id)}
-                            className="p-1 rounded hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0 ml-2"
-                          >
-                            <HiOutlineX className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -714,82 +851,112 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                   ) : (
                     <div className="space-y-3">
                       {selectedItems.map((si) => {
+                        const key  = si.type === "stock" ? si.stockItem.id : si.id;
                         const qtyNum = parseFloat(si.quantityNeeded) || 0;
-                        const isOverStock = qtyNum > si.stockItem.currentStock;
-                        const lineTotal = (si.stockItem.unitCost ?? 0) * qtyNum;
 
+                        // ── Stock item ──────────────────────────────────────
+                        if (si.type === "stock") {
+                          const isOverStock = qtyNum > si.stockItem.currentStock;
+                          const lineTotal = (si.stockItem.unitCost ?? 0) * qtyNum;
+                          return (
+                            <div key={key}
+                              className={`rounded-xl border p-4 ${isOverStock ? "border-red-300 bg-red-50" : "border-custom-300 bg-custom-50"}`}>
+                              <div className="flex items-start justify-between gap-3 mb-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-secondary-100 truncate">{si.stockItem.name}</p>
+                                  <p className="text-xs text-custom-700">
+                                    {si.stockItem.category} · Available: {si.stockItem.currentStock} {si.stockItem.unit}
+                                  </p>
+                                </div>
+                                <button type="button" onClick={() => removeItem(key)}
+                                  className="p-1 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0">
+                                  <HiOutlineTrash className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="flex-1">
+                                  <label className="block text-xs font-semibold text-custom-700 mb-1">
+                                    Quantity Needed ({si.stockItem.unit})
+                                  </label>
+                                  <input type="text" value={si.quantityNeeded}
+                                    onChange={(e) => updateItemQty(key, e.target.value)}
+                                    placeholder="e.g. 5"
+                                    className={`w-full px-3 py-2 rounded-xl border text-sm font-semibold text-secondary-100 bg-style-500 focus:outline-none focus:ring-2 transition-colors ${
+                                      isOverStock ? "border-red-400 focus:ring-red-200" : "border-custom-400 focus:border-primary-400 focus:ring-primary-200"
+                                    }`} />
+                                </div>
+                                {si.stockItem.unitCost != null && (
+                                  <div className="text-right shrink-0">
+                                    <p className="text-xs text-custom-700 mb-1">Line total</p>
+                                    <p className="text-sm font-bold text-secondary-100">{lineTotal.toLocaleString()} RWF</p>
+                                  </div>
+                                )}
+                              </div>
+                              {isOverStock && (
+                                <div className="flex items-center gap-2 text-red-600 text-xs mb-2">
+                                  <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />
+                                  <span>
+                                    Requested {si.quantityNeeded} but only {si.stockItem.currentStock}{" "}
+                                    {si.stockItem.unit} available. The stock team will be notified.
+                                  </span>
+                                </div>
+                              )}
+                              <input type="text" value={si.notes}
+                                onChange={(e) => updateItemNotes(key, e.target.value)}
+                                placeholder="Notes (optional, e.g. 80gsm)"
+                                className="w-full px-3 py-1.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+                            </div>
+                          );
+                        }
+
+                        // ── Custom item ─────────────────────────────────────
                         return (
-                          <div
-                            key={si.stockItem.id}
-                            className={`rounded-xl border p-4 ${
-                              isOverStock ? "border-red-300 bg-red-50" : "border-custom-300 bg-custom-50"
-                            }`}
-                          >
+                          <div key={key} className="rounded-xl border border-yellow-300 bg-yellow-50 p-4">
                             <div className="flex items-start justify-between gap-3 mb-3">
                               <div className="min-w-0">
-                                <p className="text-sm font-bold text-secondary-100 truncate">
-                                  {si.stockItem.name}
-                                </p>
-                                <p className="text-xs text-custom-700">
-                                  {si.stockItem.category} · Available: {si.stockItem.currentStock} {si.stockItem.unit}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-secondary-100 truncate">{si.name}</p>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-200 text-yellow-800 shrink-0">custom</span>
+                                </div>
+                                <p className="text-xs text-custom-700">Not in stock — will be noted for procurement</p>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => removeItem(si.stockItem.id)}
-                                className="p-1 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0"
-                              >
+                              <button type="button" onClick={() => removeItem(key)}
+                                className="p-1 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors shrink-0">
                                 <HiOutlineTrash className="w-4 h-4" />
                               </button>
                             </div>
-
-                            {/* Quantity input */}
-                            <div className="flex items-center gap-3 mb-2">
+                            <div className="flex gap-3 mb-2">
                               <div className="flex-1">
                                 <label className="block text-xs font-semibold text-custom-700 mb-1">
-                                  Quantity Needed ({si.stockItem.unit})
+                                  Quantity ({si.unit})
                                 </label>
-                                <input
-                                  type="text"
-                                  value={si.quantityNeeded}
-                                  onChange={(e) => updateItemQty(si.stockItem.id, e.target.value)}
+                                <input type="text" value={si.quantityNeeded}
+                                  onChange={(e) => updateItemQty(key, e.target.value)}
                                   placeholder="e.g. 5"
-                                  className={`w-full px-3 py-2 rounded-xl border text-sm font-semibold text-secondary-100 bg-style-500 focus:outline-none focus:ring-2 transition-colors ${
-                                    isOverStock
-                                      ? "border-red-400 focus:ring-red-200"
-                                      : "border-custom-400 focus:border-primary-400 focus:ring-primary-200"
-                                  }`}
-                                />
+                                  className="w-full px-3 py-2 rounded-xl border border-custom-400 focus:border-primary-400 focus:ring-2 focus:ring-primary-200 text-sm font-semibold text-secondary-100 bg-style-500 focus:outline-none transition-colors" />
                               </div>
-                              {si.stockItem.unitCost != null && (
-                                <div className="text-right shrink-0">
-                                  <p className="text-xs text-custom-700 mb-1">Line total</p>
+                              <div className="flex-1">
+                                <label className="block text-xs font-semibold text-custom-700 mb-1">
+                                  Unit Cost (RWF)
+                                </label>
+                                <input type="number" min="0" value={si.unitCost}
+                                  onChange={(e) => updateCustomItemCost(key, e.target.value)}
+                                  placeholder="0"
+                                  className="w-full px-3 py-2 rounded-xl border border-custom-400 focus:border-primary-400 focus:ring-2 focus:ring-primary-200 text-sm font-semibold text-secondary-100 bg-style-500 focus:outline-none transition-colors" />
+                              </div>
+                              {(parseFloat(si.unitCost) || 0) > 0 && (
+                                <div className="text-right shrink-0 self-end pb-1">
+                                  <p className="text-xs text-custom-700">Line total</p>
                                   <p className="text-sm font-bold text-secondary-100">
-                                    {lineTotal.toLocaleString()} RWF
+                                    {((parseFloat(si.unitCost) || 0) * (parseFloat(si.quantityNeeded) || 0)).toLocaleString()} RWF
                                   </p>
                                 </div>
                               )}
                             </div>
-
-                            {/* Over-stock warning */}
-                            {isOverStock && (
-                              <div className="flex items-center gap-2 text-red-600 text-xs mb-2">
-                                <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />
-                                <span>
-                                  Requested {si.quantityNeeded} but only {si.stockItem.currentStock}{" "}
-                                  {si.stockItem.unit} available. The stock team will be notified.
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Notes */}
-                            <input
-                              type="text"
-                              value={si.notes}
-                              onChange={(e) => updateItemNotes(si.stockItem.id, e.target.value)}
-                              placeholder="Notes (optional, e.g. 80gsm)"
-                              className="w-full px-3 py-1.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
-                            />
+                            <input type="text" value={si.notes}
+                              onChange={(e) => updateItemNotes(key, e.target.value)}
+                              placeholder="Notes (optional)"
+                              className="w-full px-3 py-1.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
                           </div>
                         );
                       })}
@@ -1001,11 +1168,17 @@ export default function CreateJobModal({ onClose, onCreated }: Props) {
                       <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Items Breakdown</p>
                       <div className="space-y-2">
                         {selectedItems.map((si) => {
-                          const lineTotal = (si.stockItem.unitCost ?? 0) * (parseFloat(si.quantityNeeded) || 0);
+                          const key      = si.type === "stock" ? si.stockItem.id : si.id;
+                          const name     = si.type === "stock" ? si.stockItem.name : si.name;
+                          const unit     = si.type === "stock" ? si.stockItem.unit : si.unit;
+                          const lineTotal = si.type === "stock"
+                            ? (si.stockItem.unitCost ?? 0) * (parseFloat(si.quantityNeeded) || 0)
+                            : (parseFloat(si.unitCost) || 0) * (parseFloat(si.quantityNeeded) || 0);
                           return (
-                            <div key={si.stockItem.id} className="flex justify-between text-sm">
+                            <div key={key} className="flex justify-between text-sm">
                               <span className="text-custom-700 truncate max-w-[60%]">
-                                {si.stockItem.name} × {si.quantityNeeded} {si.stockItem.unit}
+                                {name} × {si.quantityNeeded} {unit}
+                                {si.type === "custom" && <span className="ml-1 text-[10px] font-bold text-yellow-700">(custom)</span>}
                               </span>
                               <span className="font-semibold text-secondary-100 shrink-0">
                                 {lineTotal > 0 ? `${lineTotal.toLocaleString()} RWF` : "—"}

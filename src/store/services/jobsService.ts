@@ -16,7 +16,8 @@ export type JobStatus =
   | "partial-delivered"
   | "delivered"
   | "completed"
-  | "rejected";
+  | "rejected"
+  | "verified";
 
 export type JobState =
   | "in-composition"
@@ -95,15 +96,20 @@ export interface Job {
 export interface JobItem {
   id: string;
   jobId: string;
-  stockItemId: string;
+  stockItemId?: string | null;
+  itemName?: string | null;
+  unit?: string | null;
+  unitCost?: number | string | null;
+  totalCost?: number | string | null;
   stockItem?: {
     id: string;
     name: string;
+    itemName?: string;
     unit: string;
     currentStock: number;
     stockStatus: string;
   };
-  quantityNeeded: number;
+  quantityNeeded: number | string;
   quantityUsed?: number;
   notes?: string;
   createdAt: string;
@@ -111,7 +117,10 @@ export interface JobItem {
 }
 
 export interface JobItemPayload {
-  stockItemId: string;
+  stockItemId?: string;
+  itemName?: string;
+  unit?: string;
+  unitCost?: number;
   quantityNeeded: number;
   notes?: string;
 }
@@ -214,12 +223,18 @@ export interface PaginatedJobs {
 export interface JobDetails extends Job {
   jobItems?: {
     id: string;
-    quantityNeeded: number;
+    stockItemId?: string | null;
+    itemName?: string | null;
+    unit?: string | null;
+    unitCost?: number | string | null;
+    totalCost?: number | string | null;
+    quantityNeeded: number | string;
     quantityUsed?: number | null;
     notes?: string;
     stockItem?: {
       id: string;
       itemName: string;
+      name?: string;
       category: string;
       unit: string;
       currentStock: number;
@@ -348,14 +363,21 @@ export const jobsApi = createApi({
         Object.entries(rest).forEach(([k, v]) => {
           if (v !== undefined && v !== null) form.append(k, String(v));
         });
-        // Append items as individual indexed fields so multer doesn't need
-        // to JSON.parse a string — each item becomes items[0][field]=value
+        // Send items as a single JSON string so no field is ever
+        // serialized as the string "undefined" by FormData
         if (items && items.length > 0) {
-          items.forEach((item, idx) => {
-            form.append(`items[${idx}][stockItemId]`, item.stockItemId);
-            form.append(`items[${idx}][quantityNeeded]`, String(item.quantityNeeded));
-            if (item.notes) form.append(`items[${idx}][notes]`, item.notes);
+          const itemsPayload = items.map((item) => {
+            const obj: Record<string, string | number> = {
+              quantityNeeded: item.quantityNeeded,
+            };
+            if (item.stockItemId) obj.stockItemId = item.stockItemId;
+            if (item.itemName)    obj.itemName    = item.itemName;
+            if (item.unit)        obj.unit        = item.unit;
+            if (item.unitCost)    obj.unitCost    = item.unitCost;
+            if (item.notes)       obj.notes       = item.notes;
+            return obj;
           });
+          form.append("items", JSON.stringify(itemsPayload));
         }
         documents.forEach((f) => form.append("documents", f));
         return { url: "/jobs", method: "POST", body: form };
@@ -511,6 +533,19 @@ export const jobsApi = createApi({
       ],
     }),
 
+    // PATCH /jobs/:id/verify — ADMIN, DAF (completed → verified)
+    verifyJob: builder.mutation<Job, string>({
+      query: (id) => ({
+        url: `/jobs/${id}/verify`,
+        method: "PATCH",
+      }),
+      transformResponse: (res: ApiResponse<Job>) => res.data,
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Job", id },
+        { type: "Job", id: "LIST" },
+      ],
+    }),
+
     // PATCH /jobs/:id/state — Supervisor marks department work done
     updateJobState: builder.mutation<Job, { id: string; state: string }>({
       query: ({ id, state }) => ({
@@ -618,4 +653,5 @@ export const {
   useStartJobMutation,
   usePauseJobMutation,
   useResumeJobMutation,
+  useVerifyJobMutation,
 } = jobsApi;

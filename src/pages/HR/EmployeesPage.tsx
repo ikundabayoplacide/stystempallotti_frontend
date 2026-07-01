@@ -6,10 +6,10 @@ import {
   HiOutlineTrash,
   HiOutlineRefresh,
   HiOutlineOfficeBuilding,
-  HiOutlineLink,
   HiOutlineX,
   HiOutlineEye,
   HiOutlineEyeOff,
+  HiOutlineUser,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
@@ -24,7 +24,56 @@ import {
   useAssignDepartmentMutation,
 } from "../../store/services/employeesService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
-import { useGetUsersQuery, type User } from "../../store/services/usersService";
+
+function ViewEmployeeModal({ employee: emp, onClose }: { employee: any; onClose: () => void }) {
+  const rows = [
+    { label: "Full Name",     value: emp.fullName },
+    { label: "Phone",         value: emp.phoneNumber },
+    { label: "Email",         value: emp.email ?? "—" },
+    { label: "Gender",        value: emp.gender ?? "—" },
+    { label: "Date of Birth", value: emp.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString("en-GB") : "—" },
+    { label: "NID",           value: emp.nid ?? "—" },
+    { label: "Address",       value: emp.address ?? "—" },
+    { label: "Contract Type", value: emp.contractType?.replace("_", " ") ?? "—" },
+    { label: "Salary (RWF)",  value: emp.contractSalary != null ? emp.contractSalary.toLocaleString() : "—" },
+    { label: "Department",    value: emp.department?.name ?? "Unassigned" },
+    { label: "Hired At",      value: emp.hiredAt ? new Date(emp.hiredAt).toLocaleDateString("en-GB") : "—" },
+    { label: "Bank Account",  value: emp.bankAccount ?? "—" },
+    { label: "Support Contact", value: emp.supportContact ?? "—" },
+    { label: "Status",        value: emp.isActive ? "Active" : "Inactive" },
+  ];
+  return (
+    <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+              <HiOutlineUser className="w-5 h-5 text-primary-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-secondary-100">{emp.fullName}</h3>
+              <p className="text-xs text-custom-700">{emp.department?.name ?? "No department"}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="space-y-2">
+          {rows.map(({ label, value }) => (
+            <div key={label} className="flex justify-between items-start py-2 border-b border-custom-100 last:border-0">
+              <span className="text-xs font-semibold text-custom-700 w-36 shrink-0">{label}</span>
+              <span className="text-sm text-secondary-100 text-right">{value}</span>
+            </div>
+          ))}
+        </div>
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Close</button>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 export default function EmployeesPage() {
   const { userName } = useAuth();
@@ -33,9 +82,8 @@ export default function EmployeesPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editEmployee, setEditEmployee] = useState<any>(null);
   const [deleteEmployee, setDeleteEmployee] = useState<any>(null);
+  const [viewEmployee, setViewEmployee] = useState<any>(null);
   const [assignEmployee, setAssignEmployee] = useState<any>(null);
-  const [linkUserEmployee, setLinkUserEmployee] = useState<any>(null);
-
   const { data, isLoading } = useGetAllEmployeesQuery({ page, limit: 10, search: search || undefined });
   const [toggleActive] = useToggleEmployeeActiveMutation();
 
@@ -80,7 +128,7 @@ export default function EmployeesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-custom-50 border-b border-custom-200">
                   <tr>
-                    {["Full Name", "Phone", "Email", "Contract", "Salary", "Department", "Linked", "Status", "Actions"].map((h) => (
+                    {["Full Name", "Phone", "Email", "Contract", "Salary", "Department", "Status", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-bold text-custom-500 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -102,13 +150,7 @@ export default function EmployeesPage() {
                           <span className="text-xs text-custom-400 italic">Unassigned</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        {emp.userId ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Linked ✓</span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-600">Not linked</span>
-                        )}
-                      </td>
+
                       <td className="px-4 py-3">
                         <button
                           onClick={() => toggleActive(emp.id)}
@@ -119,19 +161,6 @@ export default function EmployeesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {/* Link User Account */}
-                          <button
-                            onClick={() => setLinkUserEmployee(emp)}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-semibold transition-colors ${
-                              emp.userId
-                                ? "border-green-200 bg-green-50 hover:bg-green-100 text-green-700"
-                                : "border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700"
-                            }`}
-                            title="Link User Account"
-                          >
-                            <HiOutlineLink className="h-3.5 w-3.5" />
-                            {emp.userId ? "Relink" : "Link"}
-                          </button>
                           {/* Assign Department */}
                           <button
                             onClick={() => setAssignEmployee(emp)}
@@ -140,6 +169,14 @@ export default function EmployeesPage() {
                           >
                             <HiOutlineOfficeBuilding className="h-3.5 w-3.5" />
                             Assign
+                          </button>
+                          {/* View */}
+                          <button
+                            onClick={() => setViewEmployee(emp)}
+                            className="p-1.5 rounded hover:bg-custom-100 text-custom-400 hover:text-secondary-100 transition-colors"
+                            title="View"
+                          >
+                            <HiOutlineEye className="h-4 w-4" />
                           </button>
                           {/* Edit */}
                           <button
@@ -183,7 +220,7 @@ export default function EmployeesPage() {
       {editEmployee && <EmployeeFormModal employee={editEmployee} onClose={() => setEditEmployee(null)} />}
       {deleteEmployee && <DeleteEmployeeModal employee={deleteEmployee} onClose={() => setDeleteEmployee(null)} />}
       {assignEmployee && <AssignDepartmentModal employee={assignEmployee} onClose={() => setAssignEmployee(null)} />}
-      {linkUserEmployee && <LinkUserModal employee={linkUserEmployee} onClose={() => setLinkUserEmployee(null)} />}
+      {viewEmployee && <ViewEmployeeModal employee={viewEmployee} onClose={() => setViewEmployee(null)} />}
     </DashboardLayout>
   );
 }
@@ -425,13 +462,12 @@ function EmployeeFormModal({ employee, onClose }: { employee?: any; onClose: () 
               <div>
                 <p className="text-xs font-bold text-custom-400 uppercase tracking-wider mb-3">Login Account</p>
                 <div>
-                  <label className={labelCls}>Password <span className="text-red-500">*</span></label>
+                  <label className={labelCls}>Password <span className="text-custom-700 font-normal">(optional)</span></label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={form.password}
                       onChange={(e) => set("password", e.target.value)}
-                      required
                       placeholder="Set a strong initial password"
                       className={`${inputCls} pr-10`}
                     />
@@ -462,79 +498,6 @@ function EmployeeFormModal({ employee, onClose }: { employee?: any; onClose: () 
             </div>
           </div>
         </form>
-      </div>
-    </div>
-  );
-}
-
-// ─── Link User Modal ─────────────────────────────────────────────────────────
-
-function LinkUserModal({ employee, onClose }: { employee: any; onClose: () => void }) {
-  const { data: usersData, isLoading: loadingUsers } = useGetUsersQuery();
-  const users = usersData?.users ?? [];
-  const [updateEmployee, { isLoading, error }] = useUpdateEmployeeMutation();
-  const [selectedUserId, setSelectedUserId] = useState<string>(employee.userId ?? "");
-
-  // Only show WORKER role users for linking
-  const workerUsers = users.filter((u: User) => u.role === "WORKER");
-
-  async function handleSave() {
-    try {
-      await updateEmployee({ id: employee.id, userId: selectedUserId || null }).unwrap();
-      onClose();
-    } catch { /* error shown below */ }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-custom-200">
-          <div>
-            <h2 className="text-lg font-bold text-secondary-100">Link User Account</h2>
-            <p className="text-xs text-custom-500 mt-0.5">{employee.fullName}</p>
-          </div>
-          <button onClick={onClose} className="text-custom-400 hover:text-custom-700">
-            <HiOutlineX className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-6 space-y-4">
-          <p className="text-xs text-custom-700">
-            Link this employee to a worker's login account so they can access the worker dashboard.
-          </p>
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Select Worker Account</label>
-            {loadingUsers ? (
-              <div className="flex items-center gap-2 text-sm text-custom-400">
-                <HiOutlineRefresh className="h-4 w-4 animate-spin" /> Loading users…
-              </div>
-            ) : (
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-custom-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">— Unlink —</option>
-                {workerUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({u.email})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div> 
-          {error && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {(error as any)?.data?.message ?? "Failed to link user."}
-            </div>
-          )}
-          <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" onClick={onClose} className="text-sm">Cancel</Button>
-            <Button onClick={handleSave} disabled={isLoading || loadingUsers} className="flex items-center gap-2 text-sm">
-              {isLoading ? <HiOutlineRefresh className="h-4 w-4 animate-spin" /> : <HiOutlineLink className="h-4 w-4" />}
-              {isLoading ? "Saving…" : "Save Link"}
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   );

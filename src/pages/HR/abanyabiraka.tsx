@@ -6,6 +6,7 @@ import {
   HiOutlineTrash,
   HiOutlineRefresh,
   HiOutlineX,
+  HiOutlineEye,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
@@ -29,6 +30,7 @@ export default function Abanyabiraka() {
   const [showCreate, setShowCreate] = useState(false);
   const [editWorker, setEditWorker] = useState<CasualWorker | null>(null);
   const [deleteWorker, setDeleteWorker] = useState<CasualWorker | null>(null);
+  const [viewWorker, setViewWorker] = useState<CasualWorker | null>(null);
 
   const { data, isLoading } = useGetCasualWorkersQuery({ page, limit: 10, search: search || undefined });
   const workers = data?.data ?? [];
@@ -90,6 +92,13 @@ export default function Abanyabiraka() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <button
+                            onClick={() => setViewWorker(w)}
+                            className="p-1.5 rounded hover:bg-blue-50 text-custom-400 hover:text-blue-600 transition-colors"
+                            title="View Details"
+                          >
+                            <HiOutlineEye className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => setEditWorker(w)}
                             className="p-1.5 rounded hover:bg-primary-50 text-custom-400 hover:text-primary-600 transition-colors"
                             title="Edit"
@@ -127,6 +136,7 @@ export default function Abanyabiraka() {
       {showCreate && <WorkerFormModal onClose={() => setShowCreate(false)} />}
       {editWorker && <WorkerFormModal worker={editWorker} onClose={() => setEditWorker(null)} />}
       {deleteWorker && <DeleteWorkerModal worker={deleteWorker} onClose={() => setDeleteWorker(null)} />}
+      {viewWorker && <ViewWorkerModal worker={viewWorker} onClose={() => setViewWorker(null)} onEdit={() => { setViewWorker(null); setEditWorker(viewWorker); }} />}
     </DashboardLayout>
   );
 }
@@ -319,6 +329,95 @@ function WorkerFormModal({ worker, onClose }: { worker?: CasualWorker; onClose: 
             </Button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── View Modal ───────────────────────────────────────────────────────────────
+
+function ViewWorkerModal({ worker, onClose, onEdit }: { worker: CasualWorker; onClose: () => void; onEdit: () => void }) {
+  const fmt = (d?: string) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-custom-200">
+          <h2 className="text-lg font-bold text-secondary-100">Worker Details</h2>
+          <button onClick={onClose} className="text-custom-400 hover:text-custom-700">
+            <HiOutlineX className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+
+          {/* Name + job */}
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-full bg-primary-100 flex items-center justify-center shrink-0 text-primary-600 font-bold text-lg">
+              {worker.fullName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="text-base font-bold text-secondary-100">{worker.fullName}</p>
+              <p className="text-sm text-custom-700">{worker.jobDone}</p>
+              {worker.phoneNumber && <p className="text-xs text-custom-500 mt-0.5">{worker.phoneNumber}</p>}
+            </div>
+          </div>
+
+          <hr className="border-custom-100" />
+
+          {/* Work period */}
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg bg-custom-50 border border-custom-200 py-3 px-2">
+              <p className="text-xs text-custom-500 mb-1">Start Date</p>
+              <p className="text-sm font-semibold text-secondary-100">{fmt(worker.startDate)}</p>
+            </div>
+            <div className="rounded-lg bg-custom-50 border border-custom-200 py-3 px-2">
+              <p className="text-xs text-custom-500 mb-1">End Date</p>
+              <p className="text-sm font-semibold text-secondary-100">{fmt(worker.endDate)}</p>
+            </div>
+            <div className="rounded-lg bg-blue-50 border border-blue-200 py-3 px-2">
+              <p className="text-xs text-blue-500 mb-1">Days</p>
+              <p className="text-sm font-bold text-blue-700">{worker.daysWorked}</p>
+            </div>
+          </div>
+
+          {/* Financials */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-custom-50 border border-custom-200 p-3">
+              <p className="text-xs text-custom-500 mb-0.5">Daily Rate</p>
+              <p className="text-sm font-semibold text-secondary-100">{worker.dailyRate.toLocaleString()} RWF</p>
+            </div>
+            <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+              <p className="text-xs text-green-600 mb-0.5">Total Amount</p>
+              <p className="text-base font-bold text-green-700">{worker.totalAmount.toLocaleString()} RWF</p>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {worker.notes && (
+            <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-3">
+              <p className="text-xs font-semibold text-yellow-700 mb-1">Notes</p>
+              <p className="text-sm text-custom-700">{worker.notes}</p>
+            </div>
+          )}
+
+          {/* Created at */}
+          {worker.createdAt && (
+            <p className="text-xs text-custom-400 text-right">Added on {fmt(worker.createdAt)}</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-custom-200 flex gap-3">
+          <Button variant="outline" fullWidth onClick={onClose} className="text-sm">Close</Button>
+          <Button fullWidth onClick={onEdit} className="text-sm flex items-center justify-center gap-1.5">
+            <HiOutlinePencil className="h-4 w-4" /> Edit
+          </Button>
+        </div>
+
       </div>
     </div>
   );

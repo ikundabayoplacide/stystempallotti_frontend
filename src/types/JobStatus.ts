@@ -12,7 +12,8 @@ export type JobStatus =
   | "partial-delivered"
   | "delivered"
   | "completed"
-  | "rejected";
+  | "rejected"
+  | "verified";
 
 export const jobStatusConfig: Record<
   JobStatus,
@@ -96,6 +97,12 @@ export const jobStatusConfig: Record<
     bgColor: "bg-red-100",
     description: "Job rejected",
   },
+  verified: {
+    label: "Verified",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-100",
+    description: "Verified by DAF/Admin",
+  },
 };
 
 // Status flow — next valid statuses per current status
@@ -111,8 +118,9 @@ export const statusFlow: Record<JobStatus, JobStatus[]> = {
   "ready-for-delivery": ["partial-delivered", "delivered"],
   "partial-delivered":   ["partial-delivered", "delivered"],
   delivered:            ["completed"],
-  completed:            [],
+  completed:            ["verified"],
   rejected:             [],
+  verified:             [],
 };
 
 export const getNextStatuses = (currentStatus: JobStatus): JobStatus[] =>

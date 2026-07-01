@@ -7,7 +7,7 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
-import { useGetGeneralStockItemsQuery } from "../../store/services/generalStockService";
+import { useGetBindingStockItemsQuery } from "../../store/services/bindingStockService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -18,17 +18,16 @@ const statusColors: Record<string, string> = {
 };
 
 
-
 const PAGE_SIZE = 10;
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function GeneralStockPageOnPm() {
-  const [search, setSearch]       = useState("");
+export default function PMBindingStockPage() {
+  const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage]           = useState(1);
+  const [page, setPage]                 = useState(1);
 
-  const { data, isLoading, refetch } = useGetGeneralStockItemsQuery({ limit: 500 });
+  const { data, isLoading, refetch } = useGetBindingStockItemsQuery({ limit: 500 });
   const allItems = data?.data ?? [];
 
   // Client-side filter
@@ -54,12 +53,12 @@ export default function GeneralStockPageOnPm() {
 
         {/* Header */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-            <HiOutlineArchive className="w-5 h-5 text-orange-600" />
+          <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+            <HiOutlineArchive className="w-5 h-5 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">General Stock</h1>
-            <p className="text-sm text-custom-700 mt-0.5">View available general stock items</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Binding Stock</h1>
+            <p className="text-sm text-custom-700 mt-0.5">View available binding stock items</p>
           </div>
         </div>
 
@@ -122,7 +121,7 @@ export default function GeneralStockPageOnPm() {
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  {["Item Name", "Category", "Unit", "Current Stock", "Amount/Unit", "Total Value", "Alarm Level", "Status"].map((h) => (
+                  {["Item Name", "Category", "Unit", "Current Stock", "Alarm Level", "Status"].map((h) => (
                     <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase tracking-wide">
                       {h}
                     </th>
@@ -132,15 +131,15 @@ export default function GeneralStockPageOnPm() {
               <tbody className="divide-y divide-custom-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-10 text-center">
+                    <td colSpan={6} className="px-4 py-10 text-center">
                       <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
                       <p className="text-sm text-secondary-100 font-semibold">No items found</p>
                       <p className="text-xs text-custom-700 mt-1">
-                        {search || statusFilter ? "Try adjusting the search or filter." : "No general stock items yet."}
+                        {search || statusFilter ? "Try adjusting the search or filter." : "No binding stock items yet."}
                       </p>
                     </td>
                   </tr>
@@ -161,12 +160,6 @@ export default function GeneralStockPageOnPm() {
                       }`}>
                         {item.currentStock}
                       </span>
-                    </td>
-                    <td className="px-3 py-3 text-sm text-secondary-100">
-                      {item.amountPerUnit != null ? `${Number(item.amountPerUnit).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
-                    </td>
-                    <td className="px-3 py-3 text-sm font-semibold text-secondary-100">
-                      {item.amountPerUnit != null ? `${(Number(item.amountPerUnit) * item.currentStock).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
                     </td>
                     <td className="px-3 py-3 text-sm text-custom-700">{item.alarmStock}</td>
                     <td className="px-3 py-3">

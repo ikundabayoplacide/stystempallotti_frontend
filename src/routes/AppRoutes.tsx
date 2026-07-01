@@ -72,7 +72,7 @@ import {
   BoutiqueStockRequestsPage,
   // TaskAssignmentPage,
 } from "../pages/receptionalist";
-import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, JobAssignmentPage as SupervisorJobAssignmentPage, DepartmentEmployeesPage } from "../pages/supervisor";
+import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, ReportsPage as SupervisorReportsPage, JobAssignmentPage as SupervisorJobAssignmentPage, DepartmentEmployeesPage } from "../pages/supervisor";
 import BindingStockPage from "../pages/supervisor/BindingStockPage";
 import MachinesPage, { MachinesContent as AdminMachinesPage } from "../pages/supervisor/MachinesPage";
 import { MaterialRequestPage } from "../pages/worker";
@@ -98,6 +98,7 @@ import Outstands from "../pages/receptionalist/Outstands";
 import Abanyabiraka from "../pages/HR/abanyabiraka";
 import PayrollPage from "../pages/HR/PayrollPage";
 import GeneralStockPageOnPm from "../pages/production-manager/GeneralStockPage";
+import PMBindingStockPage from "../pages/production-manager/BindingStockPage";
 import JobPage from "../pages/Hobe/Job";
 export default function AppRoutes() {
   return (
@@ -198,6 +199,7 @@ export default function AppRoutes() {
       <Route path="/production-manager/planning" element={<ProtectedRoute allowedRoles={["production-manager"]}><JobAssignmentPage /></ProtectedRoute>} />
       <Route path="/production-manager/departments" element={<ProtectedRoute allowedRoles={["production-manager"]}><DepartmentsPage /></ProtectedRoute>} />
       <Route path="/production-manager/general-stock" element={<ProtectedRoute allowedRoles={["production-manager"]}><GeneralStockPageOnPm /></ProtectedRoute>} />
+      <Route path="/production-manager/binding-stock" element={<ProtectedRoute allowedRoles={["production-manager"]}><PMBindingStockPage /></ProtectedRoute>} />
       <Route path="/production-manager/reports" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/reports/my" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/leave" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyLeavePage /></ProtectedRoute>} />
@@ -222,7 +224,7 @@ export default function AppRoutes() {
       <Route path="/supervisor/production" element={<ProtectedRoute allowedRoles={["supervisor"]}><ProductionPage /></ProtectedRoute>} />
       <Route path="/supervisor/employees" element={<ProtectedRoute allowedRoles={["supervisor"]}><DepartmentEmployeesPage /></ProtectedRoute>} />
       <Route path="/supervisor/workers" element={<Navigate to="/supervisor/employees" replace />} />
-      <Route path="/supervisor/reports" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
+      <Route path="/supervisor/reports" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/my" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/leave" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyLeavePage /></ProtectedRoute>} />

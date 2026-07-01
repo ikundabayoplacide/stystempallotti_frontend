@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   HiOutlineCheck,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineEye,
+  HiOutlineMail,
+  HiOutlineOfficeBuilding,
   HiOutlinePencil,
+  HiOutlinePhone,
   HiOutlinePlus,
   HiOutlineSearch,
   HiOutlineTrash,
+  HiOutlineUser,
   HiOutlineX,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
@@ -136,16 +141,29 @@ const roleLabels: Record<string, string> = {
 
 export default function UserManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterRole, setFilterRole] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
+
+  // Debounce search — wait 400ms after the user stops typing
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPage(1); // reset to page 1 on new search
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<CreateUserForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // View detail modal state
+  const [viewingUser, setViewingUser] = useState<User | null>(null);
 
   // Confirm modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -162,7 +180,7 @@ export default function UserManagementPage() {
   const { data, isLoading, isError } = useGetUsersQuery({
     page,
     limit: PAGE_SIZE,
-    search: searchQuery || undefined,
+    search: debouncedSearch || undefined,
     role: filterRole !== "all" ? filterRole : undefined,
     isActive: filterStatus === "active" ? true : filterStatus === "inactive" ? false : undefined,
   });
@@ -330,7 +348,7 @@ export default function UserManagementPage() {
             </div>
             <select
               value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
+              onChange={(e) => { setFilterRole(e.target.value); setPage(1); }}
               className="px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
             >
               <option value="all">All Roles</option>
@@ -340,7 +358,7 @@ export default function UserManagementPage() {
             </select>
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
               className="px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
             >
               <option value="all">All Status</option>
@@ -444,6 +462,14 @@ export default function UserManagementPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
+                          {/* View */}
+                          <button
+                            onClick={() => setViewingUser(user)}
+                            className="p-2 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors"
+                            title="View Details"
+                          >
+                            <HiOutlineEye className="w-4 h-4 text-custom-700" />
+                          </button>
                           {/* Edit */}
                           <button
                             onClick={() => handleOpenEdit(user)}
@@ -510,6 +536,171 @@ export default function UserManagementPage() {
                 <HiOutlineChevronRight className="w-4 h-4" />
               </button>
             </div>
+          </div>
+        )}
+
+        {/* ── User Detail Modal ─────────────────────────────────────────────── */}
+        {viewingUser && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <Card className="!p-0 w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-custom-200">
+                <h3 className="text-xl font-bold text-secondary-100">User Details</h3>
+                <button
+                  onClick={() => setViewingUser(null)}
+                  className="text-custom-700 hover:text-secondary-100 transition-colors"
+                >
+                  <HiOutlineX className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+                {/* Avatar + name + status */}
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                    <HiOutlineUser className="w-7 h-7 text-primary-600" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-secondary-100">{viewingUser.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleColors[viewingUser.role] ?? "bg-gray-100 text-gray-700"}`}>
+                        {roleLabels[viewingUser.role] ?? viewingUser.role}
+                      </span>
+                      {viewingUser.isActive ? (
+                        <span className="flex items-center gap-1 text-green-600 text-xs font-semibold">
+                          <HiOutlineCheck className="w-3.5 h-3.5" /> Active
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-red-500 text-xs font-semibold">
+                          <HiOutlineX className="w-3.5 h-3.5" /> Inactive
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <hr className="border-custom-200" />
+
+                {/* Contact info */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wider">Contact</p>
+                  <div className="flex items-center gap-3">
+                    <HiOutlineMail className="w-4 h-4 text-custom-700 shrink-0" />
+                    <span className="text-sm text-secondary-100">{viewingUser.email}</span>
+                  </div>
+                  {viewingUser.phone && (
+                    <div className="flex items-center gap-3">
+                      <HiOutlinePhone className="w-4 h-4 text-custom-700 shrink-0" />
+                      <span className="text-sm text-secondary-100">{viewingUser.phone}</span>
+                    </div>
+                  )}
+                </div>
+
+                <hr className="border-custom-200" />
+
+                {/* Personal */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wider">Personal</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-custom-700 mb-0.5">Gender</p>
+                      <p className="text-sm font-semibold text-secondary-100 capitalize">
+                        {viewingUser.gender ? viewingUser.gender.charAt(0) + viewingUser.gender.slice(1).toLowerCase() : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-custom-700 mb-0.5">Department</p>
+                      <div className="flex items-center gap-1.5">
+                        <HiOutlineOfficeBuilding className="w-3.5 h-3.5 text-custom-700" />
+                        <p className="text-sm font-semibold text-secondary-100">
+                          {viewingUser.department?.name ?? departmentMap[viewingUser.departmentId ?? ""] ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-custom-200" />
+
+                {/* Account info */}
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-custom-700 uppercase tracking-wider">Account</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-custom-700 mb-0.5">Created At</p>
+                      <p className="text-sm font-semibold text-secondary-100">
+                        {viewingUser.createdAt
+                          ? new Date(viewingUser.createdAt).toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-custom-700 mb-0.5">Last Login</p>
+                      <p className="text-sm font-semibold text-secondary-100">
+                        {viewingUser.lastLogin
+                          ? new Date(viewingUser.lastLogin).toLocaleString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "Never"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Current Job */}
+                {viewingUser.currentJob && (
+                  <>
+                    <hr className="border-custom-200" />
+                    <div className="space-y-3">
+                      <p className="text-xs font-bold text-custom-700 uppercase tracking-wider">Current Job</p>
+                      <div className="rounded-xl border border-custom-200 bg-custom-50 p-3 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-bold text-secondary-100">
+                            #{viewingUser.currentJob.jobNumber}
+                          </p>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 capitalize">
+                            {viewingUser.currentJob.status?.toLowerCase()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-secondary-100">{viewingUser.currentJob.title}</p>
+                        {viewingUser.currentJob.priority && (
+                          <p className="text-xs text-custom-700">
+                            Priority: <span className="font-semibold capitalize">{viewingUser.currentJob.priority.toLowerCase()}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              <div className="px-6 py-4 border-t border-custom-200 flex gap-3">
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => setViewingUser(null)}
+                >
+                  Close
+                </Button>
+                <Button
+                  fullWidth
+                  onClick={() => { setViewingUser(null); handleOpenEdit(viewingUser); }}
+                >
+                  <HiOutlinePencil className="w-4 h-4 mr-1.5" />
+                  Edit User
+                </Button>
+              </div>
+            </Card>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   HiOutlineArchive,
   HiOutlinePlus,
@@ -35,6 +35,12 @@ const statusColors: Record<string, string> = {
   low:          "bg-yellow-100 text-yellow-700",
   "out-of-stock": "bg-red-100 text-red-700",
 };
+
+function getStockStatus(currentStock: number, alarmStock: number): string {
+  if (currentStock <= 0) return "out-of-stock";
+  if (currentStock > alarmStock) return "low";
+  return "available";
+}
 
 const sortieStatusColors: Record<string, string> = {
   pending:  "bg-yellow-100 text-yellow-700",
@@ -249,24 +255,58 @@ function RestockModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; o
 
 // ─── Items Tab ────────────────────────────────────────────────────────────────
 
-function ItemsTab() {
+const PAGE_SIZE = 7;
+
+function Pagination({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  if (pages <= 1) return null;
+  return (
+    <div className="flex items-center justify-end gap-1 pt-2">
+      <button disabled={page === 1} onClick={() => onChange(page - 1)}
+        className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
+        Prev
+      </button>
+      {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
+        <button key={p} onClick={() => onChange(p)}
+          className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+            p === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+          }`}>
+          {p}
+        </button>
+      ))}
+      <button disabled={page === pages} onClick={() => onChange(page + 1)}
+        className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
+        Next
+      </button>
+    </div>
+  );
+}
+
+function ItemsTab({ refetchRef }: { refetchRef?: React.MutableRefObject<() => void> }) {
   const [showForm, setShowForm]       = useState(false);
   const [editItem, setEditItem]       = useState<BoutiqueStockItem | null>(null);
   const [restockItem, setRestockItem] = useState<BoutiqueStockItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BoutiqueStockItem | null>(null);
   const [search, setSearch]           = useState("");
+  const [page, setPage]               = useState(1);
 
   const { data, isLoading, refetch } = useGetBoutiqueStockItemsQuery({ limit: 200 });
+  const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "approved", limit: 1000 });
+  const totalDeducted = (sortiesData?.data ?? []).reduce((sum, s) => sum + parseFloat(s.quantityOut), 0);
 
-  const items = (data?.data ?? []).filter((i) => {
+  if (refetchRef) refetchRef.current = refetch;
+
+  const allItems = data?.data ?? [];
+  const filtered = allItems.filter((i) => {
     const q = search.trim().toLowerCase();
     return !q || i.itemName.toLowerCase().includes(q) || i.category.toLowerCase().includes(q);
   });
+  const items = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items..."
+        <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search items..."
           className="flex-1 min-w-48 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
         />
         <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700">
@@ -278,16 +318,18 @@ function ItemsTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {[
-          { label: "Total Items",   value: items.length,                                               color: "text-secondary-100" },
-          { label: "Available",     value: items.filter((i) => i.stockStatus === "available").length,  color: "text-emerald-600" },
-          { label: "Low Stock",     value: items.filter((i) => i.stockStatus === "low").length,        color: "text-yellow-600" },
-          { label: "Out of Stock",  value: items.filter((i) => i.stockStatus === "out-of-stock").length, color: "text-red-600" },
-        ].map(({ label, value, color }) => (
+          { label: "Total Items",   value: allItems.length,                                                                               color: "text-secondary-100", sub: undefined },
+          { label: "Available",     value: allItems.filter((i) => getStockStatus(i.currentStock, i.alarmStock) === "available").length,   color: "text-emerald-600",   sub: undefined },
+          { label: "Low Stock",     value: allItems.filter((i) => getStockStatus(i.currentStock, i.alarmStock) === "low").length,         color: "text-yellow-600",   sub: undefined },
+          { label: "Out of Stock",  value: allItems.filter((i) => getStockStatus(i.currentStock, i.alarmStock) === "out-of-stock").length, color: "text-red-600",       sub: undefined },
+          { label: "Items Deducted", value: totalDeducted,                                                                                color: "text-red-500",       sub: "from approved requests" },
+        ].map(({ label, value, color, sub }) => (
           <Card key={label} className="!p-4 text-center">
             <p className="text-xs text-custom-700 mb-1">{label}</p>
-            <p className={`text-2xl font-bold ${color}`}>{isLoading ? "—" : value}</p>
+            <p className={`text-2xl font-bold ${color}`}>{isLoading ? "—" : value.toLocaleString()}</p>
+            {sub && <p className="text-[10px] text-custom-400 mt-0.5">{sub}</p>}
           </Card>
         ))}
       </div>
@@ -328,9 +370,11 @@ function ItemsTab() {
                   </td>
                   <td className="px-3 py-2.5 text-sm text-custom-700">{item.alarmStock}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>
-                      {item.stockStatus.replace("-", " ")}
-                    </span>
+                    {(() => { const s = getStockStatus(item.currentStock, item.alarmStock); return (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[s] ?? "bg-gray-100 text-gray-600"}`}>
+                        {s.replace("-", " ")}
+                      </span>
+                    ); })()}
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1">
@@ -353,6 +397,7 @@ function ItemsTab() {
             </tbody>
           </table>
         </div>
+        <Pagination page={page} total={filtered.length} onChange={setPage} />
       </Card>
 
       {showForm && (
@@ -438,22 +483,32 @@ function RejectModal({ sortie, onClose, onSuccess }: {
 
 // ─── Sorties Tab ──────────────────────────────────────────────────────────────
 
-function SortiesTab() {
+function SortiesTab({ onApproved }: { onApproved: () => void }) {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
-  const [rejectTarget, setRejectTarget] = useState<BoutiqueStockSortie | null>(null);
+  const [rejectTarget, setRejectTarget]   = useState<BoutiqueStockSortie | null>(null);
+  const [approveTarget, setApproveTarget] = useState<BoutiqueStockSortie | null>(null);
+  const [page, setPage]                   = useState(1);
 
   const { data, isLoading, refetch } = useGetBoutiqueStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
   );
-  const [approve] = useApproveBoutiqueStockSortieMutation();
+  const [approve, { isLoading: approving }] = useApproveBoutiqueStockSortieMutation();
 
-  const sorties: BoutiqueStockSortie[] = data?.data ?? [];
-  const pending  = sorties.filter((s) => s.status === "pending").length;
+  const allSorties: BoutiqueStockSortie[] = data?.data ?? [];
+  const pending  = allSorties.filter((s) => s.status === "pending").length;
+  const totalDeducted = allSorties
+    .filter((s) => s.status === "approved")
+    .reduce((sum, s) => sum + parseFloat(s.quantityOut), 0);
+  const sorties  = allSorties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async () => {
+    if (!approveTarget) return;
     try {
-      await approve(id).unwrap();
+      await approve(approveTarget.id).unwrap();
       toast.success("Request approved");
+      setApproveTarget(null);
+      refetch();
+      onApproved();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to approve");
     }
@@ -462,7 +517,7 @@ function SortiesTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as SortieStatus | "")}
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as SortieStatus | ""); setPage(1); }}
           className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
           <option value="">All Requests</option>
           <option value="pending">Pending</option>
@@ -478,6 +533,22 @@ function SortiesTab() {
             {pending} pending request{pending > 1 ? "s" : ""} need review
           </span>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <Card className="!p-4 text-center">
+          <p className="text-xs text-custom-700 mb-1">Total Requests</p>
+          <p className="text-2xl font-bold text-secondary-100">{isLoading ? "—" : allSorties.length}</p>
+        </Card>
+        <Card className="!p-4 text-center">
+          <p className="text-xs text-custom-700 mb-1">Approved</p>
+          <p className="text-2xl font-bold text-emerald-600">{isLoading ? "—" : allSorties.filter((s) => s.status === "approved").length}</p>
+        </Card>
+        <Card className="!p-4 text-center col-span-2 sm:col-span-1">
+          <p className="text-xs text-custom-700 mb-1">Items Deducted</p>
+          <p className="text-2xl font-bold text-red-500">{isLoading ? "—" : totalDeducted.toLocaleString()}</p>
+          <p className="text-[10px] text-custom-400 mt-0.5">from approved requests</p>
+        </Card>
       </div>
 
       <div className="space-y-3">
@@ -513,7 +584,7 @@ function SortiesTab() {
               </div>
               {sortie.status === "pending" && (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => handleApprove(sortie.id)}
+                  <button onClick={() => setApproveTarget(sortie)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors">
                     <HiOutlineCheck className="w-3.5 h-3.5" /> Approve
                   </button>
@@ -536,6 +607,32 @@ function SortiesTab() {
           </Card>
         ))}
       </div>
+      <Pagination page={page} total={allSorties.length} onChange={setPage} />
+      {approveTarget && (
+        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+          <Card className="!p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                <HiOutlineCheck className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Approve Request</h3>
+                <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[200px]">{approveTarget.stockItem?.itemName ?? "Stock Item"}</p>
+              </div>
+            </div>
+            <p className="text-sm text-secondary-100 mb-5">
+              Approve deduction of <span className="font-bold">{parseFloat(approveTarget.quantityOut)} {approveTarget.stockItem?.unit ?? ""}</span> from stock?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setApproveTarget(null)} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+              <button onClick={handleApprove} disabled={approving}
+                className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+                {approving ? "Approving..." : "Yes, Approve"}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
       {rejectTarget && (
         <RejectModal
           sortie={rejectTarget}
@@ -553,6 +650,7 @@ type Tab = "items" | "sorties";
 
 export default function BoutiqueStockPage() {
   const [tab, setTab] = useState<Tab>("items");
+  const itemsRefetch = React.useRef<() => void>(() => {});
 
   const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "pending", limit: 200 });
   const pendingCount = sortiesData?.data?.length ?? 0;
@@ -593,8 +691,8 @@ export default function BoutiqueStockPage() {
           ))}
         </div>
 
-        {tab === "items"   && <ItemsTab />}
-        {tab === "sorties" && <SortiesTab />}
+        {tab === "items"   && <ItemsTab refetchRef={itemsRefetch} />}
+        {tab === "sorties" && <SortiesTab onApproved={() => itemsRefetch.current()} />}
       </div>
     </DashboardLayout>
   );

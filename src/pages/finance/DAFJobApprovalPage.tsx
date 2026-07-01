@@ -1,15 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import {
   HiOutlineArrowRight,
+  HiOutlineBadgeCheck,
   HiOutlineCheckCircle,
+  HiOutlineClock,
+  HiOutlineCube,
   HiOutlineCurrencyDollar,
+  HiOutlineDocumentText,
   HiOutlineDotsVertical,
+  HiOutlineDownload,
   HiOutlineExclamationCircle,
   HiOutlineEye,
+  HiOutlinePaperClip,
+  HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineX,
   HiOutlineXCircle,
 } from "react-icons/hi";
+import { printQuotation } from "../../components/QuotationPrint";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
@@ -19,7 +27,14 @@ import {
   useGetJobDetailsQuery,
   useGetJobsQuery,
   useRejectJobMutation,
+  useVerifyJobMutation,
   type Job,
+} from "../../store/services/jobsService";
+import {
+  useGetJobDocumentsQuery,
+} from "../../store/services/jobDocumentsService";
+import {
+  useGetJobItemsQuery,
 } from "../../store/services/jobsService";
 import { jobStatusConfig } from "../../types/JobStatus";
 
@@ -30,174 +45,242 @@ const priorityColor: Record<string, string> = {
   low:    "bg-green-500 text-white",
 };
 
-function Row({ label, value }: { label: string; value?: string | number | null }) {
-  if (!value && value !== 0) return null;
-  return (
-    <div className="flex justify-between gap-2">
-      <span className="text-custom-700 shrink-0">{label}</span>
-      <span className="font-semibold text-secondary-100 text-right">{value}</span>
-    </div>
-  );
-}
+function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
+  const { data: d, isLoading } = useGetJobDetailsQuery(jobId);
+  const { data: docs = [], isLoading: loadingDocs } = useGetJobDocumentsQuery(jobId);
+  const { data: jobItems = [] } = useGetJobItemsQuery(jobId);
+  const items = d?.jobItems ?? [];
+  console.log("[JobDetailsModal] d.jobItems:", d?.jobItems);
+  console.log("[JobDetailsModal] useGetJobItemsQuery result:", jobItems);
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType?.startsWith("image/"))  return "text-blue-500";
+    if (mimeType === "application/pdf")  return "text-red-500";
+    if (mimeType?.includes("sheet") || mimeType?.includes("excel")) return "text-green-600";
+    if (mimeType?.includes("word")  || mimeType?.includes("document")) return "text-blue-600";
+    return "text-custom-700";
+  };
+
   return (
-    <div>
-      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">{title}</p>
-      <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 space-y-1.5 text-sm">
-        {children}
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl flex flex-col" style={{ height: "min(92vh, 820px)" }}>
+        <Card className="!p-0 overflow-hidden flex flex-col h-full">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-custom-300 shrink-0">
+            <div className="flex items-center gap-3">
+              <HiOutlineDocumentText className="w-5 h-5 text-primary-500" />
+              <div>
+                <h3 className="text-lg font-bold text-secondary-100">Job Details</h3>
+                {d && <p className="text-xs text-primary-600 font-semibold">{d.jobNumber}</p>}
+              </div>
+            </div>
+            <button onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100">
+              <HiOutlineX className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20 text-custom-700 text-sm gap-2">
+                <HiOutlineClock className="w-5 h-5 animate-spin" /> Loading job details…
+              </div>
+            ) : !d ? (
+              <div className="flex items-center justify-center py-20 text-red-600 text-sm">
+                Failed to load job details.
+              </div>
+            ) : (
+              <div className="px-6 py-6 space-y-6">
+
+                {/* Title + badges */}
+                <div>
+                  <h2 className="text-xl font-bold text-secondary-100 mb-2">{d.title}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                      jobStatusConfig[d.status]
+                        ? `${jobStatusConfig[d.status].bgColor} ${jobStatusConfig[d.status].color}`
+                        : "bg-gray-100 text-gray-700"
+                    }`}>{d.status.replace(/-/g, " ")}</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      d.priority === "urgent" ? "bg-red-100 text-red-700" :
+                      d.priority === "high"   ? "bg-orange-100 text-orange-700" :
+                      d.priority === "normal" ? "bg-yellow-100 text-yellow-700" :
+                                                "bg-green-100 text-green-700"
+                    }`}>{d.priority} priority</span>
+                    {d.dueDate && (
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                        Due: {d.dueDate.split("T")[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Two-column details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Job Info</p>
+                    {[
+                      { label: "Job Type",   value: d.jobType },
+                      { label: "Quantity",   value: d.quantity },
+                      { label: "Size",       value: d.size },
+                      { label: "Color Mode", value: d.colorMode },
+                      { label: "Binding",    value: d.bindingType },
+                      { label: "Amount",     value: d.amount != null ? `${Number(d.amount).toLocaleString()} RWF` : null },
+                    ].filter(r => r.value != null && r.value !== "").map(({ label, value }) => (
+                      <div key={label} className="flex items-start gap-3">
+                        <div>
+                          <p className="text-xs text-custom-700">{label}</p>
+                          <p className="text-sm font-semibold text-secondary-100">{value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Dates & Customer</p>
+                    {[
+                      { label: "Due Date", value: d.dueDate ? d.dueDate.split("T")[0] : null },
+                      { label: "Created",  value: new Date(d.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }) },
+                      { label: "Customer", value: d.customer?.name },
+                      { label: "Phone",    value: d.customer?.phone },
+                      { label: "Email",    value: d.customer?.email },
+                    ].filter(r => r.value).map(({ label, value }) => (
+                      <div key={label} className="flex items-start gap-3">
+                        <div>
+                          <p className="text-xs text-custom-700">{label}</p>
+                          <p className="text-sm font-semibold text-secondary-100">{value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {d.description && (
+                  <div>
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Description</p>
+                    <p className="text-sm text-secondary-100 leading-relaxed">{d.description}</p>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {d.notes && (
+                  <div>
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Notes</p>
+                    <p className="text-sm text-secondary-100 leading-relaxed">{d.notes}</p>
+                  </div>
+                )}
+
+                {/* Materials */}
+                {items.length > 0 && (
+                  <div className="border-t border-custom-300 pt-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <HiOutlineCube className="w-4 h-4 text-custom-700" />
+                      <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                        Materials / Stock Items ({items.length})
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {items.map((item, i) => {
+                        const name     = item.stockItem?.itemName ?? item.stockItem?.name ?? item.itemName ?? `Item ${i + 1}`;
+                        const unit     = item.stockItem?.unit ?? item.unit ?? "";
+                        const isCustom = !item.stockItemId;
+                        return (
+                          <div key={item.id ?? i}
+                            className={`flex items-center justify-between px-4 py-3 rounded-xl border bg-custom-50 ${
+                              isCustom ? "border-yellow-200" : "border-custom-200"
+                            }`}>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-secondary-100 truncate">{name}</p>
+                                {isCustom && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 shrink-0">custom</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-custom-700">
+                                {item.stockItem?.category ?? ""}
+                                {unit ? ` · ${unit}` : ""}
+                                {item.unitCost ? ` · ${Number(item.unitCost).toLocaleString()} RWF/unit` : ""}
+                              </p>
+                              {item.notes && <p className="text-xs text-custom-500 italic mt-0.5">{item.notes}</p>}
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <p className="text-sm font-bold text-secondary-100">{item.quantityNeeded}</p>
+                              {item.quantityUsed != null && (
+                                <p className="text-xs text-custom-700">Used: {item.quantityUsed}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Documents */}
+                <div className="border-t border-custom-300 pt-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <HiOutlinePaperClip className="w-4 h-4 text-custom-700" />
+                    <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+                      Documents {!loadingDocs && `(${docs.length})`}
+                    </p>
+                  </div>
+                  {loadingDocs ? (
+                    <p className="text-xs text-custom-700">Loading…</p>
+                  ) : docs.length === 0 ? (
+                    <div className="py-5 text-center rounded-xl border-2 border-dashed border-custom-200">
+                      <HiOutlinePaperClip className="w-7 h-7 text-custom-400 mx-auto mb-1" />
+                      <p className="text-sm text-custom-700">No documents attached</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {docs.map((doc) => (
+                        <div key={doc.id}
+                          className="flex items-center gap-3 p-3 rounded-xl border border-custom-200 bg-custom-50">
+                          <div className="w-9 h-9 rounded-lg bg-white border border-custom-200 flex items-center justify-center shrink-0">
+                            <HiOutlineDocumentText className={`w-5 h-5 ${getFileIcon(doc.mimeType)}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-secondary-100 truncate">{doc.fileName}</p>
+                            <p className="text-xs text-custom-700">{doc.mimeType}</p>
+                          </div>
+                          <a href={doc.fileUrl} download={doc.fileName}
+                            className="p-1.5 rounded-lg hover:bg-primary-100 text-custom-700 hover:text-primary-600 transition-colors" title="Download">
+                            <HiOutlineDownload className="w-4 h-4" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-custom-300 shrink-0 flex gap-3">
+            {d && (
+              <button
+                onClick={() => printQuotation(d, jobItems)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white hover:bg-primary-600 transition-colors text-sm font-semibold"
+              >
+                <HiOutlineDownload className="w-4 h-4" /> Download Quotation
+              </button>
+            )}
+            <button onClick={onClose}
+              className="flex-1 px-4 py-2 rounded-xl bg-custom-100 text-secondary-100 hover:bg-custom-200 transition-colors text-sm font-semibold">
+              Close
+            </button>
+          </div>
+        </Card>
       </div>
     </div>
   );
 }
 
-function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => void }) {
-  const { data: d, isLoading } = useGetJobDetailsQuery(jobId);
-  const items = d?.jobItems ?? [];
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-xl font-bold text-secondary-100">Job Details</h3>
-            {d && <p className="text-xs text-custom-700 mt-0.5">{d.jobNumber} — {d.title}</p>}
-          </div>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
-            <HiOutlineX className="w-6 h-6" />
-          </button>
-        </div>
-
-        {isLoading ? (
-          <p className="text-center text-custom-700 py-10">Loading…</p>
-        ) : !d ? (
-          <p className="text-center text-custom-700 py-10">Details not available.</p>
-        ) : (
-          <div className="space-y-5">
-
-            {/* Client */}
-            <Section title="Client">
-              <Row label="Name"    value={d.customer?.name} />
-              <Row label="Company" value={d.customer?.company} />
-              <Row label="Phone"   value={d.customer?.phone} />
-              <Row label="Email"   value={d.customer?.email} />
-            </Section>
-
-            {/* Job info */}
-            <Section title="Job Information">
-              <Row label="Job #"       value={d.jobNumber} />
-              <Row label="Title"       value={d.title} />
-              <Row label="Type"        value={d.jobType} />
-              <Row label="Quantity"    value={d.quantity} />
-              <Row label="Size"        value={d.size} />
-              <Row label="Color Mode" value={d.colorMode} />
-              <Row label="Binding"     value={d.bindingType} />
-              <Row label="Priority"    value={d.priority} />
-              <Row label="Status"      value={d.status} />
-              <Row label="Deadline"    value={d.dueDate?.split("T")[0]} />
-              <Row label="Created"     value={new Date(d.createdAt).toLocaleDateString()} />
-              {d.description && (
-                <div className="pt-1 border-t border-custom-200">
-                  <p className="text-custom-700 mb-0.5">Description</p>
-                  <p className="text-secondary-100 font-medium leading-snug">{d.description}</p>
-                </div>
-              )}
-              {d.notes && (
-                <div className="pt-1 border-t border-custom-200">
-                  <p className="text-custom-700 mb-0.5">Notes</p>
-                  <p className="text-secondary-100 font-medium leading-snug">{d.notes}</p>
-                </div>
-              )}
-            </Section>
-
-            {/* Materials — right after Job Information */}
-            <Section title="Materials Needed">
-              {!items.length ? (
-                <p className="text-custom-700 italic">No materials listed.</p>
-              ) : (
-                items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between">
-                    <span className="font-semibold text-secondary-100">
-                      {item.stockItem?.itemName ?? "—"}
-                    </span>
-                    <span className="text-xs text-custom-700">
-                      {item.quantityNeeded} {item.stockItem?.unit ?? ""}{item.notes ? ` · ${item.notes}` : ""}
-                    </span>
-                  </div>
-                ))
-              )}
-            </Section>
-
-            {/* Financial */}
-            <Section title="Financial">
-              <Row label="Amount"         value={d.amount != null ? `${Number(d.amount).toLocaleString()} RWF` : null} />
-              <Row label="Payment Status" value={d.paymentStatus} />
-              <Row label="Payment Method" value={d.paymentMethod} />
-              <Row label="Receipt #"      value={d.receiptNo} />
-            </Section>
-
-            {/* Department position */}
-            <Section title="Department Position">
-              {!d.departmentPosition ? (
-                <p className="text-custom-700 italic">Not yet assigned to a department.</p>
-              ) : (
-                <>
-                  <Row label="Department"   value={d.departmentPosition.department?.name} />
-                  <Row label="State"        value={d.departmentPosition.state} />
-                  <Row label="In Production" value={d.departmentPosition.inProduction} />
-                  <Row label="Progress"     value={d.departmentPosition.progress} />
-                  {d.departmentPosition.startedAt   && <Row label="Started"   value={new Date(d.departmentPosition.startedAt).toLocaleString()} />}
-                  {d.departmentPosition.pausedAt    && <Row label="Paused"    value={new Date(d.departmentPosition.pausedAt).toLocaleString()} />}
-                  {d.departmentPosition.resumedAt   && <Row label="Resumed"   value={new Date(d.departmentPosition.resumedAt).toLocaleString()} />}
-                  {d.departmentPosition.completedAt && <Row label="Completed" value={new Date(d.departmentPosition.completedAt).toLocaleString()} />}
-                  {d.departmentPosition.supervisors?.length > 0 && (
-                    <div className="pt-1 border-t border-custom-200">
-                      <p className="text-custom-700 mb-1">Supervisors</p>
-                      <div className="space-y-1">
-                        {d.departmentPosition.supervisors.map((s) => (
-                          <div key={s.id} className="flex items-center justify-between">
-                            <span className="font-semibold text-secondary-100">{s.name}</span>
-                            <span className="text-xs text-custom-700">{s.phone}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </Section>
-
-            {/* Assigned workers */}
-            <Section title="Assigned Workers">
-              {!d.assignedWorkers?.length ? (
-                <p className="text-custom-700 italic">No workers assigned.</p>
-              ) : (
-                d.assignedWorkers.map((w) => (
-                  <div key={w.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-semibold text-secondary-100">{w.fullName}</p>
-                      <p className="text-xs text-custom-700">{w.department?.name ?? "—"} · {w.phoneNumber}</p>
-                    </div>
-                    <p className="text-xs text-custom-700">{new Date(w.EmployeeJobAssignment.assignedAt).toLocaleDateString()}</p>
-                  </div>
-                ))
-              )}
-            </Section>
-
-          </div>
-        )}
-
-        <button
-          onClick={onClose}
-          className="mt-5 w-full px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-semibold"
-        >
-          Close
-        </button>
-      </Card>
-    </div>
-  );
-}
-
-type ModalMode = "approve" | "reject" | "assign";
+type ModalMode = "approve" | "reject" | "assign" | "verify";
 
 export default function DAFJobApprovalPage() {
   const [search, setSearch]           = useState("");
@@ -222,21 +305,26 @@ export default function DAFJobApprovalPage() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const { data: pendingData,   isLoading: loadingPending } = useGetJobsQuery({ status: "pending",   limit: 100 });
-  const { data: confirmedData }                            = useGetJobsQuery({ status: "confirmed", limit: 100 });
-  const { data: rejectedData }                             = useGetJobsQuery({ status: "rejected",  limit: 100 });
-  const { data: completedData }                            = useGetJobsQuery({ status: "completed", limit: 100 });
+  const { data: pendingData,   isLoading: loadingPending, isFetching: fetchingPending,   refetch: refetchPending   } = useGetJobsQuery({ status: "pending",   limit: 100 });
+  const { data: confirmedData, refetch: refetchConfirmed } = useGetJobsQuery({ status: "confirmed", limit: 100 });
+  const { data: rejectedData,  refetch: refetchRejected  } = useGetJobsQuery({ status: "rejected",  limit: 100 });
+  const { data: completedData, refetch: refetchCompleted } = useGetJobsQuery({ status: "completed", limit: 100 });
+  const { data: verifiedData,  refetch: refetchVerified  } = useGetJobsQuery({ status: "verified",  limit: 100 });
+
+  const refetchAll = () => { refetchPending(); refetchConfirmed(); refetchRejected(); refetchCompleted(); refetchVerified(); };
   const { data: departments = [] }                         = useGetDepartmentsQuery();
 
   const [approveJob, { isLoading: approving }] = useApproveJobMutation();
   const [rejectJob,  { isLoading: rejecting }] = useRejectJobMutation();
   const [assignJob,  { isLoading: assigning }] = useAssignJobMutation();
+  const [verifyJob,  { isLoading: verifying }] = useVerifyJobMutation();
 
   const pendingJobs   = pendingData?.jobs   ?? [];
   const approvedJobs  = confirmedData?.jobs ?? [];
   const rejectedJobs  = rejectedData?.jobs  ?? [];
   const completedJobs = completedData?.jobs ?? [];
-  const allJobs       = [...pendingJobs, ...approvedJobs, ...rejectedJobs, ...completedJobs];
+  const verifiedJobs  = verifiedData?.jobs  ?? [];
+  const allJobs       = [...pendingJobs, ...approvedJobs, ...rejectedJobs, ...completedJobs, ...verifiedJobs];
 
   const filtered = allJobs.filter(
     (job) =>
@@ -280,6 +368,14 @@ export default function DAFJobApprovalPage() {
     catch { alert("Failed to assign job. Please try again."); }
   };
 
+  const handleVerify = async () => {
+    if (!selectedJob) return;
+    try {
+      await verifyJob(selectedJob.id).unwrap();
+      closeModal();
+    } catch { alert("Failed to verify job. Please try again."); }
+  };
+
   const totalPendingValue = pendingJobs.reduce((sum, j) => sum + (Number(j.amount) || 0), 0);
 
   return (
@@ -288,8 +384,19 @@ export default function DAFJobApprovalPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Job Financial Approval</h1>
-          <p className="text-sm text-custom-700 mt-1">Review and confirm pending jobs before production</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Job Financial Approval</h1>
+              <p className="text-sm text-custom-700 mt-1">Review and confirm pending jobs before production</p>
+            </div>
+            <button
+              onClick={refetchAll}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors"
+              title="Refresh"
+            >
+              <HiOutlineRefresh className={`w-4 h-4 ${fetchingPending ? "animate-spin" : ""}`} />
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -422,10 +529,7 @@ export default function DAFJobApprovalPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          <div
-                            className="flex items-center justify-end gap-1"
-                            ref={openMenuId === job.id ? menuRef : undefined}
-                          >
+                          <div className="flex items-center justify-end gap-1" ref={openMenuId === job.id ? menuRef : undefined}>
                             <button
                               onClick={() => setDetailsJobId(job.id)}
                               className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
@@ -433,32 +537,49 @@ export default function DAFJobApprovalPage() {
                             >
                               <HiOutlineEye className="w-5 h-5 text-custom-700" />
                             </button>
-                            {isPending && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === job.id ? null : job.id); }}
-                              className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
-                            >
-                              <HiOutlineDotsVertical className="w-5 h-5 text-custom-700" />
-                            </button>
+
+                            {/* Verified icon badge */}
+                            {job.status === "verified" && (
+                              <span className="p-2 text-emerald-600" title="Verified">
+                                <HiOutlineBadgeCheck className="w-5 h-5" />
+                              </span>
                             )}
+
+                            {/* Verify button — pending only */}
+                            {isPending && (
+                              <button
+                                onClick={() => openModal(job, "verify")}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors text-xs font-semibold"
+                                title="Verify job"
+                              >
+                                <HiOutlineBadgeCheck className="w-4 h-4" /> Verify
+                              </button>
+                            )}
+
+                            {/* Dots menu — pending and verified */}
+                            {(isPending || job.status === "verified") && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === job.id ? null : job.id); }}
+                                className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
+                              >
+                                <HiOutlineDotsVertical className="w-5 h-5 text-custom-700" />
+                              </button>
+                            )}
+
                             {openMenuId === job.id && (
                               <div className="absolute right-4 mt-1 w-44 bg-white rounded-xl shadow-lg border border-custom-200 z-50 overflow-hidden">
-                                {isPending && (
-                                  <button
-                                    onClick={() => openModal(job, "approve")}
-                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors"
-                                  >
-                                    <HiOutlineCheckCircle className="w-4 h-4" /> Confirm
-                                  </button>
-                                )}
-                                {isPending && (
-                                  <button
-                                    onClick={() => openModal(job, "reject")}
-                                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                  >
-                                    <HiOutlineXCircle className="w-4 h-4" /> Reject
-                                  </button>
-                                )}
+                                <button
+                                  onClick={() => openModal(job, "approve")}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors"
+                                >
+                                  <HiOutlineCheckCircle className="w-4 h-4" /> Confirm
+                                </button>
+                                <button
+                                  onClick={() => openModal(job, "reject")}
+                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                  <HiOutlineXCircle className="w-4 h-4" /> Reject
+                                </button>
                               </div>
                             )}
                           </div>
@@ -529,6 +650,7 @@ export default function DAFJobApprovalPage() {
                     {modalMode === "approve" && "Confirm Job"}
                     {modalMode === "reject"  && "Reject Job"}
                     {modalMode === "assign"  && "Assign to Department"}
+                    {modalMode === "verify"  && "Verify Job"}
                   </h3>
                   <p className="text-sm text-custom-700 mt-1">{selectedJob.jobNumber} — {selectedJob.title}</p>
                 </div>
@@ -585,6 +707,21 @@ export default function DAFJobApprovalPage() {
                     className="w-full px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
                     <HiOutlineXCircle className="w-4 h-4" />
                     {rejecting ? "Rejecting…" : "Confirm Rejection"}
+                  </button>
+                </div>
+              )}
+
+              {/* Verify */}
+              {modalMode === "verify" && (
+                <div className="space-y-3">
+                  <p className="text-sm text-custom-700">This will mark the job as <span className="font-semibold text-secondary-100">verified</span>. This action cannot be undone.</p>
+                  <button
+                    onClick={handleVerify}
+                    disabled={verifying}
+                    className="w-full px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    <HiOutlineBadgeCheck className="w-4 h-4" />
+                    {verifying ? "Verifying…" : "Mark as Verified"}
                   </button>
                 </div>
               )}

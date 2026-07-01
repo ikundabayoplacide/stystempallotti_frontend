@@ -10,21 +10,19 @@ import {
   HiOutlineDocumentText,
   HiOutlineDownload,
   HiOutlineExclamationCircle,
-  HiOutlineOfficeBuilding,
   HiOutlinePaperClip,
   HiOutlineTag,
   HiOutlineTemplate,
   HiOutlineTrash,
   HiOutlineUpload,
   HiOutlineX,
+  HiOutlineCube,
 } from "react-icons/hi";
-import { Button, Card } from "../../components/ui";
+import { Card } from "../../components/ui";
 import {
-  useGetJobByIdQuery,
-  useAssignJobMutation,
+  useGetJobDetailsQuery,
 } from "../../store/services/jobsService";
-import type { Job } from "../../store/services/jobsService";
-import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
+import type { JobDetails } from "../../store/services/jobsService";
 import {
   useGetJobDocumentsQuery,
   useUploadJobDocumentsMutation,
@@ -165,30 +163,8 @@ interface Props {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function JobDetailModal({ jobId, onClose, onAssigned }: Props) {
-  const [selectedDeptId, setSelectedDeptId] = useState("");
-  const [assignError, setAssignError]       = useState("");
-
-  const { data: job, isLoading, isError } = useGetJobByIdQuery(jobId);
-  const { data: departments = [] }        = useGetDepartmentsQuery();
-  const [assignJob, { isLoading: assigning }] = useAssignJobMutation();
-
-  const handleAssign = async () => {
-    if (!selectedDeptId) {
-      setAssignError("Please select a department first.");
-      return;
-    }
-    setAssignError("");
-    try {
-      await assignJob({ id: jobId, departmentAssignedToId: selectedDeptId }).unwrap();
-      onAssigned();
-    } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      setAssignError(e?.data?.message ?? "Failed to assign. Please try again.");
-    }
-  };
-
-  // ── Loading / error states ─────────────────────────────────────────────────
+export default function JobDetailModal({ jobId, onClose }: Props) {
+  const { data: job, isLoading, isError } = useGetJobDetailsQuery(jobId);
 
   const renderBody = () => {
     if (isLoading) {
@@ -206,7 +182,7 @@ export default function JobDetailModal({ jobId, onClose, onAssigned }: Props) {
         </div>
       );
     }
-    return <JobBody job={job} departments={departments} selectedDeptId={selectedDeptId} setSelectedDeptId={setSelectedDeptId} assignError={assignError} assigning={assigning} onAssign={handleAssign} />;
+    return <JobBody job={job} />;
   };
 
   return (
@@ -245,35 +221,14 @@ export default function JobDetailModal({ jobId, onClose, onAssigned }: Props) {
 
 // ─── Job body (separated for clarity) ────────────────────────────────────────
 
-function JobBody({
-  job,
-  departments,
-  selectedDeptId,
-  setSelectedDeptId,
-  assignError,
-  assigning,
-  onAssign,
-}: {
-  job: Job;
-  departments: { id: string; name: string }[];
-  selectedDeptId: string;
-  setSelectedDeptId: (id: string) => void;
-  assignError: string;
-  assigning: boolean;
-  onAssign: () => void;
-}) {
-  const selectCls =
-    "w-full px-4 py-2.5 rounded-xl border border-custom-400 bg-style-500 text-secondary-100 " +
-    "focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 " +
-    "transition-colors duration-200 font-[family-name:var(--font-family-primary)] text-sm";
-
-  const alreadyAssigned = !!job.departmentAssignedToId;
+function JobBody({ job }: { job: JobDetails }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: docs = [], isLoading: loadingDocs } = useGetJobDocumentsQuery(job.id);
   const [uploadDocs, { isLoading: uploading }] = useUploadJobDocumentsMutation();
   const [deleteDoc, { isLoading: deleting }]   = useDeleteJobDocumentMutation();
   const [deletingId, setDeletingId]            = useState<string | null>(null);
+  const [confirmDeleteDocId, setConfirmDeleteDocId] = useState<string | null>(null);
   const [uploadError, setUploadError]          = useState<string | null>(null);
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -294,6 +249,7 @@ function JobBody({
       // silently ignore
     } finally {
       setDeletingId(null);
+      setConfirmDeleteDocId(null);
     }
   };
 
@@ -306,7 +262,6 @@ function JobBody({
   };
 
   const formatSize = (url: string) => {
-    // base64 size estimate: string length * 0.75
     const approxBytes = Math.round((url?.length ?? 0) * 0.75);
     if (approxBytes < 1024) return `${approxBytes} B`;
     if (approxBytes < 1024 * 1024) return `${(approxBytes / 1024).toFixed(1)} KB`;
@@ -338,41 +293,68 @@ function JobBody({
 
       {/* ── Two-column details ──────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        {/* Left column */}
         <div className="space-y-4">
           <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Job Info</p>
-          <InfoRow icon={<HiOutlineTag className="w-4 h-4" />}          label="Job Type"     value={job.jobType} />
-          <InfoRow icon={<HiOutlineClipboardList className="w-4 h-4" />} label="Quantity"     value={job.quantity} />
-          <InfoRow icon={<HiOutlineTemplate className="w-4 h-4" />}     label="Size"         value={job.size} />
-          <InfoRow icon={<HiOutlineColorSwatch className="w-4 h-4" />}  label="Color Mode"   value={job.colorMode} />
-          <InfoRow icon={<HiOutlinePaperClip className="w-4 h-4" />}    label="Binding"      value={job.bindingType} />
+          <InfoRow icon={<HiOutlineTag className="w-4 h-4" />}          label="Job Type"   value={job.jobType} />
+          <InfoRow icon={<HiOutlineClipboardList className="w-4 h-4" />} label="Quantity"   value={job.quantity} />
+          <InfoRow icon={<HiOutlineTemplate className="w-4 h-4" />}     label="Size"       value={job.size} />
+          <InfoRow icon={<HiOutlineColorSwatch className="w-4 h-4" />}  label="Color Mode" value={job.colorMode} />
+          <InfoRow icon={<HiOutlinePaperClip className="w-4 h-4" />}    label="Binding"    value={job.bindingType} />
           {job.amount != null && (
-            <InfoRow
-              icon={<HiOutlineCurrencyDollar className="w-4 h-4" />}
-              label="Amount"
-              value={`${job.amount.toLocaleString()} RWF`}
-            />
+            <InfoRow icon={<HiOutlineCurrencyDollar className="w-4 h-4" />} label="Amount"
+              value={`${job.amount.toLocaleString()} RWF`} />
           )}
         </div>
-
-        {/* Right column */}
         <div className="space-y-4">
-          <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Dates & Assignment</p>
-          <InfoRow icon={<HiOutlineCalendar className="w-4 h-4" />}     label="Due Date"     value={formatDate(job.dueDate)} />
-          <InfoRow icon={<HiOutlineCalendar className="w-4 h-4" />}     label="Created"      value={formatDate(job.createdAt)} />
-          <InfoRow
-            icon={<HiOutlineOfficeBuilding className="w-4 h-4" />}
-            label="Department"
-            value={
-              job.departmentAssignedToId
-                ? (departments.find((d) => d.id === job.departmentAssignedToId)?.name ?? job.departmentAssignedToId)
-                : "Not assigned yet"
-            }
-          />
+          <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">Dates & Customer</p>
+          <InfoRow icon={<HiOutlineCalendar className="w-4 h-4" />}      label="Due Date" value={formatDate(job.dueDate)} />
+          <InfoRow icon={<HiOutlineCalendar className="w-4 h-4" />}      label="Created"  value={formatDate(job.createdAt)} />
           <InfoRow icon={<HiOutlineClipboardList className="w-4 h-4" />} label="Customer" value={job.customer?.name} />
         </div>
       </div>
+
+      {/* ── Materials / Stock Items ──────────────────────────────────────── */}
+      {(job.jobItems ?? []).length > 0 && (
+        <div className="border-t border-custom-300 pt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <HiOutlineCube className="w-4 h-4 text-custom-700" />
+            <p className="text-xs font-bold text-custom-700 uppercase tracking-wide">
+              Materials / Stock Items ({job.jobItems!.length})
+            </p>
+          </div>
+          <div className="space-y-2">
+            {job.jobItems!.map((item, i) => (
+              <div key={item.id ?? i}
+                className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 bg-custom-50">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-secondary-100 truncate">
+                      {item.stockItem?.itemName ?? item.stockItem?.name ?? item.itemName ?? `Item ${i + 1}`}
+                    </p>
+                    {!item.stockItemId && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-700 shrink-0">custom</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-custom-700">
+                    {item.stockItem?.category ?? ""}
+                    {(item.stockItem?.unit ?? item.unit) ? ` · ${item.stockItem?.unit ?? item.unit}` : ""}
+                    {item.unitCost ? ` · ${item.unitCost.toLocaleString()} RWF/unit` : ""}
+                  </p>
+                </div>
+                <div className="text-right shrink-0 ml-4">
+                  <p className="text-sm font-bold text-secondary-100">{item.quantityNeeded}</p>
+                  {item.quantityUsed != null && (
+                    <p className="text-xs text-custom-700">Used: {item.quantityUsed}</p>
+                  )}
+                  {item.notes && (
+                    <p className="text-xs text-custom-500 italic">{item.notes}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Description ─────────────────────────────────────────────────── */}
       {job.description && (
@@ -445,10 +427,8 @@ function JobBody({
         ) : (
           <div className="space-y-2">
             {docs.map((doc) => (
-              <div
-                key={doc.id}
-                className="flex items-center gap-3 p-3 rounded-xl border border-custom-300 bg-custom-50 group"
-              >
+              <div key={doc.id}
+                className="flex items-center gap-3 p-3 rounded-xl border border-custom-300 bg-custom-50 group">
                 <div className="w-9 h-9 rounded-lg bg-white border border-custom-200 flex items-center justify-center shrink-0">
                   <HiOutlineDocumentText className={`w-5 h-5 ${getFileIcon(doc.mimeType)}`} />
                 </div>
@@ -460,22 +440,14 @@ function JobBody({
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {/* Download */}
-                  <a
-                    href={doc.fileUrl}
-                    download={doc.fileName}
+                  <a href={doc.fileUrl} download={doc.fileName}
                     className="p-1.5 rounded-lg hover:bg-primary-100 text-custom-700 hover:text-primary-600 transition-colors"
-                    title="Download"
-                  >
+                    title="Download">
                     <HiOutlineDownload className="w-4 h-4" />
                   </a>
-                  {/* Delete */}
-                  <button
-                    onClick={() => handleDelete(doc.id)}
-                    disabled={deleting && deletingId === doc.id}
-                    className="p-1.5 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors disabled:opacity-50"
-                    title="Delete"
-                  >
+                  <button onClick={() => setConfirmDeleteDocId(doc.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-100 text-custom-700 hover:text-red-600 transition-colors"
+                    title="Delete">
                     <HiOutlineTrash className="w-4 h-4" />
                   </button>
                 </div>
@@ -485,41 +457,40 @@ function JobBody({
         )}
       </div>
 
-      {/* ── Assign to Department ────────────────────────────────────────── */}
-      <div className="border-t border-custom-300 pt-6">
-        <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">
-          Assign to Department
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1">
-            <select
-              value={selectedDeptId}
-              onChange={(e) => setSelectedDeptId(e.target.value)}
-              className={selectCls}
-            >
-              <option value="">Select a department…</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-            {assignError && (
-              <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
-                <HiOutlineExclamationCircle className="w-3.5 h-3.5" />
-                {assignError}
-              </p>
-            )}
+      {/* ── Confirm delete document ── */}
+      {confirmDeleteDocId && (
+        <div className="fixed inset-0 bg-secondary-100/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <HiOutlineTrash className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Delete Document</h3>
+                <p className="text-sm text-custom-700 mt-1">
+                  {(() => {
+                    const doc = docs.find((d) => d.id === confirmDeleteDocId);
+                    return doc
+                      ? <>Are you sure you want to delete <span className="font-semibold text-secondary-100">"{doc.fileName}"</span>? This cannot be undone.</>
+                      : "Are you sure you want to delete this document? This cannot be undone.";
+                  })()}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDeleteDocId(null)}
+                className="flex-1 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => handleDelete(confirmDeleteDocId)}
+                disabled={deleting && deletingId === confirmDeleteDocId}
+                className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50">
+                {deleting && deletingId === confirmDeleteDocId ? "Deleting…" : "Delete"}
+              </button>
+            </div>
           </div>
-          <Button
-            onClick={onAssign}
-            disabled={!selectedDeptId || assigning}
-            className="shrink-0"
-          >
-            <HiOutlineOfficeBuilding className="w-4 h-4" />
-            {assigning ? "Assigning…" : alreadyAssigned ? "Reassign" : "Assign"}
-          </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

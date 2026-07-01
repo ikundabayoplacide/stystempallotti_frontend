@@ -80,7 +80,10 @@ export const boutiqueStockApi = createApi({
     // Items
     getBoutiqueStockItems: builder.query<Paginated<BoutiqueStockItem>, { search?: string; stockStatus?: string; limit?: number } | void>({
       query: (params) => ({ url: "/items", params: { limit: 200, ...(params ?? {}) } as Record<string, unknown> }),
-      transformResponse: (res: ApiResponse<BoutiqueStockItem[]>) => toPaginated(res),
+      transformResponse: (res: ApiResponse<BoutiqueStockItem[]>) => {
+        console.log("[items] fetched items stockStatus:", res.data?.map(i => ({ name: i.itemName, stock: i.currentStock, status: i.stockStatus })));
+        return toPaginated(res);
+      },
       providesTags: (r) => r ? [...r.data.map(({ id }) => ({ type: "BSItem" as const, id })), { type: "BSItem", id: "LIST" }] : [{ type: "BSItem", id: "LIST" }],
     }),
     createBoutiqueStockItem: builder.mutation<BoutiqueStockItem, { itemName: string; description?: string; category: string; unit: string; currentStock: number; alarmStock: number; unitCost?: number }>({
@@ -126,7 +129,11 @@ export const boutiqueStockApi = createApi({
     }),
     approveBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, string>({
       query: (id) => ({ url: `/sorties/${id}/approve`, method: "PATCH" }),
-      transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => res.data,
+      transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => {
+        console.log("[approve] raw response:", res);
+        console.log("[approve] stockItem after approve:", res.data?.stockItem);
+        return res.data;
+      },
       invalidatesTags: (_r, _e, id) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSItem", id: "LIST" }],
     }),
     rejectBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, { id: string; notes?: string }>({

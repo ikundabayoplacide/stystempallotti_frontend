@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { HiOutlineClock, HiOutlineExclamationCircle } from "react-icons/hi";
 import { Card } from "./ui";
 import { useGetJobsQuery } from "../store/services/jobsService";
@@ -10,9 +10,12 @@ const priorityColor: Record<string, string> = {
   low: "bg-green-500 text-white",
 };
 
+const PAGE_SIZE = 3;
+
 export default function DelayedJobsTracker() {
   const { data: jobsData } = useGetJobsQuery({ limit: 500 });
   const jobs = jobsData?.jobs ?? [];
+  const [page, setPage] = useState(1);
 
   const delayedJobs = useMemo(() => {
     const now = new Date();
@@ -37,6 +40,10 @@ export default function DelayedJobsTracker() {
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
   }, [jobs]);
 
+  const totalPages = Math.max(1, Math.ceil(delayedJobs.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paginated = delayedJobs.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <Card>
       <div className="flex items-center gap-2 mb-4">
@@ -46,9 +53,12 @@ export default function DelayedJobsTracker() {
           {delayedJobs.length} Overdue
         </span>
       </div>
+
       <div className="space-y-3">
-        {delayedJobs.length === 0 && <p className="text-sm text-custom-700 text-center py-4">No delayed jobs 🎉</p>}
-        {delayedJobs.slice(0, 5).map((job) => (
+        {delayedJobs.length === 0 && (
+          <p className="text-sm text-custom-700 text-center py-4">No delayed jobs 🎉</p>
+        )}
+        {paginated.map((job) => (
           <div key={job.id} className="p-3 rounded-xl border-2 border-red-300 bg-red-50 hover:shadow-md transition-all cursor-pointer">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
@@ -71,8 +81,27 @@ export default function DelayedJobsTracker() {
           </div>
         ))}
       </div>
-      {delayedJobs.length > 5 && (
-        <p className="text-xs text-custom-700 text-center mt-3">+{delayedJobs.length - 5} more delayed jobs</p>
+
+      {delayedJobs.length > 0 && (
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-custom-300">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            className="text-xs px-3 py-1.5 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ← Prev
+          </button>
+          <span className="text-xs text-custom-700">
+            Page {safePage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            className="text-xs px-3 py-1.5 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </div>
       )}
     </Card>
   );

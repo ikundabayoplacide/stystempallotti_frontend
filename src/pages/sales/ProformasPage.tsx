@@ -321,7 +321,7 @@ function EditProformaModal({
       <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-lg font-bold text-secondary-100">Edit Quotation</h3>
+            <h3 className="text-lg font-bold text-secondary-100">Edit Proforma</h3>
             <p className="text-xs text-custom-700 mt-0.5">{quotation.proformaNo}</p>
           </div>
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
@@ -629,7 +629,7 @@ export default function ProformasPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Performa Invoices</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">PROFORMA</h1>
             <p className="text-sm text-custom-700 mt-1">
               Proposals sent to clients for negotiation and approval tax applied at invoice stage
             </p>
@@ -712,14 +712,14 @@ export default function ProformasPage() {
         ) : isError ? (
           <Card className="!p-12 text-center">
             <HiOutlineExclamationCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">Failed to load performa invoices</p>
+            <p className="text-secondary-100 font-semibold">Failed to load PROFORMA</p>
             <button onClick={() => refetch()} className="mt-4 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold">Retry</button>
           </Card>
         ) : quotations.length === 0 ? (
           <Card className="!p-12 text-center">
             <HiOutlineDocumentText className="w-10 h-10 text-custom-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">No performa invoices found</p>
-            <p className="text-sm text-custom-700 mt-1">Performa invoices are auto-created when a job is created</p>
+            <p className="text-secondary-100 font-semibold">No PROFORMA found</p>
+            <p className="text-sm text-custom-700 mt-1">PROFORMA are auto-created when a job is created</p>
           </Card>
         ) : (
           <Card className="!p-0 overflow-hidden">

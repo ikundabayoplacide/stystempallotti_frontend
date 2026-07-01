@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  HiOutlineBriefcase,
   HiOutlineExclamationCircle,
   HiOutlinePencil,
   HiOutlinePlus,
@@ -20,11 +21,71 @@ import {
 } from "../../store/services/departmentsService";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 
+// ─── Jobs Drawer ──────────────────────────────────────────────────────────────
+
+const statusColor: Record<string, string> = {
+  confirmed: "bg-yellow-100 text-yellow-700",
+  "in-composition": "bg-blue-100 text-blue-700",
+  "in-montage": "bg-blue-100 text-blue-700",
+  "in-printing": "bg-primary-100 text-primary-700",
+  "in-binding": "bg-primary-100 text-primary-700",
+  "in-packaging": "bg-purple-100 text-purple-700",
+  "quality-check": "bg-indigo-100 text-indigo-700",
+  "ready-for-delivery": "bg-green-100 text-green-700",
+  completed: "bg-green-100 text-green-700",
+  delivered: "bg-green-100 text-green-700",
+};
+
+function JobsDrawer({ dept, jobs, onClose }: { dept: Department; jobs: any[]; onClose: () => void }) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl z-50 flex flex-col font-[family-name:var(--font-family-primary)]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-custom-200">
+          <div>
+            <h2 className="text-lg font-bold text-secondary-100">{dept.name}</h2>
+            <p className="text-xs text-custom-500 mt-0.5">{jobs.length} active job{jobs.length !== 1 ? "s" : ""}</p>
+          </div>
+          <button onClick={onClose} className="text-custom-400 hover:text-custom-700 transition-colors">
+            <HiOutlineX className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {jobs.length === 0 ? (
+            <div className="text-center py-12">
+              <HiOutlineBriefcase className="h-10 w-10 text-custom-300 mx-auto mb-2" />
+              <p className="text-sm text-custom-500">No active jobs in this department.</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {jobs.map((j) => (
+                <li key={j.id} className="px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-bold text-primary-500">{j.jobNumber}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusColor[j.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {j.status.replace(/-/g, " ")}
+                    </span>
+                  </div>
+                  <p className="text-sm text-secondary-100 font-medium">{j.title}</p>
+                  <p className="text-xs text-custom-500 mt-0.5">{j.customer?.name ?? "—"}</p>
+                  {j.dueDate && (
+                    <p className="text-xs text-custom-400 mt-1">Due: {j.dueDate.slice(0, 10)}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Worker Count Cell ───────────────────────────────────────────────────────
 
 function WorkerCountCell({ deptId, onClick }: { deptId: string; onClick: () => void }) {
   const { data, isLoading } = useGetDepartmentByIdQuery(deptId);
-  const count = (data as any)?.employees?.length ?? 0;
+  const count = data?.employees?.length ?? 0;
   return (
     <button
       onClick={onClick}
@@ -36,11 +97,26 @@ function WorkerCountCell({ deptId, onClick }: { deptId: string; onClick: () => v
   );
 }
 
+function UserCountCell({ deptId, onClick }: { deptId: string; onClick: () => void }) {
+  const { data, isLoading } = useGetDepartmentByIdQuery(deptId);
+  const count = data?.users?.length ?? 0;
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+    >
+      <HiOutlineUsers className="h-3.5 w-3.5" />
+      {isLoading ? <HiOutlineRefresh className="h-3 w-3 animate-spin" /> : `${count} user${count !== 1 ? "s" : ""}`}
+    </button>
+  );
+}
+
 // ─── Workers Drawer ───────────────────────────────────────────────────────────
 
 function WorkersDrawer({ dept, onClose }: { dept: Department; onClose: () => void }) {
   const { data, isLoading } = useGetDepartmentByIdQuery(dept.id);
-  const workers: any[] = (data as any)?.employees ?? [];
+  const workers = data?.employees ?? [];
+  const users = data?.users ?? [];
 
   return (
     <>
@@ -49,48 +125,85 @@ function WorkersDrawer({ dept, onClose }: { dept: Department; onClose: () => voi
         <div className="flex items-center justify-between px-6 py-4 border-b border-custom-200">
           <div>
             <h2 className="text-lg font-bold text-secondary-100">{dept.name}</h2>
-            <p className="text-xs text-custom-500 mt-0.5">{workers.length} worker{workers.length !== 1 ? "s" : ""} assigned</p>
+            <p className="text-xs text-custom-500 mt-0.5">{workers.length} employee{workers.length !== 1 ? "s" : ""} · {users.length} user{users.length !== 1 ? "s" : ""}</p>
           </div>
           <button onClick={onClose} className="text-custom-400 hover:text-custom-700 transition-colors">
             <HiOutlineX className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-custom-500">
               <HiOutlineRefresh className="h-5 w-5 animate-spin" />
-              <span className="text-sm">Loading workers…</span>
-            </div>
-          ) : workers.length === 0 ? (
-            <div className="text-center py-12">
-              <HiOutlineUsers className="h-10 w-10 text-custom-300 mx-auto mb-2" />
-              <p className="text-sm text-custom-500">No workers assigned to this department.</p>
+              <span className="text-sm">Loading…</span>
             </div>
           ) : (
-            <ul className="space-y-2">
-              {workers.map((w: any) => (
-                <li key={w.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary-600">{w.fullName?.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-secondary-100">{w.fullName}</p>
-                      <p className="text-xs text-custom-500">{w.phoneNumber}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      w.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                    }`}>
-                      {w.isActive ? "Active" : "Inactive"}
-                    </span>
-                    <span className="text-xs text-custom-400">{w.contractType?.replace("_", " ") ?? "—"}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              {/* Employees */}
+              <div>
+                <p className="text-xs font-bold text-custom-500 uppercase tracking-wider mb-3">Employees ({workers.length})</p>
+                {workers.length === 0 ? (
+                  <p className="text-sm text-custom-400 italic">No employees assigned.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {workers.map((w: any) => (
+                      <li key={w.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                            <span className="text-sm font-bold text-primary-600">{w.fullName?.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-secondary-100">{w.fullName}</p>
+                            <p className="text-xs text-custom-500">{w.phoneNumber}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            w.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {w.isActive ? "Active" : "Inactive"}
+                          </span>
+                          <span className="text-xs text-custom-400">{w.contractType?.replace("_", " ") ?? "—"}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Users */}
+              <div>
+                <p className="text-xs font-bold text-custom-500 uppercase tracking-wider mb-3">Users ({users.length})</p>
+                {users.length === 0 ? (
+                  <p className="text-sm text-custom-400 italic">No users assigned.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {users.map((u: any) => (
+                      <li key={u.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                            <span className="text-sm font-bold text-blue-600">{u.name?.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-secondary-100">{u.name}</p>
+                            <p className="text-xs text-custom-500">{u.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            u.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {u.isActive ? "Active" : "Inactive"}
+                          </span>
+                          <span className="text-xs text-custom-400">{u.role}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -304,6 +417,7 @@ export default function AdminDepartmentsPage() {
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [deleteDept, setDeleteDept] = useState<Department | null>(null);
   const [workersDept, setWorkersDept] = useState<Department | null>(null);
+  const [jobsDept, setJobsDept] = useState<Department | null>(null);
 
   const { data: departments = [], isLoading, isFetching } = useGetDepartmentsQuery();
   const { data: jobsData } = useGetJobsQuery({ limit: 500 });
@@ -384,7 +498,7 @@ export default function AdminDepartmentsPage() {
               <table className="w-full">
                 <thead className="bg-custom-50 border-b border-custom-200">
                   <tr>
-                    {["Name", "Description", "Workers", "Active Jobs", "Actions"].map((h) => (
+                    {["Name", "Description", "Workers", "Users", "Active Jobs", "Actions"].map((h) => (
                       <th
                         key={h}
                         className={`px-6 py-3 text-xs font-bold text-secondary-100 uppercase tracking-wider ${h === "Actions" ? "text-right" : "text-left"}`}
@@ -411,11 +525,18 @@ export default function AdminDepartmentsPage() {
                           <WorkerCountCell deptId={dept.id} onClick={() => setWorkersDept(dept)} />
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                            active > 0 ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500"
-                          }`}>
+                          <UserCountCell deptId={dept.id} onClick={() => setWorkersDept(dept)} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => setJobsDept(dept)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
+                              active > 0 ? "bg-primary-100 text-primary-700 hover:bg-primary-200" : "bg-gray-100 text-gray-500 cursor-default"
+                            }`}
+                          >
+                            <HiOutlineBriefcase className="h-3.5 w-3.5" />
                             {active} job{active !== 1 ? "s" : ""}
-                          </span>
+                          </button>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <RowActions
@@ -435,6 +556,13 @@ export default function AdminDepartmentsPage() {
       </div>
 
       {/* Modals */}
+      {jobsDept && (
+        <JobsDrawer
+          dept={jobsDept}
+          jobs={allJobs.filter((j) => j.departmentAssignedToId === jobsDept.id)}
+          onClose={() => setJobsDept(null)}
+        />
+      )}
       {workersDept && (
         <WorkersDrawer dept={workersDept} onClose={() => setWorkersDept(null)} />
       )}

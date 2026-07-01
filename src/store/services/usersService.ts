@@ -131,8 +131,7 @@ export const usersApi = createApi({
         body,
       }),
       transformResponse: (res: ApiResponse<User>) => res.data,
-      // After creating, invalidate the list so it refetches automatically
-      invalidatesTags: [{ type: "User", id: "LIST" }],
+      invalidatesTags: ["User"],
     }),
 
     // PUT /users/:id

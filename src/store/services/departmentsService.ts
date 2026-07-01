@@ -3,15 +3,33 @@ import type { RootState } from "../index";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface DepartmentEmployee {
+  id: string;
+  fullName: string;
+  phoneNumber: string;
+  contractType?: string;
+  isActive: boolean;
+}
+
+export interface DepartmentUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: string;
+  isActive: boolean;
+}
+
 export interface Department {
   id: string;
   name: string;
   description?: string;
-  // capacity/worker stats — may be returned by the backend or computed from jobs
   capacity?: number;
   activeJobs?: number;
   workers?: number;
   avgDuration?: string;
+  employees?: DepartmentEmployee[];
+  users?: DepartmentUser[];
 }
 
 export interface DepartmentJob {
@@ -87,7 +105,7 @@ export const departmentsApi = createApi({
     createDepartment: builder.mutation<Department, CreateDepartmentPayload>({
       query: (body) => ({ url: "/departments", method: "POST", body }),
       transformResponse: (res: ApiResponse<Department>) => res.data,
-      invalidatesTags: [{ type: "Department", id: "LIST" }],
+      invalidatesTags: ["Department"],
     }),
 
     // PUT /departments/:id
