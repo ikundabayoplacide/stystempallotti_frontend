@@ -18,6 +18,7 @@ export interface CasualWorker {
 export interface CasualWorkersResponse {
   data: CasualWorker[];
   total: number;
+  totalPages: number;
 }
 
 export interface CasualWorkerPayload {
@@ -47,7 +48,8 @@ export const casualWorkersApi = createApi({
       query: (params) => ({ url: "/casual-workers", params }),
       transformResponse: (res: any) => ({
         data: Array.isArray(res?.data) ? res.data : [],
-        total: res?.total ?? 0,
+        total: res?.pagination?.total ?? 0,
+        totalPages: res?.pagination?.totalPages ?? 1,
       }),
       providesTags: ["CasualWorker"],
     }),

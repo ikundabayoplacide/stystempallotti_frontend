@@ -94,12 +94,17 @@ import Operations from "../pages/finance/Operations";
 import MyLeavePage from "../pages/shared/MyLeavePage";
 import HRLeaveManagementPage from "../pages/HR/LeaveManagementPage";
 import { AdminLeaveManagementPage } from "../pages/admin";
-import Outstands from "../pages/receptionalist/Outstands";
 import Abanyabiraka from "../pages/HR/abanyabiraka";
 import PayrollPage from "../pages/HR/PayrollPage";
 import GeneralStockPageOnPm from "../pages/production-manager/GeneralStockPage";
 import PMBindingStockPage from "../pages/production-manager/BindingStockPage";
 import JobPage from "../pages/Hobe/Job";
+import CashierDashboard from "../pages/cashier/CashierDashboard";
+import CashierPage from "../pages/cashier/CashierPage";
+import CashierPaymentsPage from "../pages/cashier/CashierPaymentsPage";
+import CashierExpensesPage from "../pages/cashier/CashierExpensesPage";
+import CashierCasualWorkersPage from "../pages/cashier/CashierCasualWorkersPage";
+import CashierReportsPage from "../pages/cashier/CashierReportsPage";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -143,7 +148,6 @@ export default function AppRoutes() {
       <Route path="/reception/profile" element={<ProtectedRoute allowedRoles={["receptionist"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
       <Route path="/reception/reports/my" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyReportsPage /></ProtectedRoute>} />
-      <Route path="/reception/expenses" element={<ProtectedRoute allowedRoles={["receptionist"]}><Outstands /></ProtectedRoute>} />
       <Route path="/reception/boutique-stock" element={<ProtectedRoute allowedRoles={["receptionist"]}><BoutiqueStockRequestsPage /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}
@@ -256,7 +260,16 @@ export default function AppRoutes() {
       <Route path="/hobe/notifications" element={<ProtectedRoute allowedRoles={["hobe"]}><NotificationsPage userRole="hobe" userName="Hobe" /></ProtectedRoute>} />
       <Route path="/hobe/profile" element={<ProtectedRoute allowedRoles={["hobe"]}><ProfilePage /></ProtectedRoute>} />
 
-      {/* routes for HR */}
+      {/* routes for Cashier */}
+      <Route path="/cashier" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierDashboard /></ProtectedRoute>} />
+      <Route path="/cashier/payments" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPaymentsPage /></ProtectedRoute>} />
+      <Route path="/cashier/expenses" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierExpensesPage /></ProtectedRoute>} />
+      <Route path="/cashier/casual-workers" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierCasualWorkersPage /></ProtectedRoute>} />
+      <Route path="/cashier/cashier" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPage /></ProtectedRoute>} />
+      <Route path="/cashier/notifications" element={<ProtectedRoute allowedRoles={["cashier"]}><NotificationsPage userRole="cashier" userName="Cashier" /></ProtectedRoute>} />
+      <Route path="/cashier/profile" element={<ProtectedRoute allowedRoles={["cashier"]}><ProfilePage /></ProtectedRoute>} />
+      <Route path="/cashier/guide" element={<ProtectedRoute allowedRoles={["cashier"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/cashier/reports" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierReportsPage /></ProtectedRoute>} />
       <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={["hr"]}><EmployeesPage /></ProtectedRoute>} />
       <Route path="/hr/leave" element={<ProtectedRoute allowedRoles={["hr", "daf"]}><HRLeaveManagementPage /></ProtectedRoute>} />

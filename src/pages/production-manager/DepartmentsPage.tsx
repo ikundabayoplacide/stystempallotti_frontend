@@ -19,7 +19,8 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
   const { data: deptDetail, isLoading: loadingDetail } = useGetDepartmentByIdQuery(dept.id);
   const { data: jobs = [], isLoading: loadingJobs } = useGetDepartmentJobsQuery(dept.id);
   const workers = (deptDetail as any)?.employees ?? [];
-  const [tab, setTab] = useState<"workers" | "jobs">("workers");
+  const users = (deptDetail as any)?.users ?? [];
+  const [tab, setTab] = useState<"workers" | "jobs" | "users">("workers");
 
   return (
     <>
@@ -43,7 +44,7 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 px-6 py-4 border-b border-custom-300">
+        <div className="grid grid-cols-3 gap-3 px-6 py-4 border-b border-custom-300">
           <div className="bg-blue-50 rounded-xl px-4 py-3">
             <p className="text-xs text-custom-700">Active Jobs</p>
             <p className="text-xl font-bold text-blue-600">{loadingJobs ? "…" : jobs.length}</p>
@@ -52,11 +53,15 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
             <p className="text-xs text-custom-700">Workers</p>
             <p className="text-xl font-bold text-green-600">{loadingDetail ? "…" : workers.length}</p>
           </div>
+          <div className="bg-blue-50 rounded-xl px-4 py-3">
+            <p className="text-xs text-custom-700">Users</p>
+            <p className="text-xl font-bold text-blue-600">{loadingDetail ? "…" : users.length}</p>
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="flex border-b border-custom-200 px-6">
-          {(["workers", "jobs"] as const).map((t) => (
+          {(["workers", "users", "jobs"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -66,7 +71,7 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
                   : "border-transparent text-custom-500 hover:text-secondary-100"
               }`}
             >
-              {t === "workers" ? `Workers (${workers.length})` : `Jobs (${jobs.length})`}
+              {t === "workers" ? `Workers (${workers.length})` : t === "users" ? `Users (${users.length})` : `Jobs (${jobs.length})`}
             </button>
           ))}
         </div>
@@ -106,6 +111,45 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
                         {w.isActive ? "Active" : "Inactive"}
                       </span>
                       <span className="text-xs text-custom-400">{w.contractType?.replace("_", " ") ?? "—"}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {/* Users tab */}
+          {tab === "users" && (
+            loadingDetail ? (
+              <div className="flex items-center gap-2 text-custom-700 py-8 justify-center">
+                <HiOutlineRefresh className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Loading users…</span>
+              </div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-12">
+                <HiOutlineUsers className="w-10 h-10 text-custom-300 mx-auto mb-2" />
+                <p className="text-sm text-custom-700">No users assigned to this department.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {users.map((u: { id: string; name: string; email: string; isActive: boolean; role?: string }) => (
+                  <li key={u.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-blue-600">{u.name?.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-secondary-100">{u.name}</p>
+                        <p className="text-xs text-custom-500">{u.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        u.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {u.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <span className="text-xs text-custom-400">{u.role ?? "—"}</span>
                     </div>
                   </li>
                 ))}
@@ -162,6 +206,16 @@ function WorkerCountCell({ deptId }: { deptId: string }) {
   const count = (data as any)?.employees?.length ?? 0;
   return (
     <span className="text-sm font-semibold text-green-600">
+      {isLoading ? <HiOutlineRefresh className="w-3.5 h-3.5 animate-spin inline" /> : count}
+    </span>
+  );
+}
+
+function UserCountCell({ deptId }: { deptId: string }) {
+  const { data, isLoading } = useGetDepartmentByIdQuery(deptId);
+  const count = (data as any)?.users?.length ?? 0;
+  return (
+    <span className="text-sm font-semibold text-blue-600">
       {isLoading ? <HiOutlineRefresh className="w-3.5 h-3.5 animate-spin inline" /> : count}
     </span>
   );
@@ -257,7 +311,7 @@ export default function DepartmentsPage() {
             <table className="w-full">
               <thead className="bg-custom-100 border-b border-custom-300">
                 <tr>
-                  {["Department", "Description", "Active Jobs", "Workers", "Actions"].map((h) => (
+                  {["Department", "Description", "Active Jobs", "Workers", "Users", "Actions"].map((h) => (
                     <th
                       key={h}
                       className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}
@@ -270,7 +324,7 @@ export default function DepartmentsPage() {
               <tbody className="bg-white divide-y divide-custom-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center">
+                    <td colSpan={6} className="px-4 py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-custom-700">
                         <HiOutlineRefresh className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Loading departments…</span>
@@ -279,7 +333,7 @@ export default function DepartmentsPage() {
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-12 text-center text-custom-700 text-sm">
+                    <td colSpan={6} className="px-4 py-12 text-center text-custom-700 text-sm">
                       No departments found.
                     </td>
                   </tr>
@@ -302,6 +356,9 @@ export default function DepartmentsPage() {
                       </td>
                       <td className="px-4 py-4">
                         <WorkerCountCell deptId={dept.id} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <UserCountCell deptId={dept.id} />
                       </td>
                       <td className="px-4 py-4 text-right">
                         <button

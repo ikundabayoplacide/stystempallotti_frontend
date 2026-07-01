@@ -34,7 +34,8 @@ export type UserRole =
   | "SUPERVISOR"
   | "WORKER"
   | "HR"
-  | "HOBE";
+  | "HOBE"
+  | "CASHIER";
 
 // ─── API Service ──────────────────────────────────────────────────────────────
 

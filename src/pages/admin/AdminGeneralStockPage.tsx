@@ -64,6 +64,7 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     unit:         item?.unit         ?? "",
     currentStock: item?.currentStock?.toString() ?? "",
     alarmStock:   item?.alarmStock?.toString()   ?? "",
+    amountPerUnit: item?.amountPerUnit?.toString() ?? "",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -75,7 +76,7 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
       toast.error("Item name, category, and unit are required"); return;
     }
     try {
-      const payload = { ...form, currentStock: Number(form.currentStock) || 0, alarmStock: Number(form.alarmStock) || 0 };
+      const payload = { ...form, currentStock: Number(form.currentStock) || 0, alarmStock: Number(form.alarmStock) || 0, amountPerUnit: form.amountPerUnit !== "" ? Number(form.amountPerUnit) : undefined };
       if (isEdit) {
         await updateItem({ id: item!.id, ...payload }).unwrap();
         toast.success("Item updated");
@@ -113,6 +114,10 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
             <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock Level</label>
               <input type="text" value={form.alarmStock} onChange={set("alarmStock")} placeholder="e.g. 10" className={cls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit Cost (RWF)</label>
+              <input type="number" min={0} step="0.01" value={form.amountPerUnit} onChange={set("amountPerUnit")} placeholder="e.g. 500" className={cls} />
             </div>
             {!isEdit && (
               <div>
@@ -251,16 +256,16 @@ function ItemsTab() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Item Name", "Category", "Unit", "Stock", "Alarm", "Status", "Actions"].map((h) => (
+                {["Item Name", "Category", "Unit", "Stock", "Unit Cost", "Total Value", "Alarm", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center">
+                <tr><td colSpan={9} className="px-4 py-10 text-center">
                   <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
                   <p className="text-sm text-secondary-100 font-semibold">No general stock items</p>
                   <p className="text-xs text-custom-700 mt-1">Add the first item using the button above</p>
@@ -274,6 +279,12 @@ function ItemsTab() {
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.category}</td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.unit}</td>
                   <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">{item.currentStock}</td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">
+                    {item.amountPerUnit != null ? `${Number(item.amountPerUnit).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">
+                    {item.amountPerUnit != null ? `${(Number(item.amountPerUnit) * item.currentStock).toLocaleString()} RWF` : <span className="text-custom-400">—</span>}
+                  </td>
                   <td className="px-3 py-2.5 text-sm text-custom-700">{item.alarmStock}</td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>

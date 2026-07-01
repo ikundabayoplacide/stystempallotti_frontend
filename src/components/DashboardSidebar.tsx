@@ -76,7 +76,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
     { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
     { label: "Boutique Stock", path: "/reception/boutique-stock", icon: HiOutlineArchive },
-    { label: "Expenses", path: "/reception/expenses", icon: HiOutlineCalendar },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
@@ -199,6 +198,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       ]
     },
   ],
+  cashier: [
+    { label: "Dashboard",      path: "/cashier",                icon: HiOutlineHome },
+    { label: "Payments",       path: "/cashier/payments",       icon: HiOutlineCurrencyDollar },
+    { label: "Expenses",       path: "/cashier/expenses",       icon: HiOutlineDocumentText },
+    { label: "Casual Workers", path: "/cashier/casual-workers", icon: HiOutlineUsers },
+    { label: "Reports",        path: "/cashier/reports",        icon: HiOutlineChartBar },
+  ],
   worker: [
     { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
     { label: "Task Board", path: "/worker/tasks", icon: HiOutlineClipboardList, permissionKey: "tasks.view" },
@@ -308,6 +314,7 @@ export default function DashboardSidebar({
 
   const notifPath: Record<UserRole, string> = {
     admin: "/admin/notifications",
+    cashier: "/cashier/notifications",
     receptionist: "/reception/notifications",
     sales: "/sales/notifications",
     hr: "/hr/notifications",
@@ -322,6 +329,7 @@ export default function DashboardSidebar({
 
   const guidePath: Record<UserRole, string> = {
     admin: "/admin/guide",
+    cashier: "/cashier/guide",
     receptionist: "/reception/guide",
     sales: "/sales/guide",
     hr: "/hr/guide",
@@ -336,6 +344,7 @@ export default function DashboardSidebar({
 
   const settingsPath: Record<UserRole, string> = {
     admin: "/admin/settings",
+    cashier: "/cashier/profile",
     receptionist: "/reception/profile",
     sales: "/sales/profile",
     hr: "/hr/profile",

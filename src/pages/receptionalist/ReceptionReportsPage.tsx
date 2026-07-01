@@ -8,7 +8,6 @@ import {
   HiOutlineRefresh,
   HiOutlineTruck,
   HiOutlineUsers,
-  HiOutlineArrowNarrowDown,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -18,7 +17,6 @@ import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetSalesQuery } from "../../store/services/boutiqueService";
-import { useGetOutstandsQuery, type OutstandStatus } from "../../store/services/outstandsService";
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
 import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
@@ -29,21 +27,29 @@ type Period = "day" | "week" | "month" | "year";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function pad(n: number) { return String(n).padStart(2, "0"); }
+
+function localDateStr(y: number, m: number, d: number) {
+  return `${y}-${pad(m + 1)}-${pad(d)}`;
+}
+
 function getDateRange(period: Period): { from: string; to: string } {
   const now = new Date();
-  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-  let from: Date;
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const d = now.getDate();
+
+  let toStr   = localDateStr(y, m, d) + "T23:59:59.000Z";
+  let fromStr: string;
+
   switch (period) {
-    case "day":   from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-    case "week":  from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
-    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case "year":  from = new Date(now.getFullYear(), 0, 1); break;
+    case "day":   fromStr = localDateStr(y, m, d); break;
+    case "week":  { const w = new Date(y, m, d - 6); fromStr = localDateStr(w.getFullYear(), w.getMonth(), w.getDate()); break; }
+    case "month": fromStr = localDateStr(y, m, 1); toStr = localDateStr(y, m + 1, 0) + "T23:59:59.000Z"; break;
+    case "year":  fromStr = localDateStr(y, 0, 1); break;
   }
-  // Use date-only strings so the value is stable across renders
-  return {
-    from: from.toISOString().split("T")[0],
-    to:   to.split("T")[0] + "T23:59:59.000Z",
-  };
+
+  return { from: fromStr + "T00:00:00.000Z", to: toStr };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -333,7 +339,6 @@ function Section({ icon: Icon, title, color, children }: {
 const PAGE_SIZE = 5;
 
 function BoutiqueSalesReport() {
-  const { userId } = useAuth();
   const [period, setPeriod] = useState<Period>("month");
   const [page, setPage]     = useState(1);
   const [customFrom, setCustomFrom] = useState("");
@@ -348,9 +353,22 @@ function BoutiqueSalesReport() {
     from: range.from,
     to: range.to,
     limit: 200,
-    ...(userId ? { soldById: userId } : {}),
   });
   const sales = data?.sales ?? [];
+
+  // DEBUG LOGS
+  console.log(`[BoutiqueSales] period=${period} | from=${range.from} | to=${range.to}`);
+  console.log(`[BoutiqueSales] raw API response:`, data);
+  console.log(`[BoutiqueSales] total sales returned: ${sales.length}`);
+  if (sales.length > 0) {
+    console.log(`[BoutiqueSales] first sale createdAt: ${sales[0].createdAt}`);
+    console.log(`[BoutiqueSales] last  sale createdAt: ${sales[sales.length - 1].createdAt}`);
+  }
+  if (period === "month") {
+    console.log(`[BoutiqueSales][MONTH] range sent to API → from: ${range.from}  to: ${range.to}`);
+    console.log(`[BoutiqueSales][MONTH] sales count: ${sales.length}`);
+    console.log(`[BoutiqueSales][MONTH] all sale dates:`, sales.map(s => s.createdAt));
+  }
 
   const totalPages = Math.max(1, Math.ceil(sales.length / PAGE_SIZE));
   const paginated  = sales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -1021,210 +1039,15 @@ function DeliveriesReport() {
   );
 }
 
-// ─── Cash Outflows Report ─────────────────────────────────────────────────────
-
-const outstandStatusConfig: Record<OutstandStatus, { label: string; color: string }> = {
-  pending:  { label: "Pending",  color: "bg-yellow-100 text-yellow-700" },
-  approved: { label: "Approved", color: "bg-blue-100 text-blue-700" },
-  paid:     { label: "Paid",     color: "bg-emerald-100 text-emerald-700" },
-  rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
-};
-
-function CashOutflowsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
-  const [page, setPage]             = useState(1);
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo]     = useState("");
-  const [useCustom, setUseCustom]   = useState(false);
-
-  const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
-    : getDateRange(period);
-
-  const { data, isLoading, refetch } = useGetOutstandsQuery({
-    from: range.from,
-    to: range.to,
-    limit: 500,
-  });
-  const outstands = data?.outstands ?? [];
-
-  const totalPages = Math.max(1, Math.ceil(outstands.length / PAGE_SIZE));
-  const paginated  = outstands.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const totalAmount   = outstands.reduce((s, r) => s + Number(r.totalAmount), 0);
-  const pendingAmt    = outstands.filter(r => r.status === "pending").reduce((s, r) => s + Number(r.totalAmount), 0);
-  const approvedAmt   = outstands.filter(r => r.status === "approved").reduce((s, r) => s + Number(r.totalAmount), 0);
-  const paidAmt       = outstands.filter(r => r.status === "paid").reduce((s, r) => s + Number(r.totalAmount), 0);
-
-  const byCategory: Record<string, number> = {};
-  outstands.forEach(r => { byCategory[r.category] = (byCategory[r.category] ?? 0) + Number(r.totalAmount); });
-
-  const getExportData = () => ({
-    headers: ["Ref", "Description", "Category", "Qty", "Unit Cost", "Total", "Recipient", "Role", "Purpose", "Status", "Date"],
-    rows: outstands.map(r => [
-      r.ref,
-      r.description,
-      r.category,
-      String(r.quantity),
-      Number(r.unitCost).toLocaleString(),
-      Number(r.totalAmount).toLocaleString(),
-      r.recipientName,
-      r.recipientRole,
-      r.purpose,
-      r.status,
-      new Date(r.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
-    ]),
-    summary: [
-      { label: "Total Records",   value: String(outstands.length) },
-      { label: "Pending",         value: `${pendingAmt.toLocaleString()} RWF` },
-      { label: "Approved",        value: `${approvedAmt.toLocaleString()} RWF` },
-      { label: "Paid Out",        value: `${paidAmt.toLocaleString()} RWF` },
-      { label: "TOTAL RECORDED",  value: `${totalAmount.toLocaleString()} RWF`, bold: true },
-    ] as SummaryRow[],
-  });
-
-  return (
-    <Section icon={HiOutlineArrowNarrowDown} title="Cash Outflows" color="bg-red-100 text-red-600">
-      <div className="flex flex-wrap items-center gap-3">
-        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
-        <div className="flex items-center gap-2 ml-auto">
-          <input type="date" value={customFrom}
-            onChange={e => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
-            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
-          />
-          <span className="text-xs text-custom-700">to</span>
-          <input type="date" value={customTo} min={customFrom}
-            onChange={e => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }}
-            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
-          />
-          {useCustom && (
-            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }}
-              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors">Clear</button>
-          )}
-          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-          <PdfButtons title="Cash Outflows Report" getExportData={getExportData} />
-        </div>
-      </div>
-
-      <div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <StatCard label="Total Records"  value={outstands.length} />
-          <StatCard label="Pending"        value={`${pendingAmt.toLocaleString()} RWF`}  color="text-yellow-600" />
-          <StatCard label="Approved"       value={`${approvedAmt.toLocaleString()} RWF`} color="text-blue-600" />
-          <StatCard label="Paid Out"       value={`${paidAmt.toLocaleString()} RWF`}     color="text-emerald-600" />
-        </div>
-
-        {Object.keys(byCategory).length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {Object.entries(byCategory).map(([cat, amt]) => (
-              <div key={cat} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-custom-100 text-secondary-100">
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}: {amt.toLocaleString()} RWF
-              </div>
-            ))}
-          </div>
-        )}
-
-        <Card className="!p-0 overflow-hidden mt-2">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-custom-100 border-b border-custom-300">
-                <tr>
-                  {["Ref", "Description", "Category", "Total", "Recipient", "Purpose", "Status", "Date"].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-custom-200">
-                {isLoading ? (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
-                ) : outstands.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No outflows in this period</td></tr>
-                ) : paginated.map(r => {
-                  const st = outstandStatusConfig[r.status];
-                  return (
-                    <tr key={r.id} className="hover:bg-custom-50 transition-colors">
-                      <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">{r.ref}</td>
-                      <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100 max-w-[140px] truncate">{r.description}</td>
-                      <td className="px-3 py-2.5">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-custom-100 text-secondary-100">
-                          {r.category.charAt(0).toUpperCase() + r.category.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-sm font-bold text-red-600 whitespace-nowrap">{Number(r.totalAmount).toLocaleString()} RWF</td>
-                      <td className="px-3 py-2.5">
-                        <p className="text-sm text-secondary-100">{r.recipientName}</p>
-                        <p className="text-xs text-custom-700">{r.recipientRole}</p>
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-custom-700 max-w-[160px] truncate">{r.purpose}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-custom-700 whitespace-nowrap">
-                        {new Date(r.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {outstands.length > 0 && (
-          <div className="flex justify-end mt-1">
-            <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
-              <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
-              {[
-                { label: "Total Recorded", value: `${totalAmount.toLocaleString()} RWF`,   cls: "text-secondary-100" },
-                { label: "Pending",        value: `${pendingAmt.toLocaleString()} RWF`,    cls: "text-yellow-600" },
-                { label: "Approved",       value: `${approvedAmt.toLocaleString()} RWF`,   cls: "text-blue-600" },
-                { label: "Paid Out",       value: `${paidAmt.toLocaleString()} RWF`,       cls: "text-emerald-600" },
-              ].map(({ label, value, cls }) => (
-                <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
-                  <span className="text-custom-700 text-xs">{label}</span>
-                  <span className={`font-bold text-xs ${cls}`}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {outstands.length > PAGE_SIZE && (
-          <div className="flex items-center justify-between mt-1">
-            <p className="text-xs text-custom-700">
-              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, outstands.length)} of {outstands.length}
-            </p>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                <button key={n} onClick={() => setPage(n)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-                    n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
-                  }`}>{n}</button>
-              ))}
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </Section>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "sales" | "visitors" | "payments" | "deliveries" | "outflows";
+type Tab = "sales" | "visitors" | "payments" | "deliveries";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
   { value: "sales",      label: "Boutique Sales",  icon: HiOutlineCube },
   { value: "visitors",   label: "Visitors",         icon: HiOutlineUsers },
   { value: "payments",   label: "Payments",         icon: HiOutlineCash },
   { value: "deliveries", label: "Deliveries",       icon: HiOutlineTruck },
-  { value: "outflows",   label: "Cash Outflows",    icon: HiOutlineArrowNarrowDown },
 ];
 
 export default function ReceptionReportsPage() {
@@ -1270,7 +1093,6 @@ export default function ReceptionReportsPage() {
         {activeTab === "visitors"   && <VisitorReport />}
         {activeTab === "payments"   && <PaymentsReport />}
         {activeTab === "deliveries" && <DeliveriesReport />}
-        {activeTab === "outflows"   && <CashOutflowsReport />}
 
       </div>
     </DashboardLayout>

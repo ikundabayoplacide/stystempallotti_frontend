@@ -33,6 +33,7 @@ const notificationPaths: Record<UserRole, string> = {
   stock: "/stock/notifications",
   supervisor: "/supervisor/notifications",
   worker: "/worker/notifications",
+  cashier: "/cashier/notifications",
 };
 
 const profilePaths: Record<UserRole, string> = {
@@ -47,6 +48,7 @@ const profilePaths: Record<UserRole, string> = {
   stock: "/stock/profile",
   supervisor: "/supervisor/profile",
   worker: "/worker/profile",
+  cashier: "/cashier/profile",
 };
 
 export default function DashboardLayout({
