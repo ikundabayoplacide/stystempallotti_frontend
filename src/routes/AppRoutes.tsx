@@ -269,7 +269,9 @@ export default function AppRoutes() {
       <Route path="/cashier/notifications" element={<ProtectedRoute allowedRoles={["cashier"]}><NotificationsPage userRole="cashier" userName="Cashier" /></ProtectedRoute>} />
       <Route path="/cashier/profile" element={<ProtectedRoute allowedRoles={["cashier"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/cashier/guide" element={<ProtectedRoute allowedRoles={["cashier"]}><UserGuidesPage /></ProtectedRoute>} />
+      <Route path="/cashier/leave" element={<ProtectedRoute allowedRoles={["cashier"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/cashier/reports" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierReportsPage /></ProtectedRoute>} />
+      <Route path="/cashier/reports/my" element={<ProtectedRoute allowedRoles={["cashier"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={["hr"]}><EmployeesPage /></ProtectedRoute>} />
       <Route path="/hr/leave" element={<ProtectedRoute allowedRoles={["hr", "daf"]}><HRLeaveManagementPage /></ProtectedRoute>} />

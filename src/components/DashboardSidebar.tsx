@@ -203,7 +203,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Payments",       path: "/cashier/payments",       icon: HiOutlineCurrencyDollar },
     { label: "Expenses",       path: "/cashier/expenses",       icon: HiOutlineDocumentText },
     { label: "Casual Workers", path: "/cashier/casual-workers", icon: HiOutlineUsers },
-    { label: "Reports",        path: "/cashier/reports",        icon: HiOutlineChartBar },
+    { label: "My Leave",       path: "/cashier/leave",          icon: HiOutlineCalendar },
+    {
+      label: "Reports", path: "/cashier/reports", icon: HiOutlineChartBar, children: [
+        { label: "Generate Reports", path: "/cashier/reports",    icon: HiOutlineChartBar },
+        { label: "My Reports",       path: "/cashier/reports/my", icon: HiOutlineDocumentText },
+      ]
+    },
   ],
   worker: [
     { label: "My Jobs", path: "/worker", icon: HiOutlineHome },
