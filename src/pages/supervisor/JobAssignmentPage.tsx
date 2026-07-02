@@ -7,11 +7,13 @@ import {
   HiOutlineEye,
   HiOutlineExclamationCircle,
   HiOutlineFlag,
+  HiOutlinePlus,
   HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineUserAdd,
   HiOutlineX,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
@@ -21,6 +23,7 @@ import {
   useGetJobsQuery,
   useUpdateJobStateMutation,
 } from "../../store/services/jobsService";
+import { useCreateJobSpecMutation, useGetJobSpecsQuery } from "../../store/services/jobSpecsService";
 import { jobStatusConfig } from "../../types/JobStatus";
 import type { RootState } from "../../store";
 
@@ -75,6 +78,273 @@ const priorityColor: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
+const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+// ─── Job Detail Modal (tabbed) ────────────────────────────────────────────────────────────
+
+function JobDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
+  const [tab, setTab] = useState<"overview" | "specs">("overview");
+  const { data: specs = [], isLoading: loadingSpecs } = useGetJobSpecsQuery(job.id);
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-style-600 rounded-2xl border border-custom-300 shadow-xl w-full max-w-3xl my-8">
+
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-custom-200">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">{job.jobNumber}</h3>
+            <p className="text-sm text-custom-700 mt-0.5">{job.title}</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100 mt-0.5">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 px-6 pt-3">
+          {(["overview", "specs"] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold capitalize transition-colors ${
+                tab === t ? "bg-primary-500 text-white" : "text-custom-700 hover:text-secondary-100 hover:bg-custom-100"
+              }`}>
+              {t === "specs" ? `Specs (${specs.length})` : "Overview"}
+            </button>
+          ))}
+        </div>
+
+        <div className="px-6 py-5">
+          {/* ── Overview Tab ── */}
+          {tab === "overview" && (
+            <div className="space-y-4 text-sm">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-0.5">Client</p>
+                  <p className="font-semibold text-secondary-100">{job.customer?.name ?? "—"}</p>
+                  {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
+                </div>
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-1">Status</p>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${jobStatusConfig[job.status]?.bgColor} ${jobStatusConfig[job.status]?.color}`}>
+                    {jobStatusConfig[job.status]?.label ?? job.status}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-0.5">Priority</p>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                    {job.priority}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-1">Dept State</p>
+                  <StateBadge state={job.state ?? null} />
+                </div>
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-1">Progress</p>
+                  <ProgressBadge progress={job.progress ?? null} />
+                </div>
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-0.5">Due Date</p>
+                  <p className="font-semibold text-secondary-100">{job.dueDate ? job.dueDate.split("T")[0] : "—"}</p>
+                </div>
+              </div>
+
+              {(job.jobType || job.quantity || job.size || job.colorMode) && (
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {job.jobType   && <div><p className="text-xs text-custom-700">Type</p><p className="font-semibold text-secondary-100">{job.jobType}</p></div>}
+                  {job.quantity  && <div><p className="text-xs text-custom-700">Quantity</p><p className="font-semibold text-secondary-100">{job.quantity}</p></div>}
+                  {job.size      && <div><p className="text-xs text-custom-700">Size</p><p className="font-semibold text-secondary-100">{job.size}</p></div>}
+                  {job.colorMode && <div><p className="text-xs text-custom-700">Color Mode</p><p className="font-semibold text-secondary-100">{job.colorMode}</p></div>}
+                </div>
+              )}
+
+              {(job.startedAt || job.pausedAt || job.resumedAt || job.completedAt) && (
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 grid grid-cols-2 gap-2">
+                  <p className="col-span-2 text-xs font-semibold text-custom-700 mb-0.5">Timeline</p>
+                  {job.startedAt   && <p className="text-xs text-secondary-100">Started: <span className="font-semibold">{new Date(job.startedAt).toLocaleString()}</span></p>}
+                  {job.pausedAt    && <p className="text-xs text-secondary-100">Paused: <span className="font-semibold">{new Date(job.pausedAt).toLocaleString()}</span></p>}
+                  {job.resumedAt   && <p className="text-xs text-secondary-100">Resumed: <span className="font-semibold">{new Date(job.resumedAt).toLocaleString()}</span></p>}
+                  {job.completedAt && <p className="text-xs text-secondary-100">Completed: <span className="font-semibold">{new Date(job.completedAt).toLocaleString()}</span></p>}
+                </div>
+              )}
+
+              {job.description && (
+                <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                  <p className="text-xs text-custom-700 mb-1">Description</p>
+                  <p className="text-secondary-100 leading-snug">{job.description}</p>
+                </div>
+              )}
+              {job.notes && (
+                <div className="p-3 rounded-xl bg-yellow-50 border border-yellow-200">
+                  <p className="text-xs text-yellow-700 mb-1 font-semibold">Notes</p>
+                  <p className="text-secondary-100 leading-snug">{job.notes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Specs Tab ── */}
+          {tab === "specs" && (
+            <div>
+              {loadingSpecs ? (
+                <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-20 bg-custom-100 rounded-xl animate-pulse" />)}</div>
+              ) : specs.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-sm text-custom-700">No specs added yet for this job.</p>
+                  <p className="text-xs text-custom-500 mt-1">Use the ➕ button on the job row to add one.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {specs.map((spec, i) => (
+                    <div key={spec.id} className="rounded-xl border border-custom-200 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-custom-50 border-b border-custom-200">
+                        <span className="text-xs font-bold text-custom-500 uppercase tracking-wide">Spec #{i + 1}</span>
+                        <span className="text-xs text-custom-500">{new Date(spec.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        <p className="text-sm text-secondary-100">{spec.description}</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {([
+                            ["Paper Type",   spec.paperType],
+                            ["Paper Weight", spec.paperWeight],
+                            ["Size",         spec.size],
+                            ["Colors",       spec.colors],
+                            ["Finish Type",  spec.finishType],
+                            ["Materials",    spec.materials],
+                            ["Quantity",     spec.quantity ? String(spec.quantity) : undefined],
+                          ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
+                            <div key={label} className="px-3 py-2 rounded-lg bg-custom-50 border border-custom-100">
+                              <p className="text-[10px] text-custom-500 uppercase tracking-wide">{label}</p>
+                              <p className="text-sm font-semibold text-secondary-100">{value}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {spec.notes && (
+                          <p className="text-xs text-custom-700 italic border-t border-custom-100 pt-2">{spec.notes}</p>
+                        )}
+                        {spec.documents && spec.documents.length > 0 && (
+                          <div className="border-t border-custom-100 pt-2">
+                            <p className="text-xs font-semibold text-custom-700 mb-1.5">Attachments</p>
+                            <div className="flex flex-wrap gap-2">
+                              {spec.documents.map(doc => (
+                                <a key={doc.id} href={doc.fileUrl} download={doc.fileName}
+                                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 border border-primary-200 text-xs font-semibold text-primary-600 hover:bg-primary-100 transition-colors">
+                                  📎 {doc.fileName}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 pb-6">
+          <button onClick={onClose}
+            className="w-full px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 text-sm font-semibold text-custom-700 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddSpecModal({ jobId, jobNumber, onClose }: { jobId: string; jobNumber: string; onClose: () => void }) {
+  const [form, setForm] = useState({
+    description: "", paperType: "", paperWeight: "", size: "",
+    colors: "", finishType: "", quantity: "", materials: "", notes: "",
+  });
+  const [files, setFiles] = useState<File[]>([]);
+  const [createJobSpec, { isLoading }] = useCreateJobSpecMutation();
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createJobSpec({
+        jobId,
+        description: form.description,
+        ...(form.paperType   && { paperType: form.paperType }),
+        ...(form.paperWeight && { paperWeight: form.paperWeight }),
+        ...(form.size        && { size: form.size }),
+        ...(form.colors      && { colors: form.colors }),
+        ...(form.finishType  && { finishType: form.finishType }),
+        ...(form.quantity    && { quantity: Number(form.quantity) }),
+        ...(form.materials   && { materials: form.materials }),
+        ...(form.notes       && { notes: form.notes }),
+        ...(files.length     && { documents: files }),
+      }).unwrap();
+      toast.success("Spec added successfully");
+      onClose();
+    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to add spec"); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-style-600 rounded-2xl border border-custom-300 shadow-xl w-full max-w-2xl my-8 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-secondary-100">Add Job Spec</h3>
+            <p className="text-xs text-custom-700 mt-0.5">Job <span className="font-semibold text-primary-500">{jobNumber}</span></p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Description *</label>
+            <textarea value={form.description} onChange={set("description")} rows={2} required
+              placeholder="Describe the specification..."
+              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              ["paperType",   "Paper Type",   "e.g. Glossy, Matte"],
+              ["paperWeight", "Paper Weight", "e.g. 90gsm, 150gsm"],
+              ["size",        "Size",         "e.g. A4, A3, Custom"],
+              ["colors",      "Colors",       "e.g. CMYK, Black only"],
+              ["finishType",  "Finish Type",  "e.g. Lamination, UV"],
+              ["materials",   "Materials",    "e.g. Paper, Cardboard"],
+            ] as [string, string, string][]).map(([key, label, placeholder]) => (
+              <div key={key}>
+                <label className="block text-sm font-semibold text-secondary-100 mb-1">{label}</label>
+                <input value={(form as any)[key]} onChange={set(key)} placeholder={placeholder} className={inputCls} />
+              </div>
+            ))}
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Quantity</label>
+              <input type="number" min="1" value={form.quantity} onChange={set("quantity")} placeholder="e.g. 500" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Notes <span className="font-normal text-custom-700">(optional)</span></label>
+            <input value={form.notes} onChange={set("notes")} placeholder="Any additional notes..." className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Attachments <span className="font-normal text-custom-700">(optional)</span></label>
+            <input type="file" multiple onChange={e => setFiles(Array.from(e.target.files ?? []))}
+              className="w-full text-sm text-custom-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary-100 file:text-primary-700 hover:file:bg-primary-200 transition-colors" />
+            {files.length > 0 && <p className="text-xs text-custom-700 mt-1">{files.length} file(s) selected</p>}
+          </div>
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading} className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40">
+              {isLoading ? "Saving..." : "Add Spec"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ─── State Badge ─────────────────────────────────────────────────────────────
 
 function StateBadge({ state }: { state: JobState }) {
@@ -116,22 +386,30 @@ interface ActionsMenuProps {
   onView: (job: Job) => void;
   onAssign: (job: Job) => void;
   onMarkDone: (job: Job) => void;
+  onAddSpec: (job: Job) => void;
 }
 
-function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone }: ActionsMenuProps) {
+function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone, onAddSpec }: ActionsMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const canMarkDone = job.state != null && DONE_STATE_MAP[job.state as NonNullable<JobState>] !== undefined && job.progress === "completed";
 
   if (job.status === "delivered" || job.status === "completed") {
     return (
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-1">
         <button
           onClick={() => onView(job)}
           className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600"
           title="View details"
         >
           <HiOutlineEye className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onAddSpec(job)}
+          className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-blue-500"
+          title="Add Spec"
+        >
+          <HiOutlinePlus className="w-4 h-4" />
         </button>
       </div>
     );
@@ -155,6 +433,15 @@ function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone }: Act
         title="View details"
       >
         <HiOutlineEye className="w-4 h-4" />
+      </button>
+
+      {/* Add Spec */}
+      <button
+        onClick={() => onAddSpec(job)}
+        className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-blue-500"
+        title="Add Spec"
+      >
+        <HiOutlinePlus className="w-4 h-4" />
       </button>
 
       {/* ... dropdown */}
@@ -208,6 +495,9 @@ export default function SupervisorJobsPage() {
 
   const openDetailModal  = (job: Job) => { setDetailJob(job); setShowDetailModal(true); };
   const closeDetailModal = () => { setShowDetailModal(false); setDetailJob(null); };
+
+  // ── Add Spec modal state ──
+  const [specTarget, setSpecTarget] = useState<{ id: string; jobNumber: string } | null>(null);
 
   // ── Assign employee modal state ──
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -458,6 +748,7 @@ export default function SupervisorJobsPage() {
                             onView={openDetailModal}
                             onAssign={openAssignModal}
                             onMarkDone={openModal}
+                            onAddSpec={(j) => setSpecTarget({ id: j.id, jobNumber: j.jobNumber })}
                           />
                         </td>
                       </tr>
@@ -490,106 +781,7 @@ export default function SupervisorJobsPage() {
 
         {/* ── Job Detail Modal ── */}
         {showDetailModal && detailJob && (
-          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-            <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex items-start justify-between mb-5">
-                <div>
-                  <h3 className="text-xl font-bold text-secondary-100">Job Details</h3>
-                  <p className="text-sm text-custom-700 mt-0.5">{detailJob.jobNumber} — {detailJob.title}</p>
-                </div>
-                <button onClick={closeDetailModal} className="text-custom-700 hover:text-secondary-100">
-                  <HiOutlineX className="w-6 h-6" />
-                </button>
-              </div>
-
-              <div className="space-y-4 text-sm">
-                {/* Client & Priority */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-0.5">Client</p>
-                    <p className="font-semibold text-secondary-100">{detailJob.customer?.name ?? "—"}</p>
-                    {detailJob.customer?.phone && <p className="text-xs text-custom-700">{detailJob.customer.phone}</p>}
-                  </div>
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-0.5">Priority</p>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${priorityColor[detailJob.priority] ?? "bg-gray-100 text-gray-700"}`}>
-                      {detailJob.priority}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Status & State */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-1">Status</p>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${jobStatusConfig[detailJob.status]?.bgColor} ${jobStatusConfig[detailJob.status]?.color}`}>
-                      {jobStatusConfig[detailJob.status]?.label ?? detailJob.status}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-1">Dept State</p>
-                    <StateBadge state={detailJob.state ?? null} />
-                  </div>
-                </div>
-
-                {/* Progress */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-1">Worker Progress</p>
-                    <ProgressBadge progress={detailJob.progress ?? null} />
-                  </div>
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-0.5">Due Date</p>
-                    <p className="font-semibold text-secondary-100">{detailJob.dueDate ? detailJob.dueDate.split("T")[0] : "—"}</p>
-                  </div>
-                </div>
-
-                {/* Timestamps */}
-                {(detailJob.startedAt || detailJob.pausedAt || detailJob.resumedAt || detailJob.completedAt) && (
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 space-y-1.5">
-                    <p className="text-xs font-semibold text-custom-700 mb-1">Timeline</p>
-                    {detailJob.startedAt   && <p className="text-xs text-secondary-100">Started: <span className="font-semibold">{new Date(detailJob.startedAt).toLocaleString()}</span></p>}
-                    {detailJob.pausedAt    && <p className="text-xs text-secondary-100">Paused: <span className="font-semibold">{new Date(detailJob.pausedAt).toLocaleString()}</span></p>}
-                    {detailJob.resumedAt   && <p className="text-xs text-secondary-100">Resumed: <span className="font-semibold">{new Date(detailJob.resumedAt).toLocaleString()}</span></p>}
-                    {detailJob.completedAt && <p className="text-xs text-secondary-100">Completed: <span className="font-semibold">{new Date(detailJob.completedAt).toLocaleString()}</span></p>}
-                  </div>
-                )}
-
-                {/* Job info */}
-                {(detailJob.jobType || detailJob.quantity || detailJob.size || detailJob.colorMode) && (
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200 grid grid-cols-2 gap-2">
-                    {detailJob.jobType   && <div><p className="text-xs text-custom-700">Type</p><p className="font-semibold text-secondary-100">{detailJob.jobType}</p></div>}
-                    {detailJob.quantity  && <div><p className="text-xs text-custom-700">Quantity</p><p className="font-semibold text-secondary-100">{detailJob.quantity}</p></div>}
-                    {detailJob.size      && <div><p className="text-xs text-custom-700">Size</p><p className="font-semibold text-secondary-100">{detailJob.size}</p></div>}
-                    {detailJob.colorMode && <div><p className="text-xs text-custom-700">Color Mode</p><p className="font-semibold text-secondary-100">{detailJob.colorMode}</p></div>}
-                  </div>
-                )}
-
-                {/* Description */}
-                {detailJob.description && (
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-1">Description</p>
-                    <p className="text-secondary-100 leading-snug">{detailJob.description}</p>
-                  </div>
-                )}
-
-                {/* Notes */}
-                {detailJob.notes && (
-                  <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
-                    <p className="text-xs text-custom-700 mb-1">Notes</p>
-                    <p className="text-secondary-100 leading-snug">{detailJob.notes}</p>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={closeDetailModal}
-                className="mt-5 w-full px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 text-sm font-semibold text-custom-700"
-              >
-                Close
-              </button>
-            </Card>
-          </div>
+          <JobDetailModal job={detailJob} onClose={closeDetailModal} />
         )}
 
         {/* ── Mark Done Confirm Modal ── */}
@@ -786,6 +978,15 @@ export default function SupervisorJobsPage() {
 
             </Card>
           </div>
+        )}
+
+        {/* ── Add Spec Modal ── */}
+        {specTarget && (
+          <AddSpecModal
+            jobId={specTarget.id}
+            jobNumber={specTarget.jobNumber}
+            onClose={() => setSpecTarget(null)}
+          />
         )}
 
       </div>

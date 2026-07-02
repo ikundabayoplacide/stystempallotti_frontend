@@ -8,15 +8,19 @@ import {
   HiOutlineClock,
   HiOutlineCog,
   HiOutlineExclamationCircle,
+  HiOutlinePlus,
   HiOutlineRefresh,
   HiOutlineUsers,
+  HiOutlineX,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { Card } from "../../components/ui";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import { useGetMachinesQuery } from "../../store/services/machinesService";
 import { useGetBindingStockItemsQuery } from "../../store/services/bindingStockService";
+import { useCreateJobSpecMutation } from "../../store/services/jobSpecsService";
 import { jobStatusConfig } from "../../types/JobStatus";
 import type { RootState } from "../../store";
 
@@ -78,8 +82,101 @@ function WorkloadBar({ jobCount }: { jobCount: number }) {
   );
 }
 
+const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+function AddSpecModal({ jobId, jobNumber, onClose }: { jobId: string; jobNumber: string; onClose: () => void }) {
+  const [form, setForm] = useState({
+    description: "", paperType: "", paperWeight: "", size: "",
+    colors: "", finishType: "", quantity: "", materials: "", notes: "",
+  });
+  const [files, setFiles] = useState<File[]>([]);
+  const [createJobSpec, { isLoading }] = useCreateJobSpecMutation();
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createJobSpec({
+        jobId,
+        description: form.description,
+        ...(form.paperType   && { paperType: form.paperType }),
+        ...(form.paperWeight && { paperWeight: form.paperWeight }),
+        ...(form.size        && { size: form.size }),
+        ...(form.colors      && { colors: form.colors }),
+        ...(form.finishType  && { finishType: form.finishType }),
+        ...(form.quantity    && { quantity: Number(form.quantity) }),
+        ...(form.materials   && { materials: form.materials }),
+        ...(form.notes       && { notes: form.notes }),
+        ...(files.length     && { documents: files }),
+      }).unwrap();
+      toast.success("Spec added successfully");
+      onClose();
+    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to add spec"); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <div className="bg-style-600 rounded-2xl border border-custom-300 shadow-xl w-full max-w-2xl my-8 p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-secondary-100">Add Job Spec</h3>
+            <p className="text-xs text-custom-700 mt-0.5">Job <span className="font-semibold text-primary-500">{jobNumber}</span></p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Description *</label>
+            <textarea value={form.description} onChange={set("description")} rows={2} required
+              placeholder="Describe the specification..."
+              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              ["paperType",   "Paper Type",   "e.g. Glossy, Matte"],
+              ["paperWeight", "Paper Weight", "e.g. 90gsm, 150gsm"],
+              ["size",        "Size",         "e.g. A4, A3, Custom"],
+              ["colors",      "Colors",       "e.g. CMYK, Black only"],
+              ["finishType",  "Finish Type",  "e.g. Lamination, UV"],
+              ["materials",   "Materials",    "e.g. Paper, Cardboard"],
+            ] as [string, string, string][]).map(([key, label, placeholder]) => (
+              <div key={key}>
+                <label className="block text-sm font-semibold text-secondary-100 mb-1">{label}</label>
+                <input value={(form as any)[key]} onChange={set(key)} placeholder={placeholder} className={inputCls} />
+              </div>
+            ))}
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Quantity</label>
+              <input type="number" min="1" value={form.quantity} onChange={set("quantity")} placeholder="e.g. 500" className={inputCls} />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Notes <span className="font-normal text-custom-700">(optional)</span></label>
+            <input value={form.notes} onChange={set("notes")} placeholder="Any additional notes..." className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Attachments <span className="font-normal text-custom-700">(optional)</span></label>
+            <input type="file" multiple onChange={e => setFiles(Array.from(e.target.files ?? []))}
+              className="w-full text-sm text-custom-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary-100 file:text-primary-700 hover:file:bg-primary-200 transition-colors" />
+            {files.length > 0 && <p className="text-xs text-custom-700 mt-1">{files.length} file(s) selected</p>}
+          </div>
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading} className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40">
+              {isLoading ? "Saving..." : "Add Spec"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function SupervisorDashboard() {
   const [jobPage, setJobPage] = useState(1);
+  const [specTarget, setSpecTarget] = useState<{ id: string; jobNumber: string } | null>(null);
   const navigate = useNavigate();
 
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -313,7 +410,7 @@ export default function SupervisorDashboard() {
               <table className="w-full text-sm">
                 <thead className="bg-custom-100 border-b border-custom-300">
                   <tr>
-                    {["Job", "Client", "Status", "Dept State", "Priority", "Due Date"].map((h) => (
+                    {["Job", "Client", "Status", "Dept State", "Priority", "Due Date", ""].map((h) => (
                       <th key={h} className="text-left py-2 px-4 text-xs font-bold text-secondary-100 uppercase tracking-wide whitespace-nowrap">
                         {h}
                       </th>
@@ -352,6 +449,14 @@ export default function SupervisorDashboard() {
                         </td>
                         <td className="py-3 px-4 text-custom-700 whitespace-nowrap">
                           {job.dueDate ? job.dueDate.split("T")[0] : "—"}
+                        </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => setSpecTarget({ id: job.id, jobNumber: job.jobNumber })}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-primary-50 border border-primary-200 text-xs font-semibold text-primary-600 hover:bg-primary-100 transition-colors whitespace-nowrap"
+                          >
+                            <HiOutlinePlus className="w-3.5 h-3.5" /> Add Spec
+                          </button>
                         </td>
                       </tr>
                     );
@@ -405,6 +510,14 @@ export default function SupervisorDashboard() {
             ))}
           </div>
         </Card>
+      )}
+
+      {specTarget && (
+        <AddSpecModal
+          jobId={specTarget.id}
+          jobNumber={specTarget.jobNumber}
+          onClose={() => setSpecTarget(null)}
+        />
       )}
     </div>
   );

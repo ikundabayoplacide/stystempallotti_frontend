@@ -12,9 +12,10 @@ export interface Machine {
   status: MachineStatus;
   note?: string;
   createdById?: string;
+  departmentId?: string | null;
+  department?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
-  // populated via include
   workers?: MachineWorker[];
 }
 
@@ -56,8 +57,8 @@ export const machinesApi = createApi({
   endpoints: (builder) => ({
 
     // GET /machines
-    getMachines: builder.query<Machine[], void>({
-      query: () => "/machines",
+    getMachines: builder.query<Machine[], { departmentId?: string } | void>({
+      query: (params) => ({ url: "/machines", params: params ? params as Record<string, any> : {} }),
       transformResponse: (res: any) => {
         const d = res?.data ?? res;
         return Array.isArray(d) ? d : [];
@@ -76,14 +77,14 @@ export const machinesApi = createApi({
     }),
 
     // POST /machines  (admin, supervisor)
-    createMachine: builder.mutation<Machine, { name: string; description?: string; status?: MachineStatus; note?: string }>({
+    createMachine: builder.mutation<Machine, { name: string; description?: string; status?: MachineStatus; note?: string; departmentId?: string }>({
       query: (body) => ({ url: "/machines", method: "POST", body }),
       transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: [{ type: "Machine", id: "LIST" }],
     }),
 
     // PUT /machines/:id  (admin, supervisor)
-    updateMachine: builder.mutation<Machine, { id: string; name?: string; description?: string; status?: MachineStatus; note?: string }>({
+    updateMachine: builder.mutation<Machine, { id: string; name?: string; description?: string; status?: MachineStatus; note?: string; departmentId?: string }>({
       query: ({ id, ...body }) => ({ url: `/machines/${id}`, method: "PUT", body }),
       transformResponse: (res: any) => res?.data ?? res,
       invalidatesTags: (_r, _e, { id }) => [{ type: "Machine", id }, { type: "Machine", id: "LIST" }],

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   HiOutlineCog,
-  HiOutlineExclamationCircle,
   HiOutlinePencil,
   HiOutlinePlus,
   HiOutlineRefresh,
@@ -54,10 +53,12 @@ const cls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 t
 
 function MachineFormModal({
   machine,
+  departmentId,
   onClose,
   onSuccess,
 }: {
   machine?: Machine;
+  departmentId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -80,7 +81,7 @@ function MachineFormModal({
         await update({ id: machine!.id, ...form }).unwrap();
         toast.success("Machine updated");
       } else {
-        await create(form).unwrap();
+        await create({ ...form, departmentId }).unwrap();
         toast.success("Machine created");
       }
       onSuccess();
@@ -528,43 +529,15 @@ function MachineCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function MachinesPage() {
-  const currentUser  = useSelector((state: RootState) => state.auth.user);
-  const myDeptId     = currentUser?.departmentId;
-
-  const { data: departments = [], isLoading: loadingDepts } = useGetDepartmentsQuery();
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const myDeptId    = currentUser?.departmentId;
+  const { data: departments = [] } = useGetDepartmentsQuery();
   const myDept = departments.find((d) => d.id === myDeptId);
 
-  // Only the binding supervisor sees machines
-  const isBindingSupervisor =
-    !loadingDepts &&
-    !!myDept &&
-    myDept.name.toLowerCase().includes("binding");
-
-  // ── Not a binding supervisor guard ────────────────────────────────────────
-  if (!loadingDepts && !isBindingSupervisor) {
-    return (
-      <DashboardLayout>
-        <Card className="!p-10 text-center max-w-md mx-auto mt-10">
-          <HiOutlineExclamationCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-secondary-100 mb-2">Access Restricted</h2>
-          <p className="text-sm text-custom-700">
-            Machine management is only available to the{" "}
-            <span className="font-semibold text-secondary-100">Binding</span> supervisor.
-          </p>
-          {myDept && (
-            <p className="text-xs text-custom-500 mt-2">
-              Your department: <span className="font-semibold">{myDept.name}</span>
-            </p>
-          )}
-        </Card>
-      </DashboardLayout>
-    );
-  }
-
-  return <MachinesContent />;
+  return <MachinesContent departmentId={myDeptId ?? undefined} deptName={myDept?.name} />;
 }
 
-export function MachinesContent() {
+export function MachinesContent({ departmentId, deptName }: { departmentId?: string; deptName?: string }) {
   const [search, setSearch]           = useState("");
   const [statusFilter, setStatusFilter] = useState<MachineStatus | "">("");
   const [page, setPage]               = useState(1);
@@ -572,7 +545,9 @@ export function MachinesContent() {
   const [editMachine, setEditMachine] = useState<Machine | null>(null);
   const [workersMachine, setWorkersMachine] = useState<Machine | null>(null);
 
-  const { data: machines = [], isLoading, refetch } = useGetMachinesQuery();
+  const { data: machines = [], isLoading, refetch } = useGetMachinesQuery(
+    departmentId ? { departmentId } : undefined
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -604,7 +579,7 @@ export function MachinesContent() {
             </div>
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Machines</h1>
-              <p className="text-sm text-custom-700 mt-0.5">Manage binding machines and worker assignments</p>
+              <p className="text-sm text-custom-700 mt-0.5">Manage machines{deptName ? ` for ${deptName}` : ""} and worker assignments</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -733,6 +708,7 @@ export function MachinesContent() {
       {showForm && (
         <MachineFormModal
           machine={editMachine ?? undefined}
+          departmentId={departmentId}
           onClose={() => { setShowForm(false); setEditMachine(null); }}
           onSuccess={() => { setShowForm(false); setEditMachine(null); refetch(); }}
         />

@@ -165,6 +165,11 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "General Stock", path: "/production-manager/general-stock", icon: HiOutlineArchive },
     { label: "Binding Stock", path: "/production-manager/binding-stock", icon: HiOutlineArchive },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
+    {
+      label: "Samples", path: "/production-manager/samples", icon: HiOutlineClipboardList, children: [
+        { label: "All Samples", path: "/production-manager/samples", icon: HiOutlineClipboardList },
+      ]
+    },
     { label: "My Leave", path: "/production-manager/leave", icon: HiOutlineCalendar },
     { label: "Reports", path: "/production-manager/reports", icon: HiOutlineChartBar, children: [
       { label: "Generate Reports", path: "/production-manager/reports", icon: HiOutlineChartBar },
@@ -188,7 +193,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/supervisor", icon: HiOutlineHome },
     { label: "Jobs", path: "/supervisor/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Employees", path: "/supervisor/employees", icon: HiOutlineUsers },
-    { label: "Machines", path: "/supervisor/machines", icon: HiOutlineCog, bindingOnly: true },
+    { label: "Machines", path: "/supervisor/machines", icon: HiOutlineCog },
+    { label: "Samples", path: "/supervisor/samples", icon: HiOutlineDocumentText },
     { label: "Binding Stock", path: "/supervisor/binding-stock", icon: HiOutlineArchive, bindingOnly: true },
     { label: "My Leave", path: "/supervisor/leave", icon: HiOutlineCalendar },
     {
@@ -249,7 +255,13 @@ export default function DashboardSidebar({
     if (!nav) return;
     const active = nav.querySelector<HTMLElement>("[data-active='true']");
     if (active) {
-      active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      const navTop = nav.scrollTop;
+      const navBottom = navTop + nav.clientHeight;
+      const itemTop = active.offsetTop;
+      const itemBottom = itemTop + active.offsetHeight;
+      if (itemTop < navTop || itemBottom > navBottom) {
+        nav.scrollTop = itemTop - nav.clientHeight / 2 + active.offsetHeight / 2;
+      }
     }
   }, [location.pathname]);
   const { token } = useAppSelector((state) => state.auth);
