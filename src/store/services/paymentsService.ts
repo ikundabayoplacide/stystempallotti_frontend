@@ -83,15 +83,19 @@ export const paymentsApi = createApi({
       invalidatesTags: (_r, _e, { jobId }) => [
         { type: "Payment", id: jobId },
         { type: "Payment", id: "LIST" },
-        // Bust jobs cache so paymentStatus and completed-and-paid list refresh
         { type: "Job" as any, id: jobId },
         { type: "Job" as any, id: "LIST" },
         { type: "Job" as any, id: "COMPLETED_PAID" },
       ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        const { withdrawalsApi } = await import("./withdrawalsService");
+        dispatch(withdrawalsApi.util.invalidateTags(["WithdrawalBalance"]));
+      },
     }),
 
     // GET /payments — all payments paginated
-    getPayments: builder.query<PaginatedPayments, { page?: number; limit?: number; from?: string; to?: string } | void>({
+    getPayments: builder.query<PaginatedPayments, { page?: number; limit?: number; from?: string; to?: string; paymentMethod?: string } | void>({
       query: (params) => ({ url: "/payments", params: (params ?? {}) as Record<string, any> }),
       transformResponse: (res: any) => {
         const payments = Array.isArray(res.data) ? res.data : (res.data?.payments ?? []);

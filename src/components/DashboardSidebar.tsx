@@ -9,6 +9,8 @@ import {
   HiOutlineCog,
   HiOutlineCube,
   HiOutlineCurrencyDollar,
+  HiOutlineCash,
+  HiOutlineTrendingUp,
   HiOutlineDocumentText,
   HiOutlineHome,
   HiOutlineMenu,
@@ -56,6 +58,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Machines", path: "/admin/machines", icon: HiOutlineCog },
     { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase, permissionKey: "quotations.view" },
     { label: "Finance", path: "/admin/finance", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
+    { label: "Expenses", path: "/admin/expenses", icon: HiOutlineCash },
+    { label: "Withdrawals", path: "/admin/withdrawals", icon: HiOutlineTrendingUp },
     {
       label: "Stock", path: "/admin/stock", icon: HiOutlineArchive, children: [
         { label: "General Stock",  path: "/admin/stock/general",  icon: HiOutlineArchive },
@@ -207,6 +211,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   cashier: [
     { label: "Dashboard",      path: "/cashier",                icon: HiOutlineHome },
     { label: "Payments",       path: "/cashier/payments",       icon: HiOutlineCurrencyDollar },
+    {label: "Withdraws",      path: "/cashier/withdrows",       icon: HiOutlineCurrencyDollar},
     { label: "Expenses",       path: "/cashier/expenses",       icon: HiOutlineDocumentText },
     { label: "Casual Workers", path: "/cashier/casual-workers", icon: HiOutlineUsers },
     { label: "My Leave",       path: "/cashier/leave",          icon: HiOutlineCalendar },
@@ -361,7 +366,7 @@ export default function DashboardSidebar({
   };
 
   const settingsPath: Record<UserRole, string> = {
-    admin: "/admin/settings",
+    admin: "/admin/profile",
     cashier: "/cashier/profile",
     receptionist: "/reception/profile",
     sales: "/sales/profile",

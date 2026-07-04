@@ -33,11 +33,12 @@ export interface Outstand {
 export interface CreateOutstandPayload {
   description: string;
   category: OutstandCategory;
+  amount: number;
   quantity?: number;
-  unitCost: number;
+  unitCost?: number;
   recipientName: string;
-  recipientPhone: string;
-  recipientRole: string;
+  recipientPhone?: string;
+  recipientRole?: string;
   purpose: string;
   notes?: string;
 }
@@ -45,6 +46,7 @@ export interface CreateOutstandPayload {
 export interface UpdateOutstandPayload {
   description?: string;
   category?: OutstandCategory;
+  amount?: number;
   quantity?: number;
   unitCost?: number;
   recipientName?: string;
@@ -75,18 +77,20 @@ interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
+  pagination?: { total: number; page: number; limit: number; totalPages: number };
 }
 
 function normalizePaginated(res: ApiResponse<unknown>): PaginatedOutstands {
   const raw = res.data;
-  if (raw && typeof raw === "object" && "outstands" in raw) {
-    const r = raw as PaginatedOutstands;
-    return { outstands: r.outstands ?? [], total: r.total ?? 0, page: r.page ?? 1, limit: r.limit ?? 10, totalPages: r.totalPages ?? 1 };
-  }
-  if (Array.isArray(raw)) {
-    return { outstands: raw as Outstand[], total: (raw as Outstand[]).length, page: 1, limit: (raw as Outstand[]).length, totalPages: 1 };
-  }
-  return { outstands: [], total: 0, page: 1, limit: 10, totalPages: 1 };
+  const p = res.pagination;
+  const rows = Array.isArray(raw) ? raw as Outstand[] : [];
+  return {
+    outstands: rows,
+    total: p?.total ?? rows.length,
+    page: p?.page ?? 1,
+    limit: p?.limit ?? rows.length,
+    totalPages: p?.totalPages ?? 1,
+  };
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -153,9 +157,20 @@ export const outstandsApi = createApi({
     }),
 
     // PATCH /outstands/:id/pay
-    payOutstand: builder.mutation<Outstand, string>({
+    payOutstand: builder.mutation<{ outstand: Outstand; totalBalance: number }, string>({
       query: (id) => ({ url: `/outstands/${id}/pay`, method: "PATCH" }),
-      transformResponse: (res: ApiResponse<Outstand>) => res.data,
+      transformResponse: (res: ApiResponse<{ outstand: Outstand; totalBalance: number }>) => res.data,
+      invalidatesTags: (_r, _e, id) => [{ type: "Outstand", id }, { type: "Outstand", id: "LIST" }],
+      async onQueryStarted(_id, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        const { withdrawalsApi } = await import("./withdrawalsService");
+        dispatch(withdrawalsApi.util.invalidateTags(["WithdrawalBalance"]));
+      },
+    }),
+
+    // DELETE /outstands/:id
+    deleteOutstand: builder.mutation<void, string>({
+      query: (id) => ({ url: `/outstands/${id}`, method: "DELETE" }),
       invalidatesTags: (_r, _e, id) => [{ type: "Outstand", id }, { type: "Outstand", id: "LIST" }],
     }),
   }),
@@ -169,4 +184,5 @@ export const {
   useApproveOutstandMutation,
   useRejectOutstandMutation,
   usePayOutstandMutation,
+  useDeleteOutstandMutation,
 } = outstandsApi;

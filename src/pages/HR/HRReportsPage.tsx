@@ -34,18 +34,17 @@ type Period = "day" | "week" | "month" | "year";
 
 function getDateRange(period: Period): { from: string; to: string } {
   const now = new Date();
-  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-  let from: Date;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const to = `${ymd(now)}T23:59:59`;
+  let fromDate: Date;
   switch (period) {
-    case "day":   from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-    case "week":  from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
-    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case "year":  from = new Date(now.getFullYear(), 0, 1); break;
+    case "day":   fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
+    case "week":  fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
+    case "month": fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case "year":  fromDate = new Date(now.getFullYear(), 0, 1); break;
   }
-  return {
-    from: from.toISOString().split("T")[0],
-    to:   to.split("T")[0] + "T23:59:59.000Z",
-  };
+  return { from: `${ymd(fromDate)}T00:00:00`, to };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -311,7 +310,7 @@ function EmployeesReport() {
   const [statusFilter, setStatusFilter]     = useState("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetAllEmployeesQuery({ limit: 500 });
@@ -731,7 +730,7 @@ function LeaveReport() {
   const [statusFilter, setStatusFilter] = useState<"" | "PENDING" | "APPROVED" | "REJECTED">("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetAllLeavesQuery({
@@ -964,7 +963,7 @@ function CasualWorkersReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetCasualWorkersQuery({ limit: 500 });
@@ -1145,7 +1144,7 @@ function JobApprovalReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data: pendingData,   isLoading, refetch: r1 } = useGetJobsQuery({ status: "pending",   limit: 500 });

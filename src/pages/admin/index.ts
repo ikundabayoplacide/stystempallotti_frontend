@@ -23,4 +23,6 @@ export { default as AdminLeaveManagementPage } from './LeaveManagementPage';
 export { default as AdminGeneralStockPage } from './AdminGeneralStockPage';
 export { default as AdminBoutiqueStockPage } from './AdminBoutiqueStockPage';
 export { default as AdminBindingStockPage } from './AdminBindingStockPage';
+export { default as AdminExpensesPage } from './AdminExpensesPage';
+export { default as AdminWithdrawalsPage } from './AdminWithdrawalsPage';
 

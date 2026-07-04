@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 import {
+  HiOutlineBadgeCheck,
   HiOutlineCalendar,
+  HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineEye,
   HiOutlineFilter,
@@ -10,6 +12,7 @@ import {
   HiOutlineSearch,
   HiOutlineTrash,
   HiOutlineX,
+  HiOutlineXCircle,
 } from "react-icons/hi";
 import { FaPlus } from "react-icons/fa";
 import { DashboardLayout } from "../../components";
@@ -17,7 +20,13 @@ import { Button, Card } from "../../components/ui";
 import CreateJobModal from "./CreateJobModal";
 import JobDetailModal from "./JobDetailModal";
 import EditJobModal from "./EditJobModal";
-import { useGetJobsQuery, useDeleteJobMutation } from "../../store/services/jobsService";
+import {
+  useGetJobsQuery,
+  useDeleteJobMutation,
+  useApproveJobMutation,
+  useRejectJobMutation,
+  useVerifyJobMutation,
+} from "../../store/services/jobsService";
 import type { Job, JobStatus, JobPriority } from "../../store/services/jobsService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 
@@ -74,6 +83,9 @@ export default function JobManagementPage() {
   const [selectedJobId, setSelectedJobId]       = useState<string | null>(null);
   const [editJobId, setEditJobId]               = useState<string | null>(null);
   const [deleteJobId, setDeleteJobId]           = useState<string | null>(null);
+  const [approvalJob, setApprovalJob]           = useState<Job | null>(null);
+  const [approvalMode, setApprovalMode]         = useState<"approve" | "reject" | "verify">("approve");
+  const [rejectReason, setRejectReason]         = useState("");
   const [page, setPage] = useState(1);
   const limit = 20;
 
@@ -87,12 +99,52 @@ export default function JobManagementPage() {
   };
 
   const { data, isLoading, isFetching, isError, refetch } = useGetJobsQuery(queryParams);
-  const [deleteJob, { isLoading: isDeleting }] = useDeleteJobMutation();
+  const [deleteJob,  { isLoading: isDeleting  }] = useDeleteJobMutation();
+  const [approveJob, { isLoading: isApproving }] = useApproveJobMutation();
+  const [rejectJob,  { isLoading: isRejecting  }] = useRejectJobMutation();
+  const [verifyJob,  { isLoading: isVerifying  }] = useVerifyJobMutation();
   const { data: departments = [] } = useGetDepartmentsQuery();
 
   const jobs       = data?.jobs       ?? [];
   const total      = data?.total      ?? 0;
   const totalPages = data?.totalPages ?? 1;
+
+  const openApprovalModal = (job: Job, mode: "approve" | "reject" | "verify") => {
+    setApprovalJob(job);
+    setApprovalMode(mode);
+    setRejectReason("");
+  };
+
+  const handleApprove = async () => {
+    if (!approvalJob) return;
+    try {
+      await approveJob(approvalJob.id).unwrap();
+      toast.success("Job confirmed");
+      setApprovalJob(null);
+      refetch();
+    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to confirm job"); }
+  };
+
+  const handleReject = async () => {
+    if (!approvalJob) return;
+    if (!rejectReason.trim()) { toast.error("Please provide a rejection reason"); return; }
+    try {
+      await rejectJob({ id: approvalJob.id, rejectReason }).unwrap();
+      toast.success("Job rejected");
+      setApprovalJob(null);
+      refetch();
+    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to reject job"); }
+  };
+
+  const handleVerify = async () => {
+    if (!approvalJob) return;
+    try {
+      await verifyJob(approvalJob.id).unwrap();
+      toast.success("Job verified");
+      setApprovalJob(null);
+      refetch();
+    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to verify job"); }
+  };
 
   const handleDeleteConfirm = async () => {
     if (!deleteJobId) return;
@@ -279,6 +331,33 @@ export default function JobManagementPage() {
                             >
                               <HiOutlineEye className="w-4 h-4 text-custom-700" />
                             </button>
+                            {job.status !== "confirmed" && job.status !== "rejected" && job.status !== "verified" && (
+                              <button
+                                className="p-2 rounded-lg border border-green-300 hover:bg-green-50 transition-colors"
+                                title="Confirm Job"
+                                onClick={() => openApprovalModal(job, "approve")}
+                              >
+                                <HiOutlineCheckCircle className="w-4 h-4 text-green-600" />
+                              </button>
+                            )}
+                            {job.status !== "rejected" && (
+                              <button
+                                className="p-2 rounded-lg border border-red-300 hover:bg-red-50 transition-colors"
+                                title="Reject Job"
+                                onClick={() => openApprovalModal(job, "reject")}
+                              >
+                                <HiOutlineXCircle className="w-4 h-4 text-red-600" />
+                              </button>
+                            )}
+                            {(job.status === "completed" || job.status === "verified") && (
+                              <button
+                                className="p-2 rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors"
+                                title="Verify Job"
+                                onClick={() => openApprovalModal(job, "verify")}
+                              >
+                                <HiOutlineBadgeCheck className="w-4 h-4 text-blue-600" />
+                              </button>
+                            )}
                             <button
                               className="p-2 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors"
                               title="Edit Job"
@@ -416,6 +495,82 @@ export default function JobManagementPage() {
               refetch();
             }}
           />
+        )}
+
+        {/* ── Approve / Reject / Verify Modal ──────────────────────────────── */}
+        {approvalJob && (
+          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-base font-bold text-secondary-100 capitalize">
+                  {approvalMode === "approve" ? "Confirm Job" : approvalMode === "reject" ? "Reject Job" : "Verify Job"}
+                </h3>
+                <button onClick={() => setApprovalJob(null)} className="text-custom-700 hover:text-secondary-100">
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-sm text-custom-700 mb-4">
+                {approvalJob.jobNumber} — {approvalJob.title}
+              </p>
+              {approvalMode === "reject" && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-custom-700 mb-1">
+                    Reason <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    rows={3}
+                    placeholder="Explain why this job is being rejected…"
+                    className="w-full px-3 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none text-sm"
+                  />
+                </div>
+              )}
+              {approvalMode === "verify" && (
+                <p className="text-sm text-custom-700 mb-4">
+                  This will mark the job as <span className="font-semibold text-secondary-100">verified</span>.
+                </p>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setApprovalJob(null)}
+                  className="flex-1 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                {approvalMode === "approve" && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={isApproving}
+                    className="flex-1 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <HiOutlineCheckCircle className="w-4 h-4" />
+                    {isApproving ? "Confirming…" : "Confirm Job"}
+                  </button>
+                )}
+                {approvalMode === "reject" && (
+                  <button
+                    onClick={handleReject}
+                    disabled={isRejecting}
+                    className="flex-1 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <HiOutlineXCircle className="w-4 h-4" />
+                    {isRejecting ? "Rejecting…" : "Reject Job"}
+                  </button>
+                )}
+                {approvalMode === "verify" && (
+                  <button
+                    onClick={handleVerify}
+                    disabled={isVerifying}
+                    className="flex-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <HiOutlineBadgeCheck className="w-4 h-4" />
+                    {isVerifying ? "Verifying…" : "Verify Job"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Delete Confirm Modal ─────────────────────────────────────────── */}

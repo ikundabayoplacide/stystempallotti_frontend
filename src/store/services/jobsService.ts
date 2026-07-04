@@ -307,6 +307,13 @@ export const jobsApi = createApi({
 
   endpoints: (builder) => ({
 
+    // GET /jobs/stats
+    getJobStats: builder.query<{ totalJobs: number; inProgress: number; completedToday: number; delayed: number; totalRevenue: number; totalPaid: number; outstanding: number; expensesToday: number; expensesCountToday: number; withdrawalsToday: number; withdrawalsCountToday: number }, void>({
+      query: () => "/jobs/stats",
+      transformResponse: (res: ApiResponse<any>) => res.data,
+      providesTags: [{ type: "Job", id: "LIST" }],
+    }),
+
     // GET /jobs
     getJobs: builder.query<PaginatedJobs, GetJobsParams | void>({
       query: (params) => ({ url: "/jobs", params: (params ?? {}) as Record<string, any> }),
@@ -627,6 +634,7 @@ export const jobsApi = createApi({
 });
 
 export const {
+  useGetJobStatsQuery,
   useGetJobDetailsQuery,
   useGetJobsQuery,
   useGetNextJobNumberQuery,

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import {
   HiOutlineCheckCircle,
   HiOutlineClipboardList,
@@ -250,16 +251,20 @@ function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => voi
 // ─── Three-dot Action Menu ────────────────────────────────────────────────────
 
 function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, job: Job) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen]   = useState(false);
+  const [pos, setPos]     = useState<{ top: number; right: number } | null>(null);
+  const btnRef  = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!open) return;
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [open]);
 
   if (job.status === "delivered") return null;
 
@@ -278,17 +283,29 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
 
   if (actions.length === 0) return null;
 
+  const handleOpen = () => {
+    if (open) { setOpen(false); return; }
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setOpen(true);
+  };
+
   return (
-    <div ref={ref} className="relative inline-block">
+    <>
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-500 hover:text-secondary-100 transition-colors"
         title="Actions"
       >
         <HiOutlineDotsVertical className="h-5 w-5" />
       </button>
-      {open && (
-        <div className="absolute right-0 top-8 z-30 w-44 bg-white rounded-xl shadow-lg border border-custom-200 py-1 overflow-hidden">
+      {open && pos && ReactDOM.createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
+          className="w-44 bg-style-600 border border-custom-200 rounded-xl shadow-xl py-1 overflow-hidden"
+        >
           {actions.map((a) => (
             <button
               key={a.type}
@@ -298,9 +315,10 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
               {a.icon}{a.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }
 

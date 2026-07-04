@@ -27,18 +27,18 @@ type Period = "day" | "week" | "month" | "year";
 
 function getDateRange(period: Period): { from: string; to: string } {
   const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  const startOfDay = (yr: number, mo: number, dy: number) =>
+    new Date(yr, mo, dy, 0, 0, 0, 0);
+  const endOfToday = new Date(y, m, d, 23, 59, 59, 999);
   let from: Date;
   switch (period) {
-    case "day":   from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-    case "week":  from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
-    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case "year":  from = new Date(now.getFullYear(), 0, 1); break;
+    case "day":   from = startOfDay(y, m, d);     break;
+    case "week":  from = startOfDay(y, m, d - 6); break;
+    case "month": from = startOfDay(y, m, 1);     break;
+    case "year":  from = startOfDay(y, 0, 1);     break;
   }
-  return {
-    from: from.toISOString().split("T")[0],
-    to:   new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-            .toISOString().split("T")[0] + "T23:59:59.000Z",
-  };
+  return { from: from.toISOString(), to: endOfToday.toISOString() };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -240,7 +240,7 @@ function ProductionJobsReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetJobsQuery({ limit: 500 });
@@ -531,7 +531,7 @@ function CompletedJobsReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetJobsQuery({ limit: 500 });

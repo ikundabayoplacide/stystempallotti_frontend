@@ -6,7 +6,7 @@ import {
   HiOutlineClipboardList, HiOutlineCheckCircle, HiOutlineClock,
   HiOutlineExclamationCircle, HiOutlineSearch, HiOutlineRefresh,
   HiOutlinePencil, HiOutlineThumbUp, HiOutlineDotsHorizontal,
-  HiOutlineBan,
+  HiOutlineBan, HiOutlineCurrencyDollar,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import DashboardLayout from "../../components/DashboardLayout";
@@ -19,6 +19,7 @@ import {
   type Outstand, type OutstandCategory, type OutstandStatus,
   type GetOutstandsParams,
 } from "../../store/services/outstandsService";
+import { useGetWithdrawalBalanceQuery } from "../../store/services/withdrawalsService";
 
 const categoryConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   purchase:    { label: "Purchase",    icon: <HiOutlineShoppingCart className="w-4 h-4" />, color: "bg-blue-100 text-blue-700" },
@@ -50,7 +51,7 @@ const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-
 function AddRecordModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
     description: "", category: "purchase" as OutstandCategory,
-    quantity: "1", unitCost: "", recipient: "", recipientPhone: "",
+    amount: "", recipient: "", recipientPhone: "",
     recipientRole: "", purpose: "", notes: "",
   });
   const [categories, setCategories] = useState<OutstandCategory[]>(DEFAULT_CATEGORIES);
@@ -72,8 +73,6 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
     setAddingCategory(false); setNewCategory("");
   };
 
-  const total = (Number(form.quantity) || 0) * (Number(form.unitCost) || 0);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.recipientPhone || form.recipientPhone.replace(/\D/g, "").length < 9) {
@@ -83,7 +82,7 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
     try {
       await createOutstand({
         description: form.description, category: form.category,
-        quantity: Number(form.quantity) || 1, unitCost: Number(form.unitCost),
+        amount: Number(form.amount),
         recipientName: form.recipient, recipientPhone: form.recipientPhone,
         recipientRole: form.recipientRole, purpose: form.purpose,
         notes: form.notes || undefined,
@@ -106,7 +105,7 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Description *</label>
-            <input value={form.description} onChange={set("description")} placeholder="What is this payment for?" className={inputCls} required />
+            <textarea value={form.description} onChange={set("description")} rows={3} placeholder="What is this payment for?" className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -141,19 +140,9 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
               <input value={form.recipientRole} onChange={set("recipientRole")} placeholder="e.g. Supplier, Staff" className={inputCls} required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Quantity *</label>
-              <input type="number" min="1" value={form.quantity} onChange={set("quantity")} className={inputCls} required />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Unit Cost (RWF) *</label>
-              <input type="number" min="0" value={form.unitCost} onChange={set("unitCost")} placeholder="0" className={inputCls} required />
-            </div>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-custom-50 border border-custom-200">
-            <span className="text-sm text-custom-700">Total Amount</span>
-            <span className="text-lg font-bold text-secondary-100">{total.toLocaleString()} RWF</span>
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Amount (RWF) *</label>
+            <input type="number" min="0" value={form.amount} onChange={set("amount")} placeholder="0" className={inputCls} required />
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Purpose *</label>
@@ -161,7 +150,7 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Notes <span className="font-normal text-custom-700">(optional)</span></label>
-            <input value={form.notes} onChange={set("notes")} placeholder="Additional notes..." className={inputCls} />
+            <textarea value={form.notes} onChange={set("notes")} rows={2} placeholder="Additional notes..." className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
           </div>
           <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
@@ -245,9 +234,7 @@ function DetailModal({ record, onClose, onEdit }: { record: Outstand; onClose: (
             ["Recipient",   record.recipientName],
             ["Phone",       record.recipientPhone],
             ["Role",        record.recipientRole],
-            ["Quantity",    String(record.quantity)],
-            ["Unit Cost",   `${Number(record.unitCost).toLocaleString()} RWF`],
-            ["Total",       `${Number(record.totalAmount).toLocaleString()} RWF`],
+            ["Amount",      `${Number(record.totalAmount).toLocaleString()} RWF`],
             ["Recorded by", record.recordedBy?.name ?? "—"],
             ["Date",        new Date(record.createdAt).toLocaleString("en-RW", { dateStyle: "medium", timeStyle: "short" })],
             ...(record.approvedBy ? [["Approved by", record.approvedBy.name]] : []),
@@ -321,7 +308,7 @@ function DetailModal({ record, onClose, onEdit }: { record: Outstand; onClose: (
 function EditModal({ record, onClose }: { record: Outstand; onClose: () => void }) {
   const [form, setForm] = useState({
     description: record.description, category: record.category,
-    quantity: String(record.quantity), unitCost: String(record.unitCost),
+    amount: String(record.totalAmount),
     recipient: record.recipientName ?? "", recipientPhone: record.recipientPhone ?? "",
     recipientRole: record.recipientRole ?? "", purpose: record.purpose, notes: record.notes ?? "",
   });
@@ -344,8 +331,6 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
     setAddingCategory(false); setNewCategory("");
   };
 
-  const total = (Number(form.quantity) || 0) * (Number(form.unitCost) || 0);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.recipientPhone || form.recipientPhone.replace(/\D/g, "").length < 9) {
@@ -357,7 +342,7 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
         id: record.id,
         data: {
           description: form.description, category: form.category,
-          quantity: Number(form.quantity) || 1, unitCost: Number(form.unitCost),
+          amount: Number(form.amount),
           recipientName: form.recipient, recipientPhone: form.recipientPhone,
           recipientRole: form.recipientRole, purpose: form.purpose,
           notes: form.notes || undefined,
@@ -381,7 +366,7 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Description *</label>
-            <input value={form.description} onChange={set("description")} className={inputCls} required />
+            <textarea value={form.description} onChange={set("description")} rows={3} className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" required />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -416,19 +401,9 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
               <input value={form.recipientRole} onChange={set("recipientRole")} className={inputCls} required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Quantity *</label>
-              <input type="number" min="1" value={form.quantity} onChange={set("quantity")} className={inputCls} required />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1">Unit Cost (RWF) *</label>
-              <input type="number" min="0" value={form.unitCost} onChange={set("unitCost")} className={inputCls} required />
-            </div>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-custom-50 border border-custom-200">
-            <span className="text-sm text-custom-700">Total Amount</span>
-            <span className="text-lg font-bold text-secondary-100">{total.toLocaleString()} RWF</span>
+          <div>
+            <label className="block text-sm font-semibold text-secondary-100 mb-1">Amount (RWF) *</label>
+            <input type="number" min="0" value={form.amount} onChange={set("amount")} className={inputCls} required />
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Purpose *</label>
@@ -436,7 +411,7 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Notes <span className="font-normal text-custom-700">(optional)</span></label>
-            <input value={form.notes} onChange={set("notes")} className={inputCls} />
+            <textarea value={form.notes} onChange={set("notes")} rows={2} className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
           </div>
           <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
@@ -460,17 +435,23 @@ export default function CashierExpensesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPos, setMenuPos]       = useState<{ top: number; right: number } | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ id: string; type: "approve" | "pay" } | null>(null);
+  const [rejectTarget, setRejectTarget]   = useState<Outstand | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!openMenuId) return;
-    const handler = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) { setOpenMenuId(null); setConfirmAction(null); } };
+    const handler = (e: MouseEvent) => {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) { setOpenMenuId(null); setConfirmAction(null); }
+    };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [openMenuId]);
 
   const openMenu = useCallback((e: React.MouseEvent<HTMLButtonElement>, id: string) => {
     e.stopPropagation();
+    triggerRef.current = e.currentTarget;
     if (openMenuId === id) { setOpenMenuId(null); setConfirmAction(null); return; }
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
@@ -486,6 +467,8 @@ export default function CashierExpensesPage() {
   };
 
   const { data, isLoading, isFetching, refetch } = useGetOutstandsQuery(queryParams);
+  const { data: balanceData } = useGetWithdrawalBalanceQuery();
+  const fundBalance = balanceData?.totalBalance ?? 0;
   const outstands  = data?.outstands ?? [];
   const totalPages = data?.totalPages ?? 1;
 
@@ -523,7 +506,7 @@ export default function CashierExpensesPage() {
         </div>
 
         {/* KPI row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
             { label: "Total",    value: totalAmt,    color: "text-secondary-100" },
             { label: "Pending",  value: pendingAmt,  color: "text-yellow-600" },
@@ -536,6 +519,14 @@ export default function CashierExpensesPage() {
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
           ))}
+          <Card className={`!p-4 col-span-2 sm:col-span-1 ${fundBalance >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-orange-50 border-orange-200"}`}>
+            <div className="flex items-center gap-1 mb-1">
+              <HiOutlineCurrencyDollar className={`w-3.5 h-3.5 ${fundBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+              <p className="text-xs text-custom-700">Fund Balance</p>
+            </div>
+            <p className={`text-xl font-bold ${fundBalance >= 0 ? "text-emerald-700" : "text-orange-700"}`}>{fundBalance.toLocaleString()}</p>
+            <p className="text-xs text-custom-700">RWF</p>
+          </Card>
         </div>
 
         {/* Tabs */}
@@ -640,6 +631,9 @@ export default function CashierExpensesPage() {
                       <button onClick={() => setConfirmAction({ id: r.id, type: "approve" })} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50 transition-colors"><HiOutlineThumbUp className="w-4 h-4" /> Approve</button>
                     )
                   )}
+                  {r.status === "pending" && (
+                    <button onClick={() => { setRejectTarget(r); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors"><HiOutlineBan className="w-4 h-4" /> Reject</button>
+                  )}
                   {r.status === "approved" && (
                     confirmAction?.id === r.id && confirmAction.type === "pay" ? (
                       <div className="px-3 py-2 space-y-1.5">
@@ -661,9 +655,10 @@ export default function CashierExpensesPage() {
         )}
 
         {/* Modals */}
-        {showAdd    && <AddRecordModal onClose={() => setShowAdd(false)} />}
-        {editing    && <EditModal record={editing} onClose={() => setEditing(null)} />}
-        {selected   && <DetailModal record={selected} onClose={() => setSelected(null)} onEdit={() => { setEditing(selected); setSelected(null); }} />}
+        {showAdd       && <AddRecordModal onClose={() => setShowAdd(false)} />}
+        {editing       && <EditModal record={editing} onClose={() => setEditing(null)} />}
+        {rejectTarget  && <RejectModal record={rejectTarget} onClose={() => setRejectTarget(null)} />}
+        {selected      && <DetailModal record={selected} onClose={() => setSelected(null)} onEdit={() => { setEditing(selected); setSelected(null); }} />}
       </div>
     </DashboardLayout>
   );

@@ -20,6 +20,8 @@ import {
   AdminGeneralStockPage,
   AdminBoutiqueStockPage,
   AdminBindingStockPage,
+  AdminExpensesPage,
+  AdminWithdrawalsPage,
 } from "../pages/admin";
 
 // Sales Officer Pages
@@ -107,6 +109,7 @@ import CashierPaymentsPage from "../pages/cashier/CashierPaymentsPage";
 import CashierExpensesPage from "../pages/cashier/CashierExpensesPage";
 import CashierCasualWorkersPage from "../pages/cashier/CashierCasualWorkersPage";
 import CashierReportsPage from "../pages/cashier/CashierReportsPage";
+import Withdraws from "../pages/cashier/Withdraws";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -133,6 +136,8 @@ export default function AppRoutes() {
       <Route path="/admin/workflow" element={<ProtectedRoute allowedRoles={["admin"]}><WorkflowConfigPage /></ProtectedRoute>} />
       <Route path="/admin/ui-permissions" element={<ProtectedRoute allowedRoles={["admin"]}><UIPermissionsPage /></ProtectedRoute>} />
       <Route path="/admin/leave" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLeaveManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/expenses" element={<ProtectedRoute allowedRoles={["admin"]}><AdminExpensesPage /></ProtectedRoute>} />
+      <Route path="/admin/withdrawals" element={<ProtectedRoute allowedRoles={["admin"]}><AdminWithdrawalsPage /></ProtectedRoute>} />
       <Route path="/admin/machines" element={<ProtectedRoute allowedRoles={["admin"]}><AdminMachinesPage /></ProtectedRoute>} />
       <Route path="/admin/abanyabiraka" element={<ProtectedRoute allowedRoles={["admin"]}><Abanyabiraka /></ProtectedRoute>} />
       <Route path="/admin/machines" element={<ProtectedRoute allowedRoles={["admin"]}><MachinesPage /></ProtectedRoute>} />
@@ -267,6 +272,7 @@ export default function AppRoutes() {
       {/* routes for Cashier */}
       <Route path="/cashier" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierDashboard /></ProtectedRoute>} />
       <Route path="/cashier/payments" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPaymentsPage /></ProtectedRoute>} />
+      <Route path="/cashier/withdrows" element={<ProtectedRoute allowedRoles={["cashier"]}><Withdraws /></ProtectedRoute>} />
       <Route path="/cashier/expenses" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierExpensesPage /></ProtectedRoute>} />
       <Route path="/cashier/casual-workers" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierCasualWorkersPage /></ProtectedRoute>} />
       <Route path="/cashier/cashier" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPage /></ProtectedRoute>} />

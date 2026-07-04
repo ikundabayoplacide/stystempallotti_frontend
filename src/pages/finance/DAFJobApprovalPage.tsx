@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import ReactDOM from "react-dom";
 import {
   HiOutlineArrowRight,
   HiOutlineBadgeCheck,
@@ -292,18 +293,31 @@ export default function DAFJobApprovalPage() {
   const [rejectReason, setRejectReason]   = useState("");
   const [assignDeptId, setAssignDeptId]   = useState("");
   const [openMenuId, setOpenMenuId]         = useState<string | null>(null);
+  const [menuPos, setMenuPos]               = useState<{ top: number; right: number } | null>(null);
   const [detailsJobId, setDetailsJobId]     = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const menuRef    = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    if (!openMenuId) return;
     const handler = (e: MouseEvent) => {
+      if (triggerRef.current?.contains(e.target as Node)) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setOpenMenuId(null);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, []);
+  }, [openMenuId]);
+
+  const openMenu = useCallback((e: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    e.stopPropagation();
+    triggerRef.current = e.currentTarget;
+    if (openMenuId === id) { setOpenMenuId(null); return; }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setOpenMenuId(id);
+  }, [openMenuId]);
 
   const { data: pendingData,   isLoading: loadingPending, isFetching: fetchingPending,   refetch: refetchPending   } = useGetJobsQuery({ status: "pending",   limit: 100 });
   const { data: confirmedData, refetch: refetchConfirmed } = useGetJobsQuery({ status: "confirmed", limit: 100 });
@@ -529,7 +543,8 @@ export default function DAFJobApprovalPage() {
                           </span>
                         </td>
                         <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-1" ref={openMenuId === job.id ? menuRef : undefined}>
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Eye — always visible */}
                             <button
                               onClick={() => setDetailsJobId(job.id)}
                               className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
@@ -538,49 +553,23 @@ export default function DAFJobApprovalPage() {
                               <HiOutlineEye className="w-5 h-5 text-custom-700" />
                             </button>
 
-                            {/* Verified icon badge */}
+                            {/* Verified badge — visual indicator */}
                             {job.status === "verified" && (
                               <span className="p-2 text-emerald-600" title="Verified">
                                 <HiOutlineBadgeCheck className="w-5 h-5" />
                               </span>
                             )}
 
-                            {/* Verify button — pending only */}
-                            {isPending && (
+                            {/* ... dots menu */}
+                            {(isPending || job.status === "verified" || job.status === "confirmed") && (
                               <button
-                                onClick={() => openModal(job, "verify")}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors text-xs font-semibold"
-                                title="Verify job"
-                              >
-                                <HiOutlineBadgeCheck className="w-4 h-4" /> Verify
-                              </button>
-                            )}
-
-                            {/* Dots menu — pending and verified */}
-                            {(isPending || job.status === "verified") && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === job.id ? null : job.id); }}
+                                ref={openMenuId === job.id ? triggerRef : undefined}
+                                onClick={(e) => openMenu(e, job.id)}
                                 className="p-2 rounded-lg hover:bg-custom-100 transition-colors"
+                                title="Actions"
                               >
                                 <HiOutlineDotsVertical className="w-5 h-5 text-custom-700" />
                               </button>
-                            )}
-
-                            {openMenuId === job.id && (
-                              <div className="absolute right-4 mt-1 w-44 bg-white rounded-xl shadow-lg border border-custom-200 z-50 overflow-hidden">
-                                <button
-                                  onClick={() => openModal(job, "approve")}
-                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-green-700 hover:bg-green-50 transition-colors"
-                                >
-                                  <HiOutlineCheckCircle className="w-4 h-4" /> Confirm
-                                </button>
-                                <button
-                                  onClick={() => openModal(job, "reject")}
-                                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                >
-                                  <HiOutlineXCircle className="w-4 h-4" /> Reject
-                                </button>
-                              </div>
                             )}
                           </div>
                         </td>
@@ -633,6 +622,50 @@ export default function DAFJobApprovalPage() {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Dropdown portal */}
+        {openMenuId && menuPos && ReactDOM.createPortal(
+          <div
+            ref={menuRef}
+            style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="w-48 bg-style-600 border border-custom-200 rounded-xl shadow-xl p-1 space-y-0.5"
+          >
+            {(() => {
+              const job = allJobs.find(j => j.id === openMenuId);
+              if (!job) return null;
+              const isPend = job.status === "pending";
+              return (
+                <>
+                  {isPend && (
+                    <button onClick={() => openModal(job, "verify")}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-blue-50 transition-colors">
+                      <HiOutlineBadgeCheck className="w-4 h-4" /> Verify
+                    </button>
+                  )}
+                  {(isPend || job.status === "verified") && (
+                    <button onClick={() => openModal(job, "approve")}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-green-700 hover:bg-green-50 transition-colors">
+                      <HiOutlineCheckCircle className="w-4 h-4" /> Confirm
+                    </button>
+                  )}
+                  {(isPend || job.status === "verified") && (
+                    <button onClick={() => openModal(job, "reject")}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors">
+                      <HiOutlineXCircle className="w-4 h-4" /> Reject
+                    </button>
+                  )}
+                  {job.status === "confirmed" && (
+                    <button onClick={() => openModal(job, "assign")}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-secondary-100 hover:bg-custom-100 transition-colors">
+                      <HiOutlineArrowRight className="w-4 h-4" /> Assign Dept
+                    </button>
+                  )}
+                </>
+              );
+            })()}
+          </div>,
+          document.body
         )}
 
         {/* Job Details Modal */}

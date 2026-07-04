@@ -173,9 +173,18 @@ const statusIcon = {
   REJECTED: <HiOutlineExclamationCircle className="w-3.5 h-3.5" />,
 };
 
-function daysBetween(start: string, end: string) {
-  const diff = new Date(end).getTime() - new Date(start).getTime();
-  return Math.max(1, Math.round(diff / (1000 * 60 * 60 * 24)) + 1);
+function formatDuration(startDate: string, startTime: string, endDate: string, endTime: string) {
+  const from = new Date(`${startDate}T${startTime || "00:00"}`);
+  const to   = new Date(`${endDate}T${endTime   || "23:59"}`);
+  const totalMins = Math.max(0, Math.round((to.getTime() - from.getTime()) / 60000));
+  const days  = Math.floor(totalMins / (60 * 24));
+  const hours = Math.floor((totalMins % (60 * 24)) / 60);
+  const mins  = totalMins % 60;
+  const parts: string[] = [];
+  if (days)  parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (mins)  parts.push(`${mins}m`);
+  return parts.length ? parts.join(' ') : '0m';
 }
 
 function daysRemaining(endDate: string): number {
@@ -190,10 +199,14 @@ function formatDate(d: string) {
 
 // ─── Request Modal ────────────────────────────────────────────────────────────
 
+const timeCls = "w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
 function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [type, setType] = useState<string>("ANNUAL");
   const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("08:00");
   const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("17:00");
   const [reason, setReason] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -228,7 +241,7 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
         setUploading(false);
       }
 
-      await createLeave({ type: type as LeaveType, startDate, endDate, reason: reason.trim(), documentUrl }).unwrap();
+      await createLeave({ type: type as LeaveType, startDate, startTime, endDate, endTime, reason: reason.trim(), documentUrl }).unwrap();
       toast.success("Leave request submitted successfully");
       onSuccess();
     } catch (err: any) {
@@ -259,7 +272,7 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
             <LeaveTypeSelect value={type} onChange={setType} />
           </div>
 
-          {/* Dates */}
+          {/* Start Date + Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Start Date *</label>
@@ -268,9 +281,22 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
                 value={startDate}
                 min={today}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                className={timeCls}
               />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Start Time *</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={timeCls}
+              />
+            </div>
+          </div>
+
+          {/* End Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1.5">End Date *</label>
               <input
@@ -278,7 +304,16 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
                 value={endDate}
                 min={startDate || today}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                className={timeCls}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">End Time *</label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={timeCls}
               />
             </div>
           </div>
@@ -286,7 +321,7 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
           {/* Duration preview */}
           {startDate && endDate && new Date(endDate) >= new Date(startDate) && (
             <p className="text-xs text-primary-600 font-semibold">
-              Duration: {daysBetween(startDate, endDate)} day(s)
+              Duration: {formatDuration(startDate, startTime, endDate, endTime)}
             </p>
           )}
 
@@ -353,7 +388,9 @@ function EditLeaveModal({ leave, onClose }: { leave: LeaveRequest; onClose: () =
   const [form, setForm] = useState({
     type:      leave.type as string,
     startDate: leave.startDate.slice(0, 10),
+    startTime: leave.startDate.length > 10 ? leave.startDate.slice(11, 16) : "08:00",
     endDate:   leave.endDate.slice(0, 10),
+    endTime:   leave.endDate.length > 10 ? leave.endDate.slice(11, 16) : "17:00",
     reason:    leave.reason,
   });
   const [docFile, setDocFile]         = useState<File | null>(null);
@@ -382,7 +419,9 @@ function EditLeaveModal({ leave, onClose }: { leave: LeaveRequest; onClose: () =
         id:        leave.id,
         type:      form.type as LeaveType,
         startDate: form.startDate,
+        startTime: form.startTime,
         endDate:   form.endDate,
+        endTime:   form.endTime,
         reason:    form.reason.trim(),
         documentUrl,
       }).unwrap();
@@ -413,24 +452,41 @@ function EditLeaveModal({ leave, onClose }: { leave: LeaveRequest; onClose: () =
             <LeaveTypeSelect value={form.type} onChange={(v) => setForm((p) => ({ ...p, type: v }))} />
           </div>
 
+          {/* Start Date + Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Start Date</label>
               <input type="date" value={form.startDate}
                 onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
-                className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors" />
+                className={timeCls} />
             </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Start Time</label>
+              <input type="time" value={form.startTime}
+                onChange={(e) => setForm((p) => ({ ...p, startTime: e.target.value }))}
+                className={timeCls} />
+            </div>
+          </div>
+
+          {/* End Date + Time */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1.5">End Date</label>
               <input type="date" value={form.endDate} min={form.startDate}
                 onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
-                className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors" />
+                className={timeCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">End Time</label>
+              <input type="time" value={form.endTime}
+                onChange={(e) => setForm((p) => ({ ...p, endTime: e.target.value }))}
+                className={timeCls} />
             </div>
           </div>
 
           {form.startDate && form.endDate && new Date(form.endDate) >= new Date(form.startDate) && (
             <p className="text-xs text-primary-600 font-semibold">
-              Duration: {daysBetween(form.startDate, form.endDate)} day(s)
+              Duration: {formatDuration(form.startDate, form.startTime, form.endDate, form.endTime)}
             </p>
           )}
 
@@ -518,13 +574,13 @@ function LeaveDetailModal({ leave, onClose }: { leave: LeaveRequest; onClose: ()
           <div className="flex items-center justify-between">
             <span className="text-sm text-custom-700">Period</span>
             <span className="text-sm font-semibold text-secondary-100">
-              {formatDate(leave.startDate)} → {formatDate(leave.endDate)}
+              {formatDate(leave.startDate)}{leave.startTime ? ` ${leave.startTime}` : ""} → {formatDate(leave.endDate)}{leave.endTime ? ` ${leave.endTime}` : ""}
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-custom-700">Duration</span>
             <span className="text-sm font-semibold text-secondary-100">
-              {daysBetween(leave.startDate, leave.endDate)} day(s)
+              {formatDuration(leave.startDate, leave.startTime ?? '', leave.endDate, leave.endTime ?? '')}
             </span>
           </div>
           <div>
@@ -713,12 +769,12 @@ export default function MyLeavePage() {
                 <div className="px-4 py-3 space-y-2">
                   <div className="flex items-center gap-4 text-sm flex-wrap">
                     <span className="text-custom-700">
-                      <span className="font-semibold text-secondary-100">{formatDate(leave.startDate)}</span>
+                      <span className="font-semibold text-secondary-100">{formatDate(leave.startDate)}{leave.startTime ? ` ${leave.startTime}` : ""}</span>
                       {" → "}
-                      <span className="font-semibold text-secondary-100">{formatDate(leave.endDate)}</span>
+                      <span className="font-semibold text-secondary-100">{formatDate(leave.endDate)}{leave.endTime ? ` ${leave.endTime}` : ""}</span>
                     </span>
                     <span className="text-xs text-primary-600 font-semibold bg-primary-50 px-2 py-0.5 rounded-full">
-                      {daysBetween(leave.startDate, leave.endDate)} day(s)
+                      {formatDuration(leave.startDate, leave.startTime ?? '', leave.endDate, leave.endTime ?? '')}
                     </span>
                     {leave.status === "APPROVED" && (() => {
                       const rem = daysRemaining(leave.endDate);

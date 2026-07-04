@@ -27,29 +27,20 @@ type Period = "day" | "week" | "month" | "year";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function pad(n: number) { return String(n).padStart(2, "0"); }
-
-function localDateStr(y: number, m: number, d: number) {
-  return `${y}-${pad(m + 1)}-${pad(d)}`;
-}
-
 function getDateRange(period: Period): { from: string; to: string } {
   const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const d = now.getDate();
-
-  let toStr   = localDateStr(y, m, d) + "T23:59:59.000Z";
-  let fromStr: string;
-
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  const startOfDay = (yr: number, mo: number, dy: number) =>
+    new Date(yr, mo, dy, 0, 0, 0, 0);
+  const endOfToday = new Date(y, m, d, 23, 59, 59, 999);
+  let from: Date;
   switch (period) {
-    case "day":   fromStr = localDateStr(y, m, d); break;
-    case "week":  { const w = new Date(y, m, d - 6); fromStr = localDateStr(w.getFullYear(), w.getMonth(), w.getDate()); break; }
-    case "month": fromStr = localDateStr(y, m, 1); toStr = localDateStr(y, m + 1, 0) + "T23:59:59.000Z"; break;
-    case "year":  fromStr = localDateStr(y, 0, 1); break;
+    case "day":   from = startOfDay(y, m, d);     break;
+    case "week":  from = startOfDay(y, m, d - 6); break;
+    case "month": from = startOfDay(y, m, 1);     break;
+    case "year":  from = startOfDay(y, 0, 1);     break;
   }
-
-  return { from: fromStr + "T00:00:00.000Z", to: toStr };
+  return { from: from.toISOString(), to: endOfToday.toISOString() };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -346,7 +337,7 @@ function BoutiqueSalesReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetSalesQuery({
@@ -355,20 +346,6 @@ function BoutiqueSalesReport() {
     limit: 200,
   });
   const sales = data?.sales ?? [];
-
-  // DEBUG LOGS
-  console.log(`[BoutiqueSales] period=${period} | from=${range.from} | to=${range.to}`);
-  console.log(`[BoutiqueSales] raw API response:`, data);
-  console.log(`[BoutiqueSales] total sales returned: ${sales.length}`);
-  if (sales.length > 0) {
-    console.log(`[BoutiqueSales] first sale createdAt: ${sales[0].createdAt}`);
-    console.log(`[BoutiqueSales] last  sale createdAt: ${sales[sales.length - 1].createdAt}`);
-  }
-  if (period === "month") {
-    console.log(`[BoutiqueSales][MONTH] range sent to API → from: ${range.from}  to: ${range.to}`);
-    console.log(`[BoutiqueSales][MONTH] sales count: ${sales.length}`);
-    console.log(`[BoutiqueSales][MONTH] all sale dates:`, sales.map(s => s.createdAt));
-  }
 
   const totalPages = Math.max(1, Math.ceil(sales.length / PAGE_SIZE));
   const paginated  = sales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -579,7 +556,7 @@ function VisitorReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data: customersData, isLoading, refetch } = useGetCustomersQuery({ limit: 500 });
@@ -755,7 +732,7 @@ function PaymentsReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data: paymentsData, isLoading, refetch } = useGetPaymentsQuery({ limit: 500, from: range.from, to: range.to });
@@ -923,7 +900,7 @@ function DeliveriesReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data: deliveredData, isLoading, refetch } = useGetJobsQuery({ status: "delivered", limit: 500 });

@@ -36,17 +36,20 @@ type Period = "day" | "week" | "month" | "year";
 
 function getDateRange(period: Period): { from: string; to: string } {
   const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+  // start of day = 00:00:00.000 local time
+  const startOfDay  = (yr: number, mo: number, dy: number) =>
+    new Date(yr, mo, dy, 0, 0, 0, 0);
+  // end of today = 23:59:59.999 local time
+  const endOfToday  = new Date(y, m, d, 23, 59, 59, 999);
   let from: Date;
   switch (period) {
-    case "day":   from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-    case "week":  from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
-    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case "year":  from = new Date(now.getFullYear(), 0, 1); break;
+    case "day":   from = startOfDay(y, m, d);     break;
+    case "week":  from = startOfDay(y, m, d - 6); break;
+    case "month": from = startOfDay(y, m, 1);     break;
+    case "year":  from = startOfDay(y, 0, 1);     break;
   }
-  return {
-    from: from.toISOString().split("T")[0],
-    to:   new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString().split("T")[0] + "T23:59:59.000Z",
-  };
+  return { from: from.toISOString(), to: endOfToday.toISOString() };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -251,7 +254,7 @@ function JobApprovalReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data: pendingData,   isLoading, refetch: r1 } = useGetJobsQuery({ status: "pending",   limit: 500 });
@@ -643,7 +646,7 @@ function EmployeesReport() {
   const [statusFilter, setStatusFilter]     = useState("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetAllEmployeesQuery({ limit: 500 });
@@ -1043,7 +1046,7 @@ function LeaveReport() {
   const [statusFilter, setStatusFilter] = useState<"" | "PENDING" | "APPROVED" | "REJECTED">("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetAllLeavesQuery({
@@ -1263,7 +1266,7 @@ function CasualWorkersReport() {
   const [useCustom, setUseCustom]   = useState(false);
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetCasualWorkersQuery({ limit: 500 });

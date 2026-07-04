@@ -29,18 +29,17 @@ type PageTab = "production" | "employees" | "leave";
 
 function getDateRange(period: Period): { from: string; to: string } {
   const now = new Date();
-  let from: Date;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const to = `${ymd(now)}T23:59:59`;
+  let fromDate: Date;
   switch (period) {
-    case "day":   from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-    case "week":  from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
-    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case "year":  from = new Date(now.getFullYear(), 0, 1); break;
+    case "day":   fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
+    case "week":  fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
+    case "month": fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case "year":  fromDate = new Date(now.getFullYear(), 0, 1); break;
   }
-  return {
-    from: from.toISOString().split("T")[0],
-    to:   new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
-            .toISOString().split("T")[0] + "T23:59:59.000Z",
-  };
+  return { from: `${ymd(fromDate)}T00:00:00`, to };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -235,7 +234,7 @@ function ProductionReport() {
   const [priorityFilter, setPriorityFilter] = useState("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data: d1, isLoading, refetch: r1 } = useGetJobsQuery({ limit: 500, status: "in-composition"     as any });

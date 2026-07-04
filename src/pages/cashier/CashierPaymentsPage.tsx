@@ -1,11 +1,12 @@
 import { useState } from "react";
 import {
   HiOutlineCash, HiOutlineSearch, HiOutlineRefresh,
-  HiOutlineDocumentText, HiOutlineCheckCircle,
+  HiOutlineDocumentText, HiOutlineCheckCircle, HiOutlineCurrencyDollar,
 } from "react-icons/hi";
 import DashboardLayout from "../../components/DashboardLayout";
 import { Card } from "../../components/ui";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
+import { useGetWithdrawalBalanceQuery } from "../../store/services/withdrawalsService";
 
 const PAGE_SIZE = 15;
 
@@ -13,7 +14,7 @@ export default function CashierPaymentsPage() {
   const [page, setPage]     = useState(1);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading, isFetching, refetch } = useGetPaymentsQuery({ page, limit: PAGE_SIZE });
+  const { data, isLoading, isFetching, refetch } = useGetPaymentsQuery({ page, limit: PAGE_SIZE, paymentMethod: "CASH" });
   const payments   = data?.payments ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total      = data?.total ?? 0;
@@ -30,6 +31,9 @@ export default function CashierPaymentsPage() {
   const totalBalance  = payments.reduce((s, p) => s + Number(p.balance),    0);
   const fullPay  = payments.filter(p => p.paymentState === "FULL").length;
   const partial  = payments.filter(p => p.paymentState === "PARTIAL").length;
+
+  const { data: balanceData } = useGetWithdrawalBalanceQuery();
+  const fundBalance = balanceData?.totalBalance ?? 0;
 
   const methodColor: Record<string, string> = {
     CASH:         "bg-green-100 text-green-700",
@@ -57,7 +61,7 @@ export default function CashierPaymentsPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <Card className="!p-4">
             <p className="text-xs text-custom-700">Total Received</p>
             <p className="text-xl font-bold text-green-600">{totalReceived.toLocaleString()}</p>
@@ -77,6 +81,14 @@ export default function CashierPaymentsPage() {
             <p className="text-xs text-custom-700">Partial Payments</p>
             <p className="text-xl font-bold text-yellow-600">{partial}</p>
             <p className="text-xs text-custom-700">transactions</p>
+          </Card>
+          <Card className={`!p-4 col-span-2 sm:col-span-1 ${fundBalance >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-orange-50 border-orange-200"}`}>
+            <div className="flex items-center gap-1 mb-1">
+              <HiOutlineCurrencyDollar className={`w-3.5 h-3.5 ${fundBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+              <p className="text-xs text-custom-700">Fund Balance</p>
+            </div>
+            <p className={`text-xl font-bold ${fundBalance >= 0 ? "text-emerald-700" : "text-orange-700"}`}>{fundBalance.toLocaleString()}</p>
+            <p className="text-xs text-custom-700">RWF</p>
           </Card>
         </div>
 

@@ -7,16 +7,33 @@ import {
   HiOutlineDocumentDownload,
   HiOutlineDocumentText,
   HiOutlineRefresh,
+  HiOutlineX,
+  HiOutlineThumbUp,
+  HiOutlineBan,
+  HiOutlineTrash,
+  HiOutlineCurrencyDollar,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
-import { useGetOutstandsQuery } from "../../store/services/outstandsService";
+import {
+  useGetOutstandsQuery,
+  useApproveOutstandMutation,
+  useRejectOutstandMutation,
+  usePayOutstandMutation,
+  useDeleteOutstandMutation,
+  type Outstand,
+} from "../../store/services/outstandsService";
 import { useGetCasualWorkersQuery } from "../../store/services/casualWorkersService";
+import {
+  useGetWithdrawalsQuery,
+  useGetWithdrawalBalanceQuery,
+} from "../../store/services/withdrawalsService";
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
+import { toast } from "react-toastify";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,16 +42,23 @@ type Period = "day" | "week" | "month" | "year";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getDateRange(period: Period): { from: string; to: string } {
-  const now = new Date();
-  const to = `${now.toISOString().split("T")[0]}T23:59:59.000Z`;
-  let from: Date;
+  const now   = new Date();
+  const pad   = (n: number) => String(n).padStart(2, "0");
+  const ymd   = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+  // end = today at 23:59:59 local time
+  const to = `${ymd(now)}T23:59:59`;
+
+  let fromDate: Date;
   switch (period) {
-    case "day":   from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-    case "week":  from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
-    case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case "year":  from = new Date(now.getFullYear(), 0, 1); break;
+    case "day":   fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
+    case "week":  fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6); break;
+    case "month": fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+    case "year":  fromDate = new Date(now.getFullYear(), 0, 1); break;
   }
-  return { from: from.toISOString().split("T")[0], to };
+  // start = fromDate at 00:00:00 local time
+  const from = `${ymd(fromDate)}T00:00:00`;
+  return { from, to };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -217,7 +241,7 @@ function PaymentsReport() {
   const [methodFilter, setMethodFilter] = useState("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetPaymentsQuery({ from: range.from, to: range.to, limit: 500 });
@@ -422,6 +446,102 @@ function PaymentsReport() {
 
 // ─── Tab 2: Expenses (Outstands) Report ───────────────────────────────────────
 
+// ─── Reject Modal ─────────────────────────────────────────────────────────────
+function RejectModal({ record, onClose }: { record: Outstand; onClose: () => void }) {
+  const [note, setNote] = useState("");
+  const [rejectOutstand, { isLoading }] = useRejectOutstandMutation();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!note.trim()) { toast.error("Please provide a rejection reason"); return; }
+    try { await rejectOutstand({ id: record.id, rejectionNote: note }).unwrap(); toast.success("Expense rejected"); onClose(); }
+    catch (err: any) { toast.error(err?.data?.message ?? "Failed to reject"); }
+  };
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-secondary-100">Reject Expense</h3>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+        </div>
+        <p className="text-sm text-custom-700 mb-4">Rejecting <span className="font-bold text-secondary-100">{record.ref}</span>. Please provide a reason.</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3} placeholder="Reason for rejection..."
+            className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-red-400 transition-colors resize-none" required />
+          <div className="flex gap-3 justify-end">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading} className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-40">{isLoading ? "Rejecting..." : "Reject"}</button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Inline actions for expense rows ─────────────────────────────────────────
+function ExpenseInlineActions({ record }: { record: Outstand }) {
+  const [confirm, setConfirm]       = useState<"approve" | "pay" | "delete" | null>(null);
+  const [showReject, setShowReject] = useState(false);
+  const [approveOutstand] = useApproveOutstandMutation();
+  const [payOutstand]     = usePayOutstandMutation();
+  const [deleteOutstand]  = useDeleteOutstandMutation();
+
+  return (
+    <>
+      {showReject && <RejectModal record={record} onClose={() => setShowReject(false)} />}
+      <div className="flex items-center gap-1">
+        {record.status === "pending" && (
+          <>
+            {confirm === "approve" ? (
+              <span className="flex items-center gap-1 text-xs">
+                <button onClick={async () => { try { await approveOutstand(record.id).unwrap(); toast.success("Approved"); } catch { toast.error("Failed"); } setConfirm(null); }}
+                  className="px-2 py-1 rounded-lg bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600">Yes</button>
+                <button onClick={() => setConfirm(null)} className="px-2 py-1 rounded-lg border border-custom-300 text-custom-700 text-xs hover:bg-custom-100">No</button>
+              </span>
+            ) : (
+              <button onClick={() => setConfirm("approve")} title="Approve"
+                className="p-1.5 rounded-lg hover:bg-emerald-50 text-emerald-600 transition-colors">
+                <HiOutlineThumbUp className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={() => setShowReject(true)} title="Reject"
+              className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
+              <HiOutlineBan className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        {record.status === "approved" && (
+          confirm === "pay" ? (
+            <span className="flex items-center gap-1 text-xs">
+              <button onClick={async () => { try { await payOutstand(record.id).unwrap(); toast.success("Marked as paid"); } catch { toast.error("Failed"); } setConfirm(null); }}
+                className="px-2 py-1 rounded-lg bg-blue-500 text-white font-bold text-xs hover:bg-blue-600">Pay</button>
+              <button onClick={() => setConfirm(null)} className="px-2 py-1 rounded-lg border border-custom-300 text-custom-700 text-xs hover:bg-custom-100">No</button>
+            </span>
+          ) : (
+            <button onClick={() => setConfirm("pay")} title="Mark as Paid"
+              className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-500 transition-colors">
+              <HiOutlineCash className="w-4 h-4" />
+            </button>
+          )
+        )}
+        {record.status !== "paid" && (
+          confirm === "delete" ? (
+            <span className="flex items-center gap-1 text-xs">
+              <button onClick={async () => { try { await deleteOutstand(record.id).unwrap(); toast.success("Deleted"); } catch { toast.error("Failed"); } setConfirm(null); }}
+                className="px-2 py-1 rounded-lg bg-red-500 text-white font-bold text-xs hover:bg-red-600">Del</button>
+              <button onClick={() => setConfirm(null)} className="px-2 py-1 rounded-lg border border-custom-300 text-custom-700 text-xs hover:bg-custom-100">No</button>
+            </span>
+          ) : (
+            <button onClick={() => setConfirm("delete")} title="Delete"
+              className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
+              <HiOutlineTrash className="w-4 h-4" />
+            </button>
+          )
+        )}
+      </div>
+    </>
+  );
+}
+
 const categoryColors: Record<string, string> = {
   purchase:    "bg-blue-100 text-blue-700",
   utility:     "bg-yellow-100 text-yellow-700",
@@ -446,7 +566,7 @@ function ExpensesReport() {
   const [statusFilter, setStatusFilter] = useState("");
 
   const range = useCustom && customFrom && customTo
-    ? { from: customFrom, to: customTo + "T23:59:59.000Z" }
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetOutstandsQuery({ limit: 500 });
@@ -566,16 +686,16 @@ function ExpensesReport() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Ref", "Description", "Category", "Recipient", "Total", "Status", "Date"].map((h) => (
+                {["Ref", "Description", "Category", "Recipient", "Total", "Status", "Date", "Actions"].map((h) => (
                   <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
               ) : expenses.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No expenses in this period</td></tr>
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No expenses in this period</td></tr>
               ) : paginated.map((e) => (
                 <tr key={e.id} className="hover:bg-custom-50 transition-colors">
                   <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">{e.ref}</td>
@@ -605,6 +725,9 @@ function ExpensesReport() {
                   </td>
                   <td className="px-3 py-2.5 text-xs text-custom-700">
                     {new Date(e.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                  </td>
+                  <td className="px-3 py-2.5" onClick={ev => ev.stopPropagation()}>
+                    <ExpenseInlineActions record={e} />
                   </td>
                 </tr>
               ))}
@@ -822,14 +945,216 @@ function CasualWorkersReport() {
   );
 }
 
+// ─── Tab 4: Withdrawals Report ────────────────────────────────────────────────
+
+function WithdrawalsReport() {
+  const [period, setPeriod]         = useState<Period>("month");
+  const [page, setPage]             = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo]     = useState("");
+  const [useCustom, setUseCustom]   = useState(false);
+
+  const range = useCustom && customFrom && customTo
+    ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
+    : getDateRange(period);
+
+  const { data, isLoading, refetch } = useGetWithdrawalsQuery({ limit: 500 });
+  const { data: balanceData }        = useGetWithdrawalBalanceQuery();
+  const allWithdrawals               = data?.withdrawals ?? [];
+
+  const withdrawals = allWithdrawals.filter((w) => {
+    const d = new Date(w.withdrawnAt || w.createdAt);
+    return d >= new Date(range.from) && d <= new Date(range.to);
+  });
+
+  const totalPages   = Math.max(1, Math.ceil(withdrawals.length / PAGE_SIZE));
+  const paginated    = withdrawals.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalAmount  = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
+
+  const bySource: Record<string, number> = {};
+  withdrawals.forEach((w) => {
+    const src = w.source || "other";
+    bySource[src] = (bySource[src] ?? 0) + Number(w.amount);
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-600">
+          <HiOutlineCurrencyDollar className="w-4 h-4" />
+        </div>
+        <h2 className="text-base font-bold text-secondary-100">Withdrawals</h2>
+      </div>
+
+      {/* Balance card */}
+      {balanceData && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Fund Balance",    value: balanceData.totalBalance,      color: balanceData.totalBalance >= 0 ? "text-emerald-600" : "text-red-500" },
+            { label: "Payments In",     value: balanceData.totalPaymentsIn,   color: "text-blue-600" },
+            { label: "Withdrawals Out", value: balanceData.totalWithdrawalsIn, color: "text-orange-600" },
+            { label: "Expenses Out",    value: balanceData.totalExpensesOut,  color: "text-red-500" },
+          ].map(k => (
+            <Card key={k.label} className="!p-4">
+              <p className="text-xs text-custom-700 mb-1">{k.label}</p>
+              <p className={`text-lg font-bold ${k.color}`}>{Number(k.value).toLocaleString()}</p>
+              <p className="text-xs text-custom-700">RWF</p>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <input type="date" value={customFrom}
+            onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom}
+            onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          {useCustom && (
+            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }}
+              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors">Clear</button>
+          )}
+          <button onClick={() => refetch()}
+            className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="Cashier Withdrawals Report" getExportData={() => ({
+            headers: ["Title", "Description", "Amount (RWF)", "Source", "Taken By", "Contact", "Date"],
+            rows: withdrawals.map((w) => [
+              w.title,
+              w.description,
+              Number(w.amount).toLocaleString(),
+              w.source || "—",
+              w.takenByName || "—",
+              w.takenByContact || "—",
+              new Date(w.withdrawnAt || w.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+            ]),
+            summary: [
+              { label: `Total Withdrawals: ${withdrawals.length}`, value: "" },
+              { label: "TOTAL AMOUNT", value: `${totalAmount.toLocaleString()} RWF`, bold: true },
+            ],
+          })} />
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <StatCard label="Withdrawals"  value={withdrawals.length} />
+        <StatCard label="Total Amount" value={`${totalAmount.toLocaleString()} RWF`} color="text-orange-600" />
+        <StatCard label="Avg. Amount"
+          value={withdrawals.length > 0 ? `${Math.round(totalAmount / withdrawals.length).toLocaleString()} RWF` : "—"} />
+      </div>
+
+      {/* By-source pills */}
+      {Object.keys(bySource).length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(bySource).map(([src, amount]) => (
+            <div key={src} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-orange-100 text-orange-700">
+              {src}: {amount.toLocaleString()} RWF
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Table */}
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {["Title", "Description", "Amount", "Source", "Taken By", "Contact", "Date"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+              ) : withdrawals.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No withdrawals in this period</td></tr>
+              ) : paginated.map((w) => (
+                <tr key={w.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm font-semibold text-secondary-100">{w.title}</p>
+                    {w.notes && <p className="text-xs text-custom-700 truncate max-w-[160px]">{w.notes}</p>}
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100 max-w-[180px] truncate">{w.description}</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-orange-600">
+                    {Number(w.amount).toLocaleString()} RWF
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                      {w.source || "—"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{w.takenByName || "—"}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">{w.takenByContact || "—"}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700">
+                    {new Date(w.withdrawnAt || w.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Summary */}
+      {withdrawals.length > 0 && (
+        <div className="flex justify-end">
+          <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-64">
+            <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
+            <div className="flex justify-between px-4 py-2 border-t border-custom-200">
+              <span className="text-custom-700 text-xs">Total Withdrawn</span>
+              <span className="font-bold text-xs text-orange-600">{totalAmount.toLocaleString()} RWF</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 border-t border-custom-200">
+              <span className="text-custom-700 text-xs">Records</span>
+              <span className="font-bold text-xs text-secondary-100">{withdrawals.length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {withdrawals.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-custom-700">
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, withdrawals.length)} of {withdrawals.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setPage(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                  n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+                }`}>{n}</button>
+            ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "payments" | "expenses" | "workers";
+type Tab = "payments" | "expenses" | "workers" | "withdrawals";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
-  { value: "payments", label: "Payments",       icon: HiOutlineCash },
-  { value: "expenses", label: "Expenses",        icon: HiOutlineClipboardList },
-  { value: "workers",  label: "Casual Workers",  icon: HiOutlineUsers },
+  { value: "payments",    label: "Payments",      icon: HiOutlineCash },
+  { value: "expenses",    label: "Expenses",       icon: HiOutlineClipboardList },
+  { value: "workers",     label: "Casual Workers", icon: HiOutlineUsers },
+  { value: "withdrawals", label: "Withdrawals",    icon: HiOutlineCurrencyDollar },
 ];
 
 export default function CashierReportsPage() {
@@ -866,9 +1191,10 @@ export default function CashierReportsPage() {
           ))}
         </div>
 
-        {tab === "payments" && <PaymentsReport />}
-        {tab === "expenses" && <ExpensesReport />}
-        {tab === "workers"  && <CasualWorkersReport />}
+        {tab === "payments"    && <PaymentsReport />}
+        {tab === "expenses"    && <ExpensesReport />}
+        {tab === "workers"     && <CasualWorkersReport />}
+        {tab === "withdrawals" && <WithdrawalsReport />}
       </div>
     </DashboardLayout>
   );

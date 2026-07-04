@@ -17,10 +17,11 @@ import DepartmentBreakdown from "../../components/DepartmentBreakdown";
 import LowStockAlerts from "../../components/LowStockAlerts";
 import OutstandingBalances from "../../components/OutstandingBalances";
 import { Card } from "../../components/ui";
-import { useGetJobsQuery } from "../../store/services/jobsService";
-import { useGetPaymentsQuery } from "../../store/services/paymentsService";
+import { useGetJobStatsQuery, useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetCustomersQuery } from "../../store/services/customersService";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
+import { useGetWithdrawalBalanceQuery } from "../../store/services/withdrawalsService";
+import { useGetOutstandsQuery } from "../../store/services/outstandsService";
 
 const statusColor: Record<string, string> = {
   "in-printing": "bg-primary-100 text-primary-700",
@@ -52,72 +53,33 @@ export default function AdminDashboard() {
   const [showMore, setShowMore] = useState(false);
 
   // ── Real data ────────────────────────────────────────────────────────────
-  const { data: jobsData, isLoading: jobsLoading } = useGetJobsQuery({ limit: 200 });
+  const { data: statsData, isLoading: statsLoading } = useGetJobStatsQuery();
+  const { data: jobsData } = useGetJobsQuery({ limit: 100 });
   const { data: recentJobsData } = useGetJobsQuery({ limit: 5 });
-  const { data: paymentsData, isLoading: paymentsLoading } = useGetPaymentsQuery({ limit: 500 });
-  const { data: customersData } = useGetCustomersQuery({ limit: 1 }); // just need total
+  const { data: customersData } = useGetCustomersQuery({ limit: 1 });
   const { data: employeesData } = useGetAllEmployeesQuery({ limit: 200 });
+  const { data: balanceData } = useGetWithdrawalBalanceQuery();
+  const { data: expensesData } = useGetOutstandsQuery({ limit: 5, status: undefined });
 
   const jobs = jobsData?.jobs ?? [];
-  const payments = paymentsData?.payments ?? [];
   const recentJobs = recentJobsData?.jobs ?? [];
   const totalCustomers = customersData?.total ?? 0;
 
-  // KPI calculations
-  const inProgressStatuses = [
-    "confirmed",
-    "in-composition",
-    "in-montage",
-    "in-printing",
-    "in-binding",
-    "in-packaging",
-    "quality-check",
-    "ready-for-delivery",
-  ];
+  // KPI values from stats endpoint
+  const jobsInProgress  = statsData?.inProgress ?? 0;
+  const completedToday  = statsData?.completedToday ?? 0;
+  const delayedJobs     = statsData?.delayed ?? 0;
+  const totalRevenue    = statsData?.totalRevenue ?? 0;
+  const totalPaid       = statsData?.totalPaid ?? 0;
+  const outstanding     = statsData?.outstanding ?? 0;
+  const expensesToday   = statsData?.expensesToday ?? 0;
+  const withdrawalsToday = statsData?.withdrawalsToday ?? 0;
 
-  const today = new Date().toDateString();
-
-  const jobsInProgress = useMemo(
-    () => jobs.filter((j) => inProgressStatuses.includes(j.status)).length,
-    [jobs]
-  );
-
-  const completedToday = useMemo(
-    () =>
-      jobs.filter(
-        (j) =>
-          (j.status === "completed" || j.status === "delivered") &&
-          j.completedAt &&
-          new Date(j.completedAt).toDateString() === today
-      ).length,
-    [jobs]
-  );
-
-  const delayedJobs = useMemo(
-    () =>
-      jobs.filter(
-        (j) =>
-          j.dueDate &&
-          new Date(j.dueDate) < new Date() &&
-          j.status !== "completed" &&
-          j.status !== "delivered"
-      ).length,
-    [jobs]
-  );
-
-  const totalRevenue = useMemo(
-    () => jobs.reduce((sum, j) => sum + (parseFloat(String(j.amount ?? 0)) || 0), 0),
-    [jobs]
-  );
-
-  const totalPaid = useMemo(
-    () => payments.reduce((sum, p) => sum + (parseFloat(String(p.amountPaid ?? 0)) || 0), 0),
-    [payments]
-  );
-
-  const outstanding = useMemo(() => Math.max(0, totalRevenue - totalPaid), [totalRevenue, totalPaid]);
+  const balance     = balanceData ?? { initialAmount: 0, totalPaymentsIn: 0, totalWithdrawalsIn: 0, totalExpensesOut: 0, totalBalance: 0 };
+  const recentExpenses = expensesData?.outstands ?? [];
 
   // Deadline breakdown
+  const inProgressStatuses = ["confirmed","in-composition","in-montage","in-printing","in-binding","in-packaging","quality-check","ready-for-delivery"];
   const now = new Date();
   const overdueJobs = useMemo(
     () =>
@@ -168,45 +130,61 @@ export default function AdminDashboard() {
   const kpis = [
     {
       label: "Jobs In Progress",
-      value: jobsLoading ? "…" : String(jobsInProgress),
+      value: statsLoading ? "…" : String(jobsInProgress),
       icon: HiOutlineClipboardList,
       color: "text-primary-500",
       bg: "bg-primary-100",
     },
     {
       label: "Completed Today",
-      value: jobsLoading ? "…" : String(completedToday),
+      value: statsLoading ? "…" : String(completedToday),
       icon: HiOutlineCheckCircle,
       color: "text-green-600",
       bg: "bg-green-100",
     },
     {
       label: "Delayed Jobs",
-      value: jobsLoading ? "…" : String(delayedJobs),
+      value: statsLoading ? "…" : String(delayedJobs),
       icon: HiOutlineExclamationCircle,
       color: "text-red-500",
       bg: "bg-red-100",
     },
     {
       label: "Revenue (RWF)",
-      value: jobsLoading ? "…" : fmt(totalRevenue),
+      value: statsLoading ? "…" : fmt(totalRevenue),
       icon: HiOutlineCurrencyDollar,
       color: "text-yellow-600",
       bg: "bg-yellow-100",
     },
     {
       label: "Payments Received",
-      value: paymentsLoading ? "…" : fmt(totalPaid),
+      value: statsLoading ? "…" : fmt(totalPaid),
       icon: HiOutlineTrendingUp,
       color: "text-primary-600",
       bg: "bg-primary-100",
     },
     {
       label: "Outstanding",
-      value: jobsLoading || paymentsLoading ? "…" : fmt(outstanding),
+      value: statsLoading ? "…" : fmt(outstanding),
       icon: HiOutlineClock,
       color: "text-orange-500",
       bg: "bg-orange-100",
+    },
+    {
+      label: "Expenses Today",
+      value: statsLoading ? "…" : fmt(expensesToday),
+      sub: statsLoading ? "" : `${statsData?.expensesCountToday ?? 0} paid`,
+      icon: HiOutlineExclamationCircle,
+      color: "text-red-600",
+      bg: "bg-red-100",
+    },
+    {
+      label: "Withdrawals Today",
+      value: statsLoading ? "…" : fmt(withdrawalsToday),
+      sub: statsLoading ? "" : `${statsData?.withdrawalsCountToday ?? 0} records`,
+      icon: HiOutlineTrendingUp,
+      color: "text-blue-600",
+      bg: "bg-blue-100",
     },
   ];
 
@@ -236,21 +214,91 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
-        {kpis.map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="!p-4 flex flex-col gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg}`}>
-              <Icon className={`w-5 h-5 ${color}`} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+        {kpis.map(({ label, value, sub, icon: Icon, color, bg }) => (
+          <Card key={label} className="!p-3 flex flex-col gap-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bg}`}>
+              <Icon className={`w-4 h-4 ${color}`} />
             </div>
             <div>
-              <p className="text-xs text-custom-700">{label}</p>
-              <p className="text-xl font-bold text-secondary-100 leading-tight">{value}</p>
+              <p className="text-xs text-custom-700 leading-tight">{label}</p>
+              <p className={`text-base font-bold text-secondary-100 leading-tight`}>{value}</p>
+              {sub && <p className="text-xs text-custom-500 mt-0.5">{sub}</p>}
             </div>
           </Card>
         ))}
       </div>
 
-      {/* Middle row */}
+      {/* Finance row */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        {/* Fund Balance Summary */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <HiOutlineCurrencyDollar className="w-5 h-5 text-primary-500" />
+              <h2 className="font-bold text-secondary-100">Fund Balance</h2>
+            </div>
+            <a href="/admin/withdrawals" className="text-xs text-primary-500 hover:underline font-semibold">View all →</a>
+          </div>
+          <div className="space-y-2">
+            {([
+              { label: "Initial Amount",   value: balance.initialAmount,    color: "text-secondary-100" },
+              { label: "Payments In",      value: balance.totalPaymentsIn,   color: "text-green-600",  prefix: "+" },
+              { label: "Withdrawals In",   value: balance.totalWithdrawalsIn,color: "text-blue-600",   prefix: "+" },
+              { label: "Expenses Out",     value: balance.totalExpensesOut,  color: "text-red-500",    prefix: "-" },
+            ] as { label: string; value: number; color: string; prefix?: string }[]).map(({ label, value, color, prefix }) => (
+              <div key={label} className="flex items-center justify-between py-2 border-b border-custom-100">
+                <span className="text-sm text-custom-700">{label}</span>
+                <span className={`text-sm font-bold ${color}`}>{prefix}{fmt(value)} RWF</span>
+              </div>
+            ))}
+            <div className={`flex items-center justify-between pt-3 rounded-xl px-3 py-2 mt-1 ${balance.totalBalance >= 0 ? "bg-emerald-50" : "bg-orange-50"}`}>
+              <span className="text-sm font-bold text-secondary-100">Total Balance</span>
+              <span className={`text-lg font-bold ${balance.totalBalance >= 0 ? "text-emerald-700" : "text-orange-700"}`}>{fmt(balance.totalBalance)} RWF</span>
+            </div>
+          </div>
+        </Card>
+
+        {/* Recent Expenses */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <HiOutlineExclamationCircle className="w-5 h-5 text-primary-500" />
+              <h2 className="font-bold text-secondary-100">Recent Expenses</h2>
+            </div>
+            <a href="/admin/expenses" className="text-xs text-primary-500 hover:underline font-semibold">View all →</a>
+          </div>
+          {recentExpenses.length === 0 ? (
+            <p className="text-sm text-custom-700 text-center py-6">No expenses recorded</p>
+          ) : (
+            <div className="space-y-2">
+              {recentExpenses.map(e => {
+                const statusColor: Record<string, string> = {
+                  pending:  "bg-yellow-100 text-yellow-700",
+                  approved: "bg-blue-100 text-blue-700",
+                  paid:     "bg-emerald-100 text-emerald-700",
+                  rejected: "bg-red-100 text-red-700",
+                };
+                return (
+                  <div key={e.id} className="flex items-center justify-between py-2 border-b border-custom-100 last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-secondary-100 truncate">{e.description}</p>
+                      <p className="text-xs text-custom-700">{e.ref} · {new Date(e.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-3 shrink-0">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusColor[e.status] ?? ""}`}>{e.status}</span>
+                      <span className="text-sm font-bold text-secondary-100">{Number(e.totalAmount).toLocaleString()} RWF</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Department / Stock / Balances row */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <DepartmentBreakdown />
         <LowStockAlerts />

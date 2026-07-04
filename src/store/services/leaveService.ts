@@ -19,7 +19,9 @@ export interface LeaveRequest {
   userId: string;
   type: LeaveType;
   startDate: string;
+  startTime?: string | null;
   endDate: string;
+  endTime?: string | null;
   reason: string;
   status: LeaveStatus;
   rejectionReason?: string | null;
@@ -51,7 +53,9 @@ export interface LeaveListResponse {
 export interface CreateLeavePayload {
   type: LeaveType;
   startDate: string;
+  startTime?: string;
   endDate: string;
+  endTime?: string;
   reason: string;
   documentUrl?: string;
 }
@@ -60,7 +64,9 @@ export interface UpdateLeavePayload {
   id: string;
   type?: LeaveType;
   startDate?: string;
+  startTime?: string;
   endDate?: string;
+  endTime?: string;
   reason?: string;
   documentUrl?: string;
 }
