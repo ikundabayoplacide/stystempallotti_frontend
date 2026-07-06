@@ -256,6 +256,11 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
   const btnRef  = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const updatePos = () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  };
+
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
@@ -263,7 +268,13 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
   }, [open]);
 
   if (job.status === "delivered") return null;
@@ -285,8 +296,7 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
 
   const handleOpen = () => {
     if (open) { setOpen(false); return; }
-    const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    updatePos();
     setOpen(true);
   };
 

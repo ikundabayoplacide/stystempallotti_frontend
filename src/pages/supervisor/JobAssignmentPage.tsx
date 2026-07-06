@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import { useSelector } from "react-redux";
 import {
   HiOutlineCheckCircle,
@@ -21,7 +22,9 @@ import { useGetAllEmployeesQuery, useAssignJobToEmployeeMutation } from "../../s
 import type { Job, JobState } from "../../store/services/jobsService";
 import {
   useGetJobsQuery,
+  useGetJobDetailsQuery,
   useUpdateJobStateMutation,
+  useMarkJobDoneMutation,
 } from "../../store/services/jobsService";
 import { useCreateJobSpecMutation, useGetJobSpecsQuery } from "../../store/services/jobSpecsService";
 import { jobStatusConfig } from "../../types/JobStatus";
@@ -85,6 +88,7 @@ const inputCls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-
 function JobDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
   const [tab, setTab] = useState<"overview" | "specs">("overview");
   const { data: specs = [], isLoading: loadingSpecs } = useGetJobSpecsQuery(job.id);
+  const { data: details } = useGetJobDetailsQuery(job.id);
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -180,6 +184,33 @@ function JobDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
                   <p className="text-secondary-100 leading-snug">{job.notes}</p>
                 </div>
               )}
+
+              {/* Assigned Workers */}
+              <div className="p-3 rounded-xl bg-custom-50 border border-custom-200">
+                <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Assigned Workers</p>
+                {!details?.assignedWorkers?.length ? (
+                  <p className="text-xs text-custom-500 italic">No workers assigned to this job.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {details.assignedWorkers.map((w) => (
+                      <div key={w.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+                            <span className="text-primary-600 font-bold text-xs">{w.fullName.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-secondary-100">{w.fullName}</p>
+                            <p className="text-xs text-custom-700">{w.department?.name ?? "—"} · {w.phoneNumber}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-custom-500">
+                          {new Date(w.EmployeeJobAssignment.assignedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -391,91 +422,88 @@ interface ActionsMenuProps {
 
 function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone, onAddSpec }: ActionsMenuProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const canMarkDone = job.state != null && DONE_STATE_MAP[job.state as NonNullable<JobState>] !== undefined && job.progress === "completed";
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const canMarkDone = job.status !== "completed" && job.status !== "rejected" && job.status !== "delivered";
+
+  const updatePos = () => {
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open]);
+
+  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setOpen((v) => !v);
+  };
 
   if (job.status === "delivered" || job.status === "completed") {
     return (
       <div className="flex items-center justify-end gap-1">
-        <button
-          onClick={() => onView(job)}
-          className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600"
-          title="View details"
-        >
+        <button onClick={() => onView(job)} className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600" title="View details">
           <HiOutlineEye className="w-4 h-4" />
         </button>
-        <button
-          onClick={() => onAddSpec(job)}
-          className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-blue-500"
-          title="Add Spec"
-        >
+        <button onClick={() => onAddSpec(job)} className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-blue-500" title="Add Spec">
           <HiOutlinePlus className="w-4 h-4" />
         </button>
       </div>
     );
   }
 
-  // Close on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
   return (
-    <div className="flex items-center justify-end gap-1" ref={ref}>
-      {/* Eye — view details */}
-      <button
-        onClick={() => onView(job)}
-        className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600"
-        title="View details"
-      >
+    <div className="flex items-center justify-end gap-1">
+      <button onClick={() => onView(job)} className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700 hover:text-primary-600" title="View details">
         <HiOutlineEye className="w-4 h-4" />
       </button>
-
-      {/* Add Spec */}
-      <button
-        onClick={() => onAddSpec(job)}
-        className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-blue-500"
-        title="Add Spec"
-      >
+      <button onClick={() => onAddSpec(job)} className="p-1.5 rounded-lg hover:bg-blue-50 transition-colors text-blue-500" title="Add Spec">
         <HiOutlinePlus className="w-4 h-4" />
       </button>
+      <button ref={btnRef} onClick={handleToggle} className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700" title="Actions">
+        <HiOutlineDotsVertical className="w-4 h-4" />
+      </button>
 
-      {/* ... dropdown */}
-      <div className="relative">
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700"
-          title="Actions"
+      {open && menuPos && ReactDOM.createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          className="w-44 bg-style-600 border border-custom-200 rounded-xl shadow-xl py-1 text-sm"
         >
-          <HiOutlineDotsVertical className="w-4 h-4" />
-        </button>
-
-        {open && (
-          <div className="absolute right-0 top-8 z-30 w-44 bg-white border border-custom-200 rounded-xl shadow-lg py-1 text-sm">
+          <button
+            onClick={() => { setOpen(false); onAssign(job); }}
+            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-custom-100 text-secondary-100 transition-colors"
+          >
+            <HiOutlineUserAdd className="w-4 h-4 text-primary-500" />
+            {alreadyAssigned ? "Reassign" : "Assign"}
+          </button>
+          {canMarkDone && (
             <button
-              onClick={() => { setOpen(false); onAssign(job); }}
-              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-custom-50 text-secondary-100 transition-colors"
+              onClick={() => { setOpen(false); onMarkDone(job); }}
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-custom-100 text-secondary-100 transition-colors"
             >
-              <HiOutlineUserAdd className="w-4 h-4 text-primary-500" />
-              {alreadyAssigned ? "Reassign" : "Assign "}
+              <HiOutlineFlag className="w-4 h-4 text-green-500" />
+              Mark Done
             </button>
-
-            {canMarkDone && (
-              <button
-                onClick={() => { setOpen(false); onMarkDone(job); }}
-                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-custom-50 text-secondary-100 transition-colors"
-              >
-                <HiOutlineFlag className="w-4 h-4 text-green-500" />
-                Mark Done
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
@@ -513,6 +541,7 @@ export default function SupervisorJobsPage() {
   );
   const { data: departments = [] } = useGetDepartmentsQuery();
   const [updateJobState, { isLoading: isSaving }] = useUpdateJobStateMutation();
+  const [markJobDone, { isLoading: isMarkingDone }] = useMarkJobDoneMutation();
 
   // Employees scoped to supervisor's department (backend auto-scopes)
   const { data: employeesData, refetch: refetchEmployees } = useGetAllEmployeesQuery(
@@ -565,11 +594,15 @@ export default function SupervisorJobsPage() {
   };
 
   const handleMarkDone = async () => {
-    if (!activeJob?.state) return;
-    const doneState = DONE_STATE_MAP[activeJob.state as NonNullable<JobState>];
-    if (!doneState) return;
+    if (!activeJob) return;
     try {
-      await updateJobState({ id: activeJob.id, state: doneState }).unwrap();
+      const doneState = activeJob.state
+        ? DONE_STATE_MAP[activeJob.state as NonNullable<JobState>]
+        : undefined;
+      await markJobDone(activeJob.id).unwrap();
+      if (doneState) {
+        await updateJobState({ id: activeJob.id, state: doneState }).unwrap();
+      }
       closeAndRefetch();
     } catch (err: any) {
       setError(err?.data?.message ?? "Failed to mark as done");
@@ -839,10 +872,12 @@ export default function SupervisorJobsPage() {
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200 mb-4">
                   <HiOutlineFlag className="w-5 h-5 text-green-600 flex-shrink-0" />
                   <div className="text-sm">
-                    <p className="text-custom-700">State will change to:</p>
-                    <p className="font-bold text-green-700 mt-0.5">
-                      {doneState ? (STATE_LABELS[doneState as NonNullable<JobState>] ?? doneState) : "—"}
-                    </p>
+                    <p className="text-green-700">This will mark the job as <span className="font-bold">Done</span> and complete it.</p>
+                    {doneState && (
+                      <p className="text-green-600 mt-0.5">
+                        Dept state → <span className="font-bold">{STATE_LABELS[doneState as NonNullable<JobState>] ?? doneState}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -852,11 +887,11 @@ export default function SupervisorJobsPage() {
 
                 <button
                   onClick={handleMarkDone}
-                  disabled={isSaving}
+                  disabled={isSaving || isMarkingDone}
                   className="w-full px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <HiOutlineFlag className="w-4 h-4" />
-                  {isSaving ? "Saving…" : "Confirm — Mark Done"}
+                  {(isSaving || isMarkingDone) ? "Saving…" : "Confirm — Mark Done"}
                 </button>
 
               </Card>
