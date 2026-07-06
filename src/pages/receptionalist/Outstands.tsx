@@ -108,6 +108,7 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
       await createOutstand({
         description: form.description,
         category: form.category,
+        amount: total,
         quantity: Number(form.quantity) || 1,
         unitCost: Number(form.unitCost),
         recipientName: form.recipient,

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import ReactDOM from "react-dom";
 import {
-  HiOutlineArrowRight,
   HiOutlineBadgeCheck,
   HiOutlineCheckCircle,
   HiOutlineClock,
@@ -21,10 +20,8 @@ import {
 import { printQuotation } from "../../components/QuotationPrint";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
-import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import {
   useApproveJobMutation,
-  useAssignJobMutation,
   useGetJobDetailsQuery,
   useGetJobsQuery,
   useRejectJobMutation,
@@ -281,7 +278,7 @@ function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => voi
   );
 }
 
-type ModalMode = "approve" | "reject" | "assign" | "verify";
+type ModalMode = "approve" | "reject" | "verify";
 
 export default function DAFJobApprovalPage() {
   const [search, setSearch]           = useState("");
@@ -291,7 +288,7 @@ export default function DAFJobApprovalPage() {
   const [showModal, setShowModal]     = useState(false);
   const [approvalNotes, setApprovalNotes] = useState("");
   const [rejectReason, setRejectReason]   = useState("");
-  const [assignDeptId, setAssignDeptId]   = useState("");
+
   const [openMenuId, setOpenMenuId]         = useState<string | null>(null);
   const [menuPos, setMenuPos]               = useState<{ top: number; right: number } | null>(null);
   const [detailsJobId, setDetailsJobId]     = useState<string | null>(null);
@@ -326,11 +323,8 @@ export default function DAFJobApprovalPage() {
   const { data: verifiedData,  refetch: refetchVerified  } = useGetJobsQuery({ status: "verified",  limit: 100 });
 
   const refetchAll = () => { refetchPending(); refetchConfirmed(); refetchRejected(); refetchCompleted(); refetchVerified(); };
-  const { data: departments = [] }                         = useGetDepartmentsQuery();
-
   const [approveJob, { isLoading: approving }] = useApproveJobMutation();
   const [rejectJob,  { isLoading: rejecting }] = useRejectJobMutation();
-  const [assignJob,  { isLoading: assigning }] = useAssignJobMutation();
   const [verifyJob,  { isLoading: verifying }] = useVerifyJobMutation();
 
   const pendingJobs   = pendingData?.jobs   ?? [];
@@ -356,7 +350,6 @@ export default function DAFJobApprovalPage() {
     setModalMode(mode);
     setApprovalNotes("");
     setRejectReason("");
-    setAssignDeptId(job.departmentAssignedToId ?? "");
     setOpenMenuId(null);
     setShowModal(true);
   };
@@ -374,12 +367,6 @@ export default function DAFJobApprovalPage() {
     if (!rejectReason.trim()) { alert("Please provide a reason for rejection"); return; }
     try { await rejectJob({ id: selectedJob.id, rejectReason }).unwrap(); closeModal(); }
     catch { alert("Failed to reject job. Please try again."); }
-  };
-
-  const handleAssign = async () => {
-    if (!selectedJob || !assignDeptId) { alert("Please select a department"); return; }
-    try { await assignJob({ id: selectedJob.id, departmentAssignedToId: assignDeptId }).unwrap(); closeModal(); }
-    catch { alert("Failed to assign job. Please try again."); }
   };
 
   const handleVerify = async () => {
@@ -561,7 +548,7 @@ export default function DAFJobApprovalPage() {
                             )}
 
                             {/* ... dots menu */}
-                            {(isPending || job.status === "verified" || job.status === "confirmed") && (
+                            {(isPending || job.status === "verified") && (
                               <button
                                 ref={openMenuId === job.id ? triggerRef : undefined}
                                 onClick={(e) => openMenu(e, job.id)}
@@ -655,12 +642,7 @@ export default function DAFJobApprovalPage() {
                       <HiOutlineXCircle className="w-4 h-4" /> Reject
                     </button>
                   )}
-                  {job.status === "confirmed" && (
-                    <button onClick={() => openModal(job, "assign")}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-secondary-100 hover:bg-custom-100 transition-colors">
-                      <HiOutlineArrowRight className="w-4 h-4" /> Assign Dept
-                    </button>
-                  )}
+
                 </>
               );
             })()}
@@ -682,7 +664,6 @@ export default function DAFJobApprovalPage() {
                   <h3 className="text-xl font-bold text-secondary-100 capitalize">
                     {modalMode === "approve" && "Confirm Job"}
                     {modalMode === "reject"  && "Reject Job"}
-                    {modalMode === "assign"  && "Assign to Department"}
                     {modalMode === "verify"  && "Verify Job"}
                   </h3>
                   <p className="text-sm text-custom-700 mt-1">{selectedJob.jobNumber} — {selectedJob.title}</p>
@@ -759,26 +740,7 @@ export default function DAFJobApprovalPage() {
                 </div>
               )}
 
-              {/* Assign */}
-              {modalMode === "assign" && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-semibold text-custom-700 mb-1">
-                      Department <span className="text-red-500">*</span>
-                    </label>
-                    <select value={assignDeptId} onChange={(e) => setAssignDeptId(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500">
-                      <option value="">Select department…</option>
-                      {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
-                  </div>
-                  <button onClick={handleAssign} disabled={assigning}
-                    className="w-full px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
-                    <HiOutlineArrowRight className="w-4 h-4" />
-                    {assigning ? "Assigning…" : "Assign Department"}
-                  </button>
-                </div>
-              )}
+
             </Card>
           </div>
         )}

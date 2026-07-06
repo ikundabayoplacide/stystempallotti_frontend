@@ -22,12 +22,27 @@ export interface Proforma {
     id: string;
     jobNumber: string;
     title: string;
-    customer?: ProformaCustomer;
+    amount?: number;
+    customer?: ProformaCustomer & { tin?: string; address?: string };
+    jobItems?: Array<{
+      id: string;
+      itemName?: string;
+      unit?: string;
+      unitCost?: number;
+      quantityNeeded: number;
+      totalCost?: number;
+      notes?: string;
+      stockItem: { name: string; unit: string };
+    }>;
     items?: Array<{
       id: string;
-      stockItem: { name: string; unit: string };
+      itemName?: string;
+      unit?: string;
+      unitCost?: number;
       quantityNeeded: number;
+      totalCost?: number;
       notes?: string;
+      stockItem: { name: string; unit: string };
     }>;
   };
   subtotal: number;

@@ -212,17 +212,19 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
 
   const [recordPayment, { isLoading }] = useRecordPaymentMutation();
 
-  const totalAmount  = job.amount ?? 0;
-  const amountPaid   = paymentState === "FULL" ? totalAmount : Number(partialAmount) || 0;
-  const balance      = totalAmount - amountPaid;
-  const partialValid = paymentState === "PARTIAL" && amountPaid > 0 && amountPaid < totalAmount;
-  const canSubmit    = !!method && (paymentState === "FULL" || partialValid);
+  const totalAmount    = job.amount ?? 0;
+  const alreadyPaid    = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
+  const remainingAmount = totalAmount - alreadyPaid;
+  const amountPaid     = paymentState === "FULL" ? remainingAmount : Number(partialAmount) || 0;
+  const balance        = remainingAmount - amountPaid;
+  const partialValid   = paymentState === "PARTIAL" && amountPaid > 0 && amountPaid < remainingAmount;
+  const canSubmit      = !!method && (paymentState === "FULL" || partialValid);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!method) { toast.error("Please select a payment method"); return; }
     if (paymentState === "PARTIAL" && amountPaid <= 0) { toast.error("Enter a valid partial amount"); return; }
-    if (paymentState === "PARTIAL" && amountPaid >= totalAmount) { toast.error("Partial amount must be less than the total"); return; }
+    if (paymentState === "PARTIAL" && amountPaid >= remainingAmount) { toast.error("Partial amount must be less than the remaining balance"); return; }
 
     try {
       const result = await recordPayment({
@@ -333,11 +335,25 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
             <span className="text-secondary-100">{job.title}</span>
           </div>
           {job.amount != null && (
-            <div className="pt-2 border-t border-custom-200 flex items-center justify-between">
-              <span className="text-xs text-custom-700">Total Amount</span>
-              <span className="text-base font-bold text-secondary-100">
-                {job.amount.toLocaleString()} <span className="text-xs font-normal text-custom-700">RWF</span>
-              </span>
+            <div className="pt-2 border-t border-custom-200 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-custom-700">Total Amount</span>
+                <span className="text-sm font-semibold text-secondary-100">
+                  {totalAmount.toLocaleString()} <span className="text-xs font-normal text-custom-700">RWF</span>
+                </span>
+              </div>
+              {alreadyPaid > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-custom-700">Already Paid</span>
+                  <span className="text-sm font-semibold text-emerald-600">{alreadyPaid.toLocaleString()} RWF</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-custom-700">Remaining</span>
+                <span className="text-base font-bold text-orange-600">
+                  {remainingAmount.toLocaleString()} <span className="text-xs font-normal">RWF</span>
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -379,14 +395,14 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
                 <input
                   type="number"
                   min={1}
-                  max={totalAmount - 1}
-                  placeholder={`Max ${(totalAmount - 1).toLocaleString()} RWF`}
+                  max={remainingAmount - 1}
+                  placeholder={`Max ${(remainingAmount - 1).toLocaleString()} RWF`}
                   value={partialAmount}
                   onChange={(e) => setPartialAmount(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-white text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
-              {amountPaid > 0 && amountPaid < totalAmount && (
+              {amountPaid > 0 && amountPaid < remainingAmount && (
                 <div className="flex items-center justify-between text-sm pt-1 border-t border-orange-200">
                   <span className="text-orange-700 font-semibold">Remaining balance</span>
                   <span className="font-bold text-orange-700">{balance.toLocaleString()} RWF</span>
@@ -672,16 +688,21 @@ export default function PaymentCollectionPage() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {job.status !== "rejected" && (
-                        <button
-                          onClick={() => setSelectedJob(job)}
-                          disabled={job.paymentStatus === "paid"}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          <HiOutlineBadgeCheck className="w-4 h-4" />
-                          {job.paymentStatus === "paid" ? "Paid" : "Collect Payment"}
-                        </button>
-                        )}
+                        {job.status !== "rejected" && (() => {
+                          const totalPaid = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
+                          const bal = job.amount != null ? job.amount - totalPaid : null;
+                          const fullyPaid = bal !== null && bal <= 0;
+                          return (
+                            <button
+                              onClick={() => setSelectedJob(job)}
+                              disabled={fullyPaid}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <HiOutlineBadgeCheck className="w-4 h-4" />
+                              {fullyPaid ? "Paid" : "Collect Payment"}
+                            </button>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))

@@ -44,13 +44,17 @@ function getCustomer(q: Proforma) {
   return q.customer ?? q.job?.customer ?? null;
 }
 
+function getItems(q: Proforma) {
+  return q.job?.jobItems ?? q.job?.items ?? [];
+}
+
 // ─── Print quotation ──────────────────────────────────────────────────────────
 // A quotation is a proposal for negotiation — it shows items and an estimated
 // amount. Tax is NOT shown here; it will be applied at invoice stage.
 
 function printProforma(q: Proforma) {
   const customer = getCustomer(q);
-  const items = q.job?.items ?? [];
+  const items = getItems(q);
   const html = `
     <html><head><title>${q.proformaNo}</title>
     <style>
@@ -76,7 +80,7 @@ function printProforma(q: Proforma) {
     ${items.length > 0 ? `
     <table>
       <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Notes</th></tr></thead>
-      <tbody>${items.map((i) => `<tr><td>${i.stockItem.name}</td><td>${i.quantityNeeded}</td><td>${i.stockItem.unit}</td><td>${i.notes ?? ""}</td></tr>`).join("")}</tbody>
+      <tbody>${items.map((i) => `<tr><td>${i.itemName ?? i.stockItem?.name ?? '—'}</td><td>${i.quantityNeeded}</td><td>${i.unit ?? i.stockItem?.unit ?? ''}</td><td>${i.notes ?? ''}</td></tr>`).join("")}</tbody>
     </table>` : ""}
     <table class="totals">
       <tr class="total-row"><td>Estimated Amount</td><td style="text-align:right">${(q.totalAmount ?? q.subtotal ?? 0).toLocaleString()} RWF</td></tr>
@@ -167,7 +171,7 @@ function drawFooter(pdf: any, pageNum: number, totalPages: number) {
 async function downloadProforma(q: Proforma) {
   const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
   const customer = getCustomer(q);
-  const items = q.job?.items ?? [];
+  const items = getItems(q);
   const estimatedAmount = q.totalAmount ?? q.subtotal ?? 0;
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -218,7 +222,7 @@ async function downloadProforma(q: Proforma) {
   if (items.length > 0) {
     autoTable(pdf, {
       head: [["Item", "Qty", "Unit", "Notes"]],
-      body: items.map((i) => [i.stockItem.name, String(i.quantityNeeded), i.stockItem.unit, i.notes ?? ""]),
+      body: items.map((i) => [i.itemName ?? i.stockItem?.name ?? '—', String(i.quantityNeeded), i.unit ?? i.stockItem?.unit ?? '', i.notes ?? ""]),
       startY: y,
       margin: { left: margin, right: margin, bottom: FOOTER_TOP + 6 },
       styles: { fontSize: 8, cellPadding: 2 },
@@ -295,7 +299,7 @@ function EditProformaModal({
   const [updateProforma, { isLoading }] = useUpdateProformaMutation();
   const [error, setError] = useState<string | null>(null);
 
-  const items = quotation.job?.items ?? [];
+  const items = getItems(quotation);
 
   const handleSave = async () => {
     setError(null);
@@ -338,9 +342,9 @@ function EditProformaModal({
               <div className="space-y-1">
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
-                    <span className="text-custom-700 truncate">{item.stockItem.name}</span>
+                    <span className="text-custom-700 truncate">{item.itemName ?? item.stockItem?.name ?? "—"}</span>
                     <span className="font-semibold text-secondary-100 shrink-0 ml-4">
-                      {item.quantityNeeded} {item.stockItem.unit}
+                      {item.quantityNeeded} {item.unit ?? item.stockItem?.unit ?? ""}
                     </span>
                   </div>
                 ))}
@@ -432,7 +436,7 @@ function DetailModal({
   };
 
   const customer = getCustomer(quotation);
-  const items = quotation.job?.items ?? [];
+  const items = getItems(quotation);
   const estimatedAmount = quotation.totalAmount ?? quotation.subtotal ?? 0;
 
   return (
@@ -495,8 +499,8 @@ function DetailModal({
                   <tbody className="divide-y divide-custom-200">
                     {items.map((item) => (
                       <tr key={item.id}>
-                        <td className="px-4 py-2.5 text-secondary-100 font-medium">{item.stockItem.name}</td>
-                        <td className="px-4 py-2.5 text-right text-secondary-100">{item.quantityNeeded} {item.stockItem.unit}</td>
+                        <td className="px-4 py-2.5 text-secondary-100 font-medium">{item.itemName ?? item.stockItem?.name ?? "—"}</td>
+                        <td className="px-4 py-2.5 text-right text-secondary-100">{item.quantityNeeded} {item.unit ?? item.stockItem?.unit ?? ""}</td>
                         <td className="px-4 py-2.5 text-custom-700 text-xs">{item.notes ?? "—"}</td>
                       </tr>
                     ))}

@@ -37,6 +37,10 @@ const selectCls =
   "focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 " +
   "transition-colors text-sm font-[family-name:var(--font-family-primary)]";
 
+function getItems(q: Proforma) {
+  return q.job?.jobItems ?? q.job?.items ?? [];
+}
+
 // Resolve customer from top-level or nested in job
 function getCustomer(q: Proforma) {
   return q.customer ?? q.job?.customer ?? null;
@@ -48,36 +52,51 @@ function getCustomer(q: Proforma) {
 
 function printProforma(q: Proforma) {
   const customer = getCustomer(q);
-  const items = q.job?.items ?? [];
+  const items = getItems(q);
+  const fmt = (n: number) => n.toLocaleString();
+
+  const rows = items.map((i) => {
+    const name     = i.itemName ?? i.stockItem.name;
+    const unit     = i.unit ?? i.stockItem.unit;
+    const unitCost = i.unitCost != null ? `${fmt(i.unitCost)} RWF` : "—";
+    const total    = i.totalCost != null ? `${fmt(i.totalCost)} RWF` : "—";
+    return `<tr><td>${name}</td><td>${i.quantityNeeded} ${unit}</td><td>${unitCost}</td><td>${total}</td><td>${i.notes ?? ""}</td></tr>`;
+  }).join("");
+
+  const subtotal = q.subtotal ?? 0;
+  const tax      = q.taxAmount ?? 0;
+  const discount = q.discount ?? 0;
+  const total    = q.totalAmount ?? subtotal;
+
   const html = `
     <html><head><title>${q.proformaNo}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
       h1 { font-size: 22px; margin-bottom: 4px; }
       .meta { color: #555; font-size: 13px; margin-bottom: 24px; }
-      .note { font-size: 11px; color: #888; font-style: italic; margin-bottom: 16px; }
       table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
       th { background: #f3f4f6; text-align: left; padding: 8px 12px; font-size: 12px; text-transform: uppercase; }
       td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
-      .totals td { border: none; }
+      .totals { width: auto; margin-left: auto; min-width: 260px; }
+      .totals td { border: none; padding: 4px 12px; }
       .total-row td { font-weight: bold; font-size: 15px; border-top: 2px solid #111; }
-      .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; background: #dbeafe; color: #1d4ed8; }
     </style></head><body>
     <h1>${q.proformaNo}</h1>
-    <p class="note">This is a quotation / proposal. Prices are estimates subject to negotiation. Tax will be applied on final invoice.</p>
     <div class="meta">
       ${customer ? `<strong>${customer.name}</strong>${customer.company ? ` · ${customer.company}` : ""}${customer.phone ? ` · ${customer.phone}` : ""}<br/>` : ""}
       ${q.job ? `Job: ${q.job.jobNumber} — ${q.job.title}<br/>` : ""}
-      Status: <span class="badge">${q.status.toUpperCase()}</span>
-      ${q.validUntil ? ` · Valid until: ${q.validUntil.slice(0, 10)}` : ""}
+      ${q.validUntil ? `Valid until: ${q.validUntil.slice(0, 10)}` : ""}
     </div>
     ${items.length > 0 ? `
     <table>
-      <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Notes</th></tr></thead>
-      <tbody>${items.map((i) => `<tr><td>${i.stockItem.name}</td><td>${i.quantityNeeded}</td><td>${i.stockItem.unit}</td><td>${i.notes ?? ""}</td></tr>`).join("")}</tbody>
+      <thead><tr><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Notes</th></tr></thead>
+      <tbody>${rows}</tbody>
     </table>` : ""}
     <table class="totals">
-      <tr class="total-row"><td>Estimated Amount</td><td style="text-align:right">${(q.totalAmount ?? q.subtotal ?? 0).toLocaleString()} RWF</td></tr>
+      <tr><td>Subtotal</td><td style="text-align:right">${fmt(subtotal)} RWF</td></tr>
+      ${discount > 0 ? `<tr><td>Discount</td><td style="text-align:right">- ${fmt(discount)} RWF</td></tr>` : ""}
+      ${tax > 0 ? `<tr><td>Tax (${q.taxRate ?? 0}%)</td><td style="text-align:right">${fmt(tax)} RWF</td></tr>` : ""}
+      <tr class="total-row"><td>TOTAL</td><td style="text-align:right">${fmt(total)} RWF</td></tr>
     </table>
     ${q.terms ? `<p><strong>Terms:</strong> ${q.terms}</p>` : ""}
     ${q.notes ? `<p><strong>Notes:</strong> ${q.notes}</p>` : ""}
@@ -91,7 +110,7 @@ function printProforma(q: Proforma) {
 function downloadProforma(q: Proforma) {
   import("jspdf").then(({ jsPDF }) => {
     const customer = getCustomer(q);
-    const items = q.job?.items ?? [];
+    const items = getItems(q);
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
     const pageW = doc.internal.pageSize.getWidth();
@@ -179,24 +198,32 @@ function downloadProforma(q: Proforma) {
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.setTextColor(80, 80, 80);
-      doc.text("ITEM",   margin + 2,               y + 5);
-      doc.text("QTY",    margin + contentW * 0.6,   y + 5, { align: "right" });
-      doc.text("UNIT",   margin + contentW * 0.75,  y + 5, { align: "right" });
-      doc.text("NOTES",  margin + contentW,          y + 5, { align: "right" });
+      const c1 = margin + 2;
+      const c2 = margin + contentW * 0.45;
+      const c3 = margin + contentW * 0.58;
+      const c4 = margin + contentW * 0.75;
+      const c5 = margin + contentW;
+      doc.text("ITEM",       c1, y + 5);
+      doc.text("QTY",        c2, y + 5, { align: "right" });
+      doc.text("UNIT PRICE", c3, y + 5, { align: "right" });
+      doc.text("TOTAL",      c4, y + 5, { align: "right" });
+      doc.text("NOTES",      c5, y + 5, { align: "right" });
       y += 7;
 
       doc.setFont("helvetica", "normal");
       doc.setTextColor(30, 30, 30);
       items.forEach((item, idx) => {
-        if (idx % 2 === 0) {
-          doc.setFillColor(249, 250, 251);
-          doc.rect(margin, y, contentW, 6.5, "F");
-        }
+        if (idx % 2 === 0) { doc.setFillColor(249, 250, 251); doc.rect(margin, y, contentW, 6.5, "F"); }
+        const name     = item.itemName ?? item.stockItem?.name ?? "—";
+        const unit     = item.unit ?? item.stockItem?.unit ?? "";
+        const unitCost = item.unitCost != null ? `${item.unitCost.toLocaleString()} RWF` : "—";
+        const total    = item.totalCost != null ? `${item.totalCost.toLocaleString()} RWF` : "—";
         doc.setFontSize(9);
-        doc.text(item.stockItem.name,         margin + 2,              y + 4.5);
-        doc.text(String(item.quantityNeeded), margin + contentW * 0.6, y + 4.5, { align: "right" });
-        doc.text(item.stockItem.unit,         margin + contentW * 0.75,y + 4.5, { align: "right" });
-        doc.text(item.notes ?? "",            margin + contentW,       y + 4.5, { align: "right" });
+        doc.text(name,                        c1,  y + 4.5);
+        doc.text(`${item.quantityNeeded} ${unit}`, c2, y + 4.5, { align: "right" });
+        doc.text(unitCost,                    c3,  y + 4.5, { align: "right" });
+        doc.text(total,                       c4,  y + 4.5, { align: "right" });
+        doc.text(item.notes ?? "",            c5,  y + 4.5, { align: "right" });
         y += 6.5;
       });
 
@@ -205,26 +232,37 @@ function downloadProforma(q: Proforma) {
       y += 8;
     }
 
-    // ── Estimated amount ─────────────────────────────────────────────────────
+    // ── Totals ───────────────────────────────────────────────────────────────
     const col1 = pageW - margin - 60;
     const col2 = pageW - margin;
-    const estimatedAmount = q.totalAmount ?? q.subtotal ?? 0;
+    const subtotal = q.subtotal ?? 0;
+    const tax      = q.taxAmount ?? 0;
+    const discount = q.discount ?? 0;
+    const total    = q.totalAmount ?? subtotal;
+
+    const totalsRows: [string, string][] = [
+      ["Subtotal", `${subtotal.toLocaleString()} RWF`],
+      ...(discount > 0 ? [[`Discount`, `- ${discount.toLocaleString()} RWF`] as [string, string]] : []),
+      ...(tax > 0      ? [[`Tax (${q.taxRate ?? 0}%)`, `${tax.toLocaleString()} RWF`] as [string, string]] : []),
+    ];
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
+    totalsRows.forEach(([label, value]) => {
+      doc.text(label, col1, y, { align: "right" });
+      doc.text(value, col2, y, { align: "right" });
+      y += 5;
+    });
 
     doc.setDrawColor(37, 99, 235);
     doc.line(col1 - 10, y - 1, col2, y - 1);
     y += 2;
-    doc.setFontSize(9);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 30, 30);
-    doc.text("ESTIMATED AMOUNT:", col1, y, { align: "right" });
-    doc.text(`${estimatedAmount.toLocaleString()} RWF`, col2, y, { align: "right" });
-    y += 5;
-
-    // ── Tax note ─────────────────────────────────────────────────────────────
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(130, 130, 130);
-    doc.text("* Tax and final adjustments will be applied at invoice stage.", col2, y, { align: "right" });
+    doc.text("TOTAL:", col1, y, { align: "right" });
+    doc.text(`${total.toLocaleString()} RWF`, col2, y, { align: "right" });
     y += 8;
 
     // ── Terms / Notes ────────────────────────────────────────────────────────
@@ -283,7 +321,7 @@ function EditProformaModal({
   const [updateProforma, { isLoading }] = useUpdateProformaMutation();
   const [error, setError] = useState<string | null>(null);
 
-  const items = quotation.job?.items ?? [];
+  const items = getItems(quotation);
 
   const handleSave = async () => {
     setError(null);
@@ -326,9 +364,12 @@ function EditProformaModal({
               <div className="space-y-1">
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
-                    <span className="text-custom-700 truncate">{item.stockItem.name}</span>
+                    <span className="text-custom-700 truncate">{item.itemName ?? item.stockItem?.name ?? "—"}</span>
                     <span className="font-semibold text-secondary-100 shrink-0 ml-4">
-                      {item.quantityNeeded} {item.stockItem.unit}
+                      {item.quantityNeeded} {item.unit ?? item.stockItem?.unit ?? ""}
+                      {item.totalCost != null && (
+                        <span className="ml-2 text-primary-500">{item.totalCost.toLocaleString()} RWF</span>
+                      )}
                     </span>
                   </div>
                 ))}
@@ -420,7 +461,7 @@ function DetailModal({
   };
 
   const customer = getCustomer(quotation);
-  const items = quotation.job?.items ?? [];
+  const items = getItems(quotation);
   const estimatedAmount = quotation.totalAmount ?? quotation.subtotal ?? 0;
 
   return (
@@ -477,15 +518,25 @@ function DetailModal({
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-custom-700">Item</th>
                       <th className="px-4 py-2 text-right text-xs font-semibold text-custom-700">Qty</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-custom-700">Notes</th>
+                      <th className="px-4 py-2 text-right text-xs font-semibold text-custom-700">Unit Price</th>
+                      <th className="px-4 py-2 text-right text-xs font-semibold text-custom-700">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-custom-200">
                     {items.map((item) => (
                       <tr key={item.id}>
-                        <td className="px-4 py-2.5 text-secondary-100 font-medium">{item.stockItem.name}</td>
-                        <td className="px-4 py-2.5 text-right text-secondary-100">{item.quantityNeeded} {item.stockItem.unit}</td>
-                        <td className="px-4 py-2.5 text-custom-700 text-xs">{item.notes ?? "—"}</td>
+                        <td className="px-4 py-2.5 text-secondary-100 font-medium">
+                          {item.itemName ?? item.stockItem?.name ?? "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-secondary-100">
+                          {item.quantityNeeded} {item.unit ?? item.stockItem?.unit ?? ""}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-custom-700">
+                          {item.unitCost != null ? `${item.unitCost.toLocaleString()} RWF` : "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-semibold text-secondary-100">
+                          {item.totalCost != null ? `${item.totalCost.toLocaleString()} RWF` : "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -494,16 +545,31 @@ function DetailModal({
             </div>
           )}
 
-          {/* Estimated amount — no tax breakdown */}
-          <div className="rounded-xl bg-custom-50 border border-custom-300 p-4 text-sm">
-            <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Estimated Amount</p>
-            <div className="flex justify-between items-center">
-              <span className="text-custom-700">Total (excl. tax)</span>
+          {/* Totals breakdown */}
+          <div className="rounded-xl bg-custom-50 border border-custom-300 p-4 text-sm space-y-2">
+            <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Amount</p>
+            {(quotation.subtotal ?? 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-custom-700">Subtotal</span>
+                <span className="font-semibold text-secondary-100">{(quotation.subtotal ?? 0).toLocaleString()} RWF</span>
+              </div>
+            )}
+            {(quotation.discount ?? 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-custom-700">Discount</span>
+                <span className="font-semibold text-red-500">- {(quotation.discount ?? 0).toLocaleString()} RWF</span>
+              </div>
+            )}
+            {(quotation.taxAmount ?? 0) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-custom-700">Tax ({quotation.taxRate ?? 0}%)</span>
+                <span className="font-semibold text-secondary-100">{(quotation.taxAmount ?? 0).toLocaleString()} RWF</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-2 border-t border-custom-300">
+              <span className="font-bold text-secondary-100">Total</span>
               <span className="text-xl font-bold text-primary-500">{estimatedAmount.toLocaleString()} RWF</span>
             </div>
-            <p className="text-xs text-custom-600 mt-2 italic">
-              * Tax will be calculated and added at the invoice / payment stage.
-            </p>
           </div>
 
           {/* Terms / Notes / Validity */}
