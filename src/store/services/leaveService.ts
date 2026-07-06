@@ -122,6 +122,20 @@ export const leaveApi = createApi({
       providesTags: [{ type: "Leave", id: "MY" }],
     }),
 
+    // GET /leaves/department — workers in supervisor's department
+    getDepartmentLeaves: builder.query<LeaveListResponse, GetLeavesParams>({
+      query: (params) => ({ url: "/leaves/department", params }),
+      transformResponse: (res: any) => ({
+        success: res?.success ?? true,
+        message: res?.message ?? "",
+        data: Array.isArray(res?.data) ? res.data : [],
+        total: res?.total ?? 0,
+        page: res?.page ?? 1,
+        limit: res?.limit ?? 20,
+      }),
+      providesTags: [{ type: "Leave", id: "DEPT" }],
+    }),
+
     // GET /leaves — all leave requests (HR / Admin)
     getAllLeaves: builder.query<LeaveListResponse, GetLeavesParams>({
       query: (params) => ({ url: "/leaves", params }),
@@ -150,7 +164,7 @@ export const leaveApi = createApi({
       invalidatesTags: [{ type: "Leave", id: "MY" }, { type: "Leave", id: "LIST" }],
     }),
 
-    // PATCH /leaves/:id/review — HR / Admin approve or reject
+    // PATCH /leaves/:id/review — HR / Admin / Supervisor approve or reject
     reviewLeave: builder.mutation<LeaveRequest, ReviewLeavePayload>({
       query: ({ id, ...body }) => ({ url: `/leaves/${id}/review`, method: "PATCH", body }),
       transformResponse: (res: any) => res?.data ?? res,
@@ -158,6 +172,7 @@ export const leaveApi = createApi({
         { type: "Leave", id },
         { type: "Leave", id: "LIST" },
         { type: "Leave", id: "MY" },
+        { type: "Leave", id: "DEPT" },
       ],
     }),
 
@@ -192,6 +207,7 @@ export const leaveApi = createApi({
 export const {
   useGetMyLeavesQuery,
   useGetAllLeavesQuery,
+  useGetDepartmentLeavesQuery,
   useGetLeaveByIdQuery,
   useCreateLeaveMutation,
   useUpdateLeaveMutation,

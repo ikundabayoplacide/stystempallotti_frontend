@@ -96,6 +96,7 @@ import HobeTrade from "../pages/Hobe/Trade";
 import ProdurementPage from "../pages/finance/ProdurementPage";
 import Operations from "../pages/finance/Operations";
 import MyLeavePage from "../pages/shared/MyLeavePage";
+import SupervisorLeavePage from "../pages/supervisor/SupervisorLeavePage";
 import HRLeaveManagementPage from "../pages/HR/LeaveManagementPage";
 import { AdminLeaveManagementPage } from "../pages/admin";
 import Abanyabiraka from "../pages/HR/abanyabiraka";
@@ -239,7 +240,7 @@ export default function AppRoutes() {
       <Route path="/supervisor/reports" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/my" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyReportsPage /></ProtectedRoute>} />
-      <Route path="/supervisor/leave" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/supervisor/leave" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorLeavePage /></ProtectedRoute>} />
       <Route path="/supervisor/binding-stock" element={<ProtectedRoute allowedRoles={["supervisor"]}><BindingStockPage /></ProtectedRoute>} />
       <Route path="/supervisor/machines" element={<ProtectedRoute allowedRoles={["supervisor"]}><MachinesPage /></ProtectedRoute>} />
       <Route path="/supervisor/samples" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorSamplesPage /></ProtectedRoute>} />

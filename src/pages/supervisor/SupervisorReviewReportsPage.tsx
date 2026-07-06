@@ -1,578 +1,289 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
-    HiOutlineCheckCircle,
-    HiOutlineClock,
-    HiOutlineX,
-    HiOutlineXCircle
+  HiOutlineDocumentText,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
+  HiOutlinePaperClip,
+  HiOutlineInbox,
+  HiOutlineRefresh,
+  HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
+import { useGetAssignedReportsQuery } from "../../store/services/reportsService";
+import { useAuth } from "../../context/AuthContext";
 
-type ReportStatus = "submitted" | "confirmed" | "rejected";
-
-interface JobDetail {
-  jobId: string;
-  jobTitle: string;
-  startTime: string;
-  endTime: string;
-  duration: number;
-  toolsUsed: string[];
-  materialsUsed: { name: string; quantity: string; unit: string }[];
-  notes?: string;
-}
-
-interface Report {
-  id: string;
-  title: string;
-  date: string;
-  workerName: string;
-  workerId: string;
-  jobsCompleted: JobDetail[];
-  totalHoursWorked: number;
-  description: string;
-  issues?: string;
-  status: ReportStatus;
-  submittedAt: string;
-  reviewedAt?: string;
-  rejectionReason?: string;
-}
-
-const initialReports: Report[] = [
-  {
-    id: "RPT-002",
-    title: "Daily Report - May 2, 2026",
-    date: "2026-05-02",
-    workerName: "John Worker",
-    workerId: "W-001",
-    jobsCompleted: [
-      {
-        jobId: "JOB-001",
-        jobTitle: "Brochure Printing",
-        startTime: "08:30",
-        endTime: "14:30",
-        duration: 6,
-        toolsUsed: ["Digital Printer Canon-700", "Folding Machine", "Stapler"],
-        materialsUsed: [
-          { name: "Glossy Paper A4", quantity: "1000", unit: "sheets" },
-          { name: "Ink Cartridge (Color)", quantity: "2", unit: "units" },
-        ],
-      },
-    ],
-    totalHoursWorked: 6,
-    description: "Working on brochure printing. Progress at 65%.",
-    status: "submitted",
-    submittedAt: "2026-05-02T16:00:00",
-  },
-  {
-    id: "RPT-004",
-    title: "Daily Report - May 2, 2026",
-    date: "2026-05-02",
-    workerName: "Jane Smith",
-    workerId: "W-002",
-    jobsCompleted: [
-      {
-        jobId: "JOB-009",
-        jobTitle: "Flyer Printing",
-        startTime: "09:00",
-        endTime: "17:00",
-        duration: 8,
-        toolsUsed: ["Offset Printer", "Paper Cutter"],
-        materialsUsed: [
-          { name: "Flyer Paper", quantity: "300", unit: "sheets" },
-          { name: "Printing Ink", quantity: "2", unit: "liters" },
-        ],
-      },
-    ],
-    totalHoursWorked: 8,
-    description: "Completed flyer printing. All 300 units delivered.",
-    status: "submitted",
-    submittedAt: "2026-05-02T17:00:00",
-  },
-  {
-    id: "RPT-001",
-    title: "Daily Report - May 1, 2026",
-    date: "2026-05-01",
-    workerName: "John Worker",
-    workerId: "W-001",
-    jobsCompleted: [
-      {
-        jobId: "JOB-003",
-        jobTitle: "Business Cards Printing",
-        startTime: "08:00",
-        endTime: "12:00",
-        duration: 4,
-        toolsUsed: ["Digital Printer HP-500", "Laminator"],
-        materialsUsed: [
-          { name: "Cardstock Paper", quantity: "500", unit: "sheets" },
-        ],
-      },
-      {
-        jobId: "JOB-010",
-        jobTitle: "Packaging Materials",
-        startTime: "13:00",
-        endTime: "17:00",
-        duration: 4,
-        toolsUsed: ["Offset Printer", "Die Cutting Machine"],
-        materialsUsed: [
-          { name: "Corrugated Board", quantity: "100", unit: "sheets" },
-        ],
-      },
-    ],
-    totalHoursWorked: 8,
-    description:
-      "Completed printing of business cards and packaging materials. All quality checks passed.",
-    status: "confirmed",
-    submittedAt: "2026-05-01T17:00:00",
-    reviewedAt: "2026-05-01T18:00:00",
-  },
-];
-
-const statusConfig: Record<
-  ReportStatus,
-  { label: string; color: string; icon: any; bgColor: string }
-> = {
-  submitted: {
-    label: "Pending Review",
-    color: "text-blue-600",
-    icon: HiOutlineClock,
-    bgColor: "bg-blue-100",
-  },
-  confirmed: {
-    label: "Confirmed",
-    color: "text-green-600",
-    icon: HiOutlineCheckCircle,
-    bgColor: "bg-green-100",
-  },
-  rejected: {
-    label: "Rejected",
-    color: "text-red-600",
-    icon: HiOutlineXCircle,
-    bgColor: "bg-red-100",
-  },
-};
+const PAGE_SIZE = 10;
 
 export default function SupervisorReviewReportsPage() {
-  const [reports, setReports] = useState<Report[]>(initialReports);
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [filter, setFilter] = useState<"all" | ReportStatus>("all");
+  const { userRole, userName } = useAuth();
 
-  const pendingCount = reports.filter((r) => r.status === "submitted").length;
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [page, setPage]         = useState(1);
+  const [search, setSearch]     = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
 
-  const filteredReports =
-    filter === "all" ? reports : reports.filter((r) => r.status === filter);
+  const { data, isLoading, refetch } = useGetAssignedReportsQuery({ page: 1, limit: 500 });
+  const allReports = data?.reports ?? [];
 
-  const handleConfirm = (reportId: string) => {
-    setReports(
-      reports.map((r) =>
-        r.id === reportId
-          ? {
-              ...r,
-              status: "confirmed" as ReportStatus,
-              reviewedAt: new Date().toISOString(),
-            }
-          : r
-      )
-    );
-    setShowReviewModal(false);
-    setSelectedReport(null);
-  };
+  const senderRoles = useMemo(() => {
+    const roles = new Set<string>();
+    allReports.forEach((r) => { if (r.createdBy?.role) roles.add(r.createdBy.role); });
+    return [...roles].sort();
+  }, [allReports]);
 
-  const handleReject = (reportId: string) => {
-    if (!rejectionReason.trim()) {
-      alert("Please provide a rejection reason");
-      return;
-    }
+  const filtered = useMemo(() => {
+    const q    = search.trim().toLowerCase();
+    const from = dateFrom ? new Date(dateFrom) : null;
+    const to   = dateTo   ? new Date(dateTo + "T23:59:59.999Z") : null;
+    return allReports.filter((r) => {
+      if (roleFilter && r.createdBy?.role !== roleFilter) return false;
+      const d = new Date(r.createdAt);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      if (q) {
+        const hay = [r.title, r.purpose, r.createdBy?.name ?? "", r.createdBy?.role ?? ""]
+          .join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allReports, roleFilter, dateFrom, dateTo, search]);
 
-    setReports(
-      reports.map((r) =>
-        r.id === reportId
-          ? {
-              ...r,
-              status: "rejected" as ReportStatus,
-              reviewedAt: new Date().toISOString(),
-              rejectionReason: rejectionReason,
-            }
-          : r
-      )
-    );
-    setShowReviewModal(false);
-    setSelectedReport(null);
-    setRejectionReason("");
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasFilters = !!(search || roleFilter || dateFrom || dateTo);
+
+  const clearFilters = () => {
+    setSearch(""); setRoleFilter(""); setDateFrom(""); setDateTo(""); setPage(1);
   };
 
   return (
-    <DashboardLayout
-      userRole="supervisor"
-      userName="Supervisor"
-      notificationCount={pendingCount}
-    >
+    <DashboardLayout userRole={userRole ?? "supervisor"} userName={userName ?? ""} notificationCount={0}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <HiOutlineDocumentText className="w-5 h-5 text-primary-600" />
+          </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-              Review Worker Reports
-            </h1>
-            <p className="text-sm text-custom-700 mt-1">
-              {pendingCount > 0
-                ? `${pendingCount} report${pendingCount > 1 ? "s" : ""} pending review`
-                : "All reports reviewed"}
+            <h1 className="text-2xl font-bold text-secondary-100">Received Reports</h1>
+            <p className="text-sm text-custom-700">Reports submitted to you</p>
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-end gap-3 p-4 bg-custom-50 rounded-xl border border-custom-200">
+          <div className="flex-1 min-w-44">
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Search</label>
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Title, purpose, sender…"
+              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-400 focus:outline-none focus:border-primary-400 transition-colors"
+            />
+          </div>
+          <div className="min-w-36">
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Sender Role</label>
+            <select
+              value={roleFilter}
+              onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+            >
+              <option value="">All roles</option>
+              {senderRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">From</label>
+            <input type="date" value={dateFrom}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+              className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">To</label>
+            <input type="date" value={dateTo} min={dateFrom}
+              onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+              className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+            />
+          </div>
+          <div className="flex items-center gap-2 pb-0.5">
+            {hasFilters && (
+              <button onClick={clearFilters}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">
+                <HiOutlineX className="w-3.5 h-3.5" /> Clear
+              </button>
+            )}
+            <button onClick={() => refetch()}
+              className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors">
+              <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Count */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-xs text-custom-700">
+            <span className="font-semibold text-secondary-100">{filtered.length}</span>
+            {hasFilters ? " matching" : ""} report{filtered.length !== 1 ? "s" : ""}
+            {hasFilters && filtered.length !== allReports.length && (
+              <span className="text-custom-400"> of {allReports.length} total</span>
+            )}
+          </p>
+          {roleFilter && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 font-semibold">
+              {roleFilter}
+            </span>
+          )}
+        </div>
+
+        {/* List */}
+        {isLoading ? (
+          <Card className="!p-6 text-center text-custom-700 text-sm">Loading…</Card>
+        ) : filtered.length === 0 ? (
+          <Card className="!p-10 text-center">
+            <HiOutlineInbox className="w-10 h-10 text-custom-400 mx-auto mb-3" />
+            <p className="text-secondary-100 font-semibold">
+              {hasFilters ? "No reports match the filters" : "No received reports"}
             </p>
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-              filter === "all"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            All ({reports.length})
-          </button>
-          <button
-            onClick={() => setFilter("submitted")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-              filter === "submitted"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            Pending ({pendingCount})
-          </button>
-          <button
-            onClick={() => setFilter("confirmed")}
-            className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold whitespace-nowrap ${
-              filter === "confirmed"
-                ? "bg-primary-500 text-white"
-                : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-            }`}
-          >
-            Confirmed ({reports.filter((r) => r.status === "confirmed").length})
-          </button>
-        </div>
-
-        {/* Reports List */}
-        <Card className="!p-0 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-custom-100 border-b border-custom-300">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Report ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Title & Worker
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Jobs
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Hours
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">
-                    Submitted
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-secondary-100 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-custom-200">
-                {filteredReports.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-custom-700">
-                      No reports found
-                    </td>
-                  </tr>
-                ) : (
-                  filteredReports.map((report) => {
-                    const config = statusConfig[report.status];
-                    const Icon = config.icon;
-
-                    return (
-                      <tr key={report.id} className="hover:bg-custom-50 transition-colors">
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-primary-600">
-                            {report.id}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="text-sm font-semibold text-secondary-100">
-                              {report.title}
-                            </p>
-                            <p className="text-xs text-custom-700">
-                              {report.workerName} • {report.date}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-secondary-100">
-                            {report.jobsCompleted.length}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm font-bold text-secondary-100">
-                            {report.totalHoursWorked}h
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <Icon className={`w-4 h-4 ${config.color}`} />
-                            <span
-                              className={`text-xs font-bold px-3 py-1 rounded-full ${config.bgColor} ${config.color}`}
-                            >
-                              {config.label}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm text-custom-700">
-                            {new Date(report.submittedAt).toLocaleDateString()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            {report.status === "submitted" ? (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleConfirm(report.id);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors text-xs font-semibold"
-                                >
-                                  <HiOutlineCheckCircle className="w-3 h-3 inline mr-1" />
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedReport(report);
-                                    setShowReviewModal(true);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition-colors text-xs font-semibold"
-                                >
-                                  <HiOutlineXCircle className="w-3 h-3 inline mr-1" />
-                                  Reject
-                                </button>
-                              </>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setSelectedReport(report);
-                                  setShowReviewModal(true);
-                                }}
-                                className="px-3 py-1.5 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-xs font-semibold"
-                              >
-                                View Details
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {/* Review Modal */}
-        {showReviewModal && selectedReport && (
-          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-            <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-secondary-100">
-                    {selectedReport.title}
-                  </h3>
-                  <p className="text-sm text-custom-700 mt-1">
-                    By {selectedReport.workerName}
-                  </p>
-                  <span
-                    className={`inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full ${
-                      statusConfig[selectedReport.status].bgColor
-                    } ${statusConfig[selectedReport.status].color}`}
-                  >
-                    {statusConfig[selectedReport.status].label}
-                  </span>
-                </div>
+            <p className="text-sm text-custom-700 mt-1">
+              {hasFilters
+                ? "Try adjusting the date range, role, or search term."
+                : "Reports submitted to you will appear here."}
+            </p>
+            {hasFilters && (
+              <button onClick={clearFilters}
+                className="mt-3 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">
+                Clear filters
+              </button>
+            )}
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {paginated.map((r) => (
+              <Card key={r.id} className="!p-0 overflow-hidden">
                 <button
-                  onClick={() => {
-                    setShowReviewModal(false);
-                    setRejectionReason("");
-                  }}
-                  className="text-custom-700 hover:text-secondary-100 text-2xl"
+                  onClick={() => setExpanded(expanded === r.id ? null : r.id)}
+                  className="w-full flex items-center justify-between px-5 py-4 hover:bg-custom-50 transition-colors text-left"
                 >
-                  <HiOutlineX className="w-6 h-6" />
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <HiOutlineDocumentText className="w-4 h-4 text-primary-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-secondary-100 truncate">{r.title}</p>
+                      <p className="text-xs text-custom-700 mt-0.5 truncate">{r.purpose}</p>
+                      {r.createdBy && (
+                        <p className="text-xs text-primary-500 mt-0.5 font-semibold">
+                          From: {r.createdBy.name}
+                          <span className="text-custom-700 font-normal ml-1">({r.createdBy.role})</span>
+                          {r.createdBy.phone && (
+                            <span className="text-custom-700 font-normal ml-1">· {r.createdBy.phone}</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 ml-4">
+                    <div className="text-right hidden sm:block">
+                      <p className="text-xs text-custom-700">Submitted</p>
+                      <p className="text-xs font-semibold text-secondary-100">
+                        {new Date(r.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
+                    {expanded === r.id
+                      ? <HiOutlineChevronUp className="w-4 h-4 text-custom-700" />
+                      : <HiOutlineChevronDown className="w-4 h-4 text-custom-700" />}
+                  </div>
                 </button>
-              </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">Date</p>
-                    <p className="text-base text-secondary-100">{selectedReport.date}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">
-                      Total Hours Worked
-                    </p>
-                    <p className="text-base text-secondary-100">
-                      {selectedReport.totalHoursWorked}h
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-custom-700 mb-3">
-                    Jobs Completed ({selectedReport.jobsCompleted.length})
-                  </p>
-                  <div className="space-y-3">
-                    {selectedReport.jobsCompleted.map((job, idx) => (
-                      <div
-                        key={idx}
-                        className="p-3 rounded-xl bg-custom-50 border border-custom-200"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="text-sm font-bold text-secondary-100">
-                              {job.jobTitle}
-                            </h4>
-                            <p className="text-xs text-custom-700">{job.jobId}</p>
-                          </div>
-                          <span className="px-2 py-1 rounded-lg bg-primary-100 text-primary-700 text-xs font-semibold">
-                            {job.duration}h
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 mb-2 text-xs">
-                          <div>
-                            <span className="text-custom-700">Start: </span>
-                            <span className="text-secondary-100 font-semibold">
-                              {job.startTime}
+                {expanded === r.id && (
+                  <div className="border-t border-custom-200 px-5 py-4 space-y-4 bg-custom-50">
+                    {r.visibleTo && r.visibleTo.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-secondary-100 uppercase mb-1.5">Visible To</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {r.visibleTo.map((role) => (
+                            <span key={role} className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-xs font-semibold">
+                              {role}
                             </span>
-                          </div>
-                          <div>
-                            <span className="text-custom-700">End: </span>
-                            <span className="text-secondary-100 font-semibold">
-                              {job.endTime}
-                            </span>
-                          </div>
+                          ))}
                         </div>
-
-                        {job.toolsUsed.length > 0 && (
-                          <div className="mb-2">
-                            <p className="text-xs font-semibold text-custom-700 mb-1">
-                              Tools: {job.toolsUsed.join(", ")}
-                            </p>
-                          </div>
-                        )}
-
-                        {job.materialsUsed.length > 0 && (
-                          <div className="mb-2">
-                            <p className="text-xs font-semibold text-custom-700 mb-1">
-                              Materials:
-                            </p>
-                            <div className="text-xs text-secondary-100">
-                              {job.materialsUsed.map((mat, matIdx) => (
-                                <div key={matIdx}>
-                                  • {mat.name}: {mat.quantity} {mat.unit}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {job.notes && (
-                          <div className="text-xs text-custom-700 italic">
-                            Note: {job.notes}
-                          </div>
-                        )}
                       </div>
-                    ))}
+                    )}
+
+                    {r.items?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-secondary-100 uppercase mb-2">Records</p>
+                        <div className="rounded-xl overflow-hidden border border-custom-200">
+                          <table className="w-full text-xs">
+                            <thead className="bg-custom-100">
+                              <tr>
+                                {["#", "Record / Item", "Qty", "Amount (RWF)"].map((h) => (
+                                  <th key={h} className="px-3 py-2 text-left font-bold text-secondary-100">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-custom-200 bg-white">
+                              {r.items.map((item, i) => (
+                                <tr key={i}>
+                                  <td className="px-3 py-2 text-custom-700">{i + 1}</td>
+                                  <td className="px-3 py-2 text-secondary-100">{item.record}</td>
+                                  <td className="px-3 py-2 text-custom-700">{item.quantity || "—"}</td>
+                                  <td className="px-3 py-2 text-custom-700">
+                                    {item.amount ? Number(item.amount).toLocaleString() : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {r.notes && (
+                      <div>
+                        <p className="text-xs font-bold text-secondary-100 uppercase mb-1">Notes</p>
+                        <p className="text-sm text-custom-700 whitespace-pre-wrap">{r.notes}</p>
+                      </div>
+                    )}
+
+                    {r.attachmentUrl && (
+                      <a href={r.attachmentUrl} download
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors">
+                        <HiOutlinePaperClip className="w-4 h-4" /> View Attachment
+                      </a>
+                    )}
                   </div>
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-custom-700 mb-1">
-                    Work Description
-                  </p>
-                  <p className="text-base text-secondary-100">
-                    {selectedReport.description}
-                  </p>
-                </div>
-
-                {selectedReport.issues && (
-                  <div>
-                    <p className="text-sm font-semibold text-custom-700 mb-1">
-                      Issues/Notes
-                    </p>
-                    <p className="text-base text-secondary-100">{selectedReport.issues}</p>
-                  </div>
                 )}
-
-                {selectedReport.status === "submitted" && (
-                  <div>
-                    <label className="block text-sm font-semibold text-custom-700 mb-2">
-                      Rejection Reason (if rejecting)
-                    </label>
-                    <textarea
-                      value={rejectionReason}
-                      onChange={(e) => setRejectionReason(e.target.value)}
-                      placeholder="Provide a reason for rejection..."
-                      rows={3}
-                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                {selectedReport.status === "submitted" && (
-                  <>
-                    <button
-                      onClick={() => handleReject(selectedReport.id)}
-                      className="flex-1 px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 transition-colors text-sm font-semibold"
-                    >
-                      <HiOutlineXCircle className="w-4 h-4 inline mr-2" />
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => handleConfirm(selectedReport.id)}
-                      className="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors text-sm font-semibold"
-                    >
-                      <HiOutlineCheckCircle className="w-4 h-4 inline mr-2" />
-                      Confirm
-                    </button>
-                  </>
-                )}
-                {selectedReport.status !== "submitted" && (
-                  <button
-                    onClick={() => {
-                      setShowReviewModal(false);
-                      setRejectionReason("");
-                    }}
-                    className="flex-1 px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-sm font-semibold text-custom-700"
-                  >
-                    Close
-                  </button>
-                )}
-              </div>
-            </Card>
+              </Card>
+            ))}
           </div>
         )}
+
+        {/* Pagination */}
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-custom-700">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
+                Prev
+              </button>
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
     </DashboardLayout>
   );

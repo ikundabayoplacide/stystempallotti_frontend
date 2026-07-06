@@ -3,6 +3,7 @@ import {
   HiOutlineChartBar,
   HiOutlineCheckCircle,
   HiOutlineClipboardList,
+  HiOutlineCollection,
   HiOutlineDocumentDownload,
   HiOutlineDocumentText,
   HiOutlineExclamationCircle,
@@ -50,9 +51,9 @@ const PERIODS: { value: Period; label: string }[] = [
 
 const PAGE_SIZE = 8;
 
-const IN_PRODUCTION_STATUSES = new Set([
+const IN_PRODUCTION_STATES = new Set([
   "in-composition", "in-montage", "in-printing",
-  "in-binding", "in-packaging", "quality-check", "ready-for-delivery",
+  "in-binding", "in-packaging", "quality-check",
 ]);
 
 // ─── PDF helpers ──────────────────────────────────────────────────────────────
@@ -223,12 +224,216 @@ function Section({ icon: Icon, title, color, children }: {
 
 // ─── Priority & state config ──────────────────────────────────────────────────
 
+const STATE_LABELS: Record<string, string> = {
+  "in-composition":    "In Composition",
+  "in-montage":        "In Montage",
+  "in-printing":       "In Printing",
+  "in-binding":        "In Binding",
+  "in-packaging":      "In Packaging",
+  "quality-check":     "Quality Check",
+  "composition-done":  "Composition Done",
+  "montage-done":      "Montage Done",
+  "printing-done":     "Printing Done",
+  "binding-done":      "Binding Done",
+  "packaging-done":    "Packaging Done",
+  "qualitycheck-done": "QC Done",
+};
+
+const STATE_COLORS: Record<string, { bg: string; text: string }> = {
+  "in-composition":    { bg: "bg-orange-100",  text: "text-orange-700" },
+  "in-montage":        { bg: "bg-amber-100",   text: "text-amber-700" },
+  "in-printing":       { bg: "bg-pink-100",    text: "text-pink-700" },
+  "in-binding":        { bg: "bg-teal-100",    text: "text-teal-700" },
+  "in-packaging":      { bg: "bg-cyan-100",    text: "text-cyan-700" },
+  "quality-check":     { bg: "bg-purple-100",  text: "text-purple-700" },
+  "composition-done":  { bg: "bg-green-100",   text: "text-green-700" },
+  "montage-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "printing-done":     { bg: "bg-green-100",   text: "text-green-700" },
+  "binding-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "packaging-done":    { bg: "bg-green-100",   text: "text-green-700" },
+  "qualitycheck-done": { bg: "bg-green-100",   text: "text-green-700" },
+};
+
+function StateBadge({ state }: { state: string | null | undefined }) {
+  if (!state) return <span className="text-xs text-custom-400 italic">—</span>;
+  const label  = STATE_LABELS[state] ?? state;
+  const colors = STATE_COLORS[state] ?? { bg: "bg-gray-100", text: "text-gray-700" };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
+      {label}
+    </span>
+  );
+}
+
 const priorityColor: Record<string, string> = {
   low:    "bg-green-100 text-green-700",
   normal: "bg-blue-100 text-blue-700",
   high:   "bg-orange-100 text-orange-700",
   urgent: "bg-red-500 text-white",
 };
+
+// ─── Tab 0: All Jobs ─────────────────────────────────────────────────────────
+
+const PM_STATUSES = new Set([
+  "confirmed", "in-composition", "in-montage", "in-printing",
+  "in-binding", "in-packaging", "quality-check", "ready-for-delivery",
+  "partial-delivered", "delivered", "completed", "verified",
+]);
+
+function AllJobsReport() {
+  const [period, setPeriod]         = useState<Period>("month");
+  const [page, setPage]             = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo]     = useState("");
+  const [useCustom, setUseCustom]   = useState(false);
+
+  const range = useCustom && customFrom && customTo
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
+    : getDateRange(period);
+
+  const { data, isLoading, refetch } = useGetJobsQuery({ limit: 500 });
+  const { data: departments = [] }   = useGetDepartmentsQuery();
+  const deptMap = Object.fromEntries(departments.map((d) => [d.id, d.name]));
+
+  const allJobs: Job[] = data?.jobs ?? [];
+
+  const jobs = allJobs.filter((j) => {
+    if (!PM_STATUSES.has(j.status)) return false;
+    const d = new Date(j.createdAt);
+    return d >= new Date(range.from) && d <= new Date(range.to);
+  });
+
+  const totalPages   = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const paginated    = jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const urgentCount  = jobs.filter((j) => j.priority === "urgent").length;
+  const overdueCount = jobs.filter((j) => j.dueDate && new Date(j.dueDate) < new Date()).length;
+  const completedCount = jobs.filter((j) => j.status === "completed" || j.status === "delivered").length;
+
+  const getExportData = () => ({
+    headers: ["Job #", "Title", "Customer", "Status", "Priority", "Department", "Due Date", "Created"],
+    rows: jobs.map((j) => [
+      `#${j.jobNumber}`, j.title, j.customer?.name ?? "",
+      j.status, j.priority,
+      j.departmentAssignedToId ? (deptMap[j.departmentAssignedToId] ?? "—") : "Unassigned",
+      j.dueDate ? j.dueDate.split("T")[0] : "",
+      new Date(j.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+    ]),
+    summary: [
+      { label: "Total Jobs",  value: String(jobs.length) },
+      { label: "Urgent",      value: String(urgentCount) },
+      { label: "Overdue",     value: String(overdueCount) },
+      { label: "COMPLETED",   value: String(completedCount), bold: true },
+    ] as SummaryRow[],
+  });
+
+  return (
+    <Section icon={HiOutlineCollection} title="All Jobs" color="bg-indigo-100 text-indigo-600">
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <input type="date" value={customFrom}
+            onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom}
+            onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400" />
+          {useCustom && (
+            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }}
+              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100">Clear</button>
+          )}
+          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="All Jobs Report" getExportData={getExportData} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="Total Jobs" value={jobs.length} />
+        <StatCard label="Urgent"     value={urgentCount}    color="text-red-500" />
+        <StatCard label="Overdue"    value={overdueCount}   color={overdueCount > 0 ? "text-red-600" : "text-secondary-100"} />
+        <StatCard label="Completed"  value={completedCount} color="text-emerald-600" />
+      </div>
+
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {["Job #", "Title & Client", "Status", "Dept State", "Priority", "Department", "Due Date", "Created"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td></tr>
+              ) : jobs.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No jobs for this period</td></tr>
+              ) : paginated.map((j) => {
+                const statusCfg = jobStatusConfig[j.status] ?? { label: j.status, bgColor: "bg-gray-100", color: "text-gray-700" };
+                const isOverdue = j.dueDate && new Date(j.dueDate) < new Date();
+                return (
+                  <tr key={j.id} className="hover:bg-custom-50 transition-colors">
+                    <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-500">#{j.jobNumber}</td>
+                    <td className="px-3 py-2.5">
+                      <p className="text-sm font-semibold text-secondary-100">{j.title}</p>
+                      <p className="text-xs text-custom-700">{j.customer?.name ?? "—"}</p>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusCfg.bgColor} ${statusCfg.color}`}>
+                        {statusCfg.label}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <StateBadge state={j.state} />
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${priorityColor[j.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                        {j.priority}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-custom-700">
+                      {j.departmentAssignedToId ? (deptMap[j.departmentAssignedToId] ?? "—") : <span className="italic text-custom-400">Unassigned</span>}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {j.dueDate
+                        ? <span className={`text-xs font-semibold ${isOverdue ? "text-red-600" : "text-secondary-100"}`}>
+                            {isOverdue && <HiOutlineExclamationCircle className="w-3.5 h-3.5 inline mr-0.5" />}
+                            {j.dueDate.split("T")[0]}
+                          </span>
+                        : <span className="text-custom-400 text-xs">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-custom-700">
+                      {new Date(j.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {jobs.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-custom-700">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, jobs.length)} of {jobs.length}</p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold hover:bg-custom-100 disabled:opacity-40">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setPage(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold ${n === page ? "bg-primary-500 text-white" : "border border-custom-300 hover:bg-custom-100"}`}>{n}</button>
+            ))}
+            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold hover:bg-custom-100 disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
 
 // ─── Tab 1: Jobs in Production ────────────────────────────────────────────────
 
@@ -249,9 +454,9 @@ function ProductionJobsReport() {
 
   const allJobs: Job[] = data?.jobs ?? [];
 
-  // Filter to production statuses + date range
+  // Filter to jobs actively in a department state + date range
   const jobs = allJobs.filter((j) => {
-    if (!IN_PRODUCTION_STATUSES.has(j.status)) return false;
+    if (!j.state || !IN_PRODUCTION_STATES.has(j.state)) return false;
     const d = new Date(j.createdAt);
     return d >= new Date(range.from) && d <= new Date(range.to);
   });
@@ -397,7 +602,7 @@ function DepartmentsReport() {
   // Build per-department stats
   const deptStats = departments.map((dept) => {
     const deptJobs = allJobs.filter((j) => j.departmentAssignedToId === dept.id);
-    const active    = deptJobs.filter((j) => IN_PRODUCTION_STATUSES.has(j.status)).length;
+    const active    = deptJobs.filter((j) => j.state != null && IN_PRODUCTION_STATES.has(j.state)).length;
     const completed = deptJobs.filter((j) => j.status === "completed" || j.status === "delivered").length;
     const pending   = deptJobs.filter((j) => j.status === "pending" || j.status === "confirmed").length;
     const urgent    = deptJobs.filter((j) => j.priority === "urgent").length;
@@ -672,17 +877,18 @@ function CompletedJobsReport() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "production" | "departments" | "completed";
+type Tab = "all" | "production" | "departments" | "completed";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
-  { value: "production",  label: "In Production",  icon: HiOutlineClipboardList },
-  { value: "departments", label: "Departments",     icon: HiOutlineUsers },
-  { value: "completed",   label: "Completed Jobs",  icon: HiOutlineCheckCircle },
+  { value: "all",         label: "All Jobs",        icon: HiOutlineCollection },
+  { value: "production",  label: "In Production",   icon: HiOutlineClipboardList },
+  { value: "departments", label: "Departments",      icon: HiOutlineUsers },
+  { value: "completed",   label: "Completed Jobs",   icon: HiOutlineCheckCircle },
 ];
 
 export default function ProductionManagerReportsPage() {
   const { userRole, userName } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("production");
+  const [activeTab, setActiveTab] = useState<Tab>("all");
 
   return (
     <DashboardLayout userRole={userRole ?? "production-manager"} userName={userName ?? "Production Manager"} notificationCount={0}>
@@ -712,6 +918,7 @@ export default function ProductionManagerReportsPage() {
           ))}
         </div>
 
+        {activeTab === "all"         && <AllJobsReport />}
         {activeTab === "production"  && <ProductionJobsReport />}
         {activeTab === "departments" && <DepartmentsReport />}
         {activeTab === "completed"   && <CompletedJobsReport />}

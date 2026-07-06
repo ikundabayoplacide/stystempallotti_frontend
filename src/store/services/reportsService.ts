@@ -17,6 +17,8 @@ export interface Report {
   notes?: string;
   attachmentUrl?: string;
   visibleTo?: string[];
+  supervisorId?: string | null;
+  supervisor?: { id: string; name: string; email: string; role: string } | null;
   createdAt: string;
   createdBy?: { id: string; name: string; email: string; role: string; phone?: string };
 }
@@ -35,7 +37,8 @@ export interface CreateReportPayload {
   items: ReportItem[];
   notes?: string;
   attachment?: File | null;
-  visibleTo?: string[];   // array of role names, e.g. ["ADMIN", "DAF"]
+  visibleTo?: string[];
+  supervisorId?: string | null;
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -80,7 +83,7 @@ export const reportsApi = createApi({
 
     // POST /reports
     createReport: builder.mutation<Report, CreateReportPayload>({
-      query: ({ title, purpose, items, notes, attachment, visibleTo }) => {
+      query: ({ title, purpose, items, notes, attachment, visibleTo, supervisorId }) => {
         const form = new FormData();
         form.append("title", title);
         form.append("purpose", purpose);
@@ -89,6 +92,7 @@ export const reportsApi = createApi({
         if (attachment) form.append("attachment", attachment);
         if (visibleTo && visibleTo.length > 0)
           form.append("visibleTo", JSON.stringify(visibleTo));
+        if (supervisorId) form.append("supervisorId", supervisorId);
         return { url: "/reports", method: "POST", body: form };
       },
       transformResponse: (res: any) => res.data ?? res,
@@ -115,7 +119,7 @@ export const reportsApi = createApi({
 
     // PUT /reports/:id
     updateReport: builder.mutation<Report, { id: string } & Partial<CreateReportPayload>>({
-      query: ({ id, title, purpose, items, notes, attachment, visibleTo }) => {
+      query: ({ id, title, purpose, items, notes, attachment, visibleTo, supervisorId }) => {
         const form = new FormData();
         if (title)   form.append("title", title);
         if (purpose) form.append("purpose", purpose);
@@ -123,6 +127,8 @@ export const reportsApi = createApi({
         if (notes !== undefined) form.append("notes", notes);
         if (attachment) form.append("attachment", attachment);
         if (visibleTo !== undefined) form.append("visibleTo", JSON.stringify(visibleTo));
+        // send empty string to clear, or the id to set
+        if (supervisorId !== undefined) form.append("supervisorId", supervisorId ?? "");
         return { url: `/reports/${id}`, method: "PUT", body: form };
       },
       transformResponse: (res: any) => res.data ?? res,

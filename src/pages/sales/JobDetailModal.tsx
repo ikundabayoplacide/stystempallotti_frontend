@@ -28,6 +28,7 @@ import {
   useUploadJobDocumentsMutation,
   useDeleteJobDocumentMutation,
 } from "../../store/services/jobDocumentsService";
+import { useGetJobSpecsQuery } from "../../store/services/jobSpecsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -164,7 +165,9 @@ interface Props {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function JobDetailModal({ jobId, onClose }: Props) {
+  const [tab, setTab] = useState<"overview" | "specs">("overview");
   const { data: job, isLoading, isError } = useGetJobDetailsQuery(jobId);
+  const { data: specs = [], isLoading: loadingSpecs } = useGetJobSpecsQuery(jobId);
 
   const renderBody = () => {
     if (isLoading) {
@@ -209,12 +212,82 @@ export default function JobDetailModal({ jobId, onClose }: Props) {
             </button>
           </div>
 
+          {/* Tabs */}
+          <div className="flex gap-1 px-6 pt-3 border-b border-custom-200 shrink-0">
+            {(["overview", "specs"] as const).map((t) => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`px-4 py-1.5 rounded-t-lg text-sm font-semibold capitalize transition-colors ${
+                  tab === t ? "bg-primary-500 text-white" : "text-custom-700 hover:text-secondary-100 hover:bg-custom-100"
+                }`}>
+                {t === "specs" ? `Specs (${specs.length})` : "Overview"}
+              </button>
+            ))}
+          </div>
+
           {/* Body */}
           <div className="flex-1 overflow-y-auto min-h-0">
-            {renderBody()}
+            {tab === "overview" ? renderBody() : <SpecsTab jobId={jobId} specs={specs} isLoading={loadingSpecs} />}
           </div>
         </Card>
       </div>
+    </div>
+  );
+}
+
+// ─── Specs Tab ───────────────────────────────────────────────────────────────
+
+import type { JobSpec } from "../../store/services/jobSpecsService";
+
+function SpecsTab({ specs, isLoading }: { jobId: string; specs: JobSpec[]; isLoading: boolean }) {
+  if (isLoading) return <div className="space-y-3 p-6">{[1,2].map(i => <div key={i} className="h-20 bg-custom-100 rounded-xl animate-pulse" />)}</div>;
+  if (!specs.length) return (
+    <div className="py-16 text-center">
+      <p className="text-sm text-custom-700">No specs added yet for this job.</p>
+    </div>
+  );
+  return (
+    <div className="px-6 py-5 space-y-4">
+      {specs.map((spec, i) => (
+        <div key={spec.id} className="rounded-xl border border-custom-200 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-custom-50 border-b border-custom-200">
+            <span className="text-xs font-bold text-custom-500 uppercase tracking-wide">Spec #{i + 1}</span>
+            <span className="text-xs text-custom-500">{new Date(spec.createdAt).toLocaleDateString()}</span>
+          </div>
+          <div className="p-4 space-y-3">
+            <p className="text-sm text-secondary-100">{spec.description}</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {([
+                ["Paper Type",   spec.paperType],
+                ["Paper Weight", spec.paperWeight],
+                ["Size",         spec.size],
+                ["Colors",       spec.colors],
+                ["Finish Type",  spec.finishType],
+                ["Materials",    spec.materials],
+                ["Quantity",     spec.quantity ? String(spec.quantity) : undefined],
+              ] as [string, string | undefined][]).filter(([, v]) => v).map(([label, value]) => (
+                <div key={label} className="px-3 py-2 rounded-lg bg-custom-50 border border-custom-100">
+                  <p className="text-[10px] text-custom-500 uppercase tracking-wide">{label}</p>
+                  <p className="text-sm font-semibold text-secondary-100">{value}</p>
+                </div>
+              ))}
+            </div>
+            {spec.notes && <p className="text-xs text-custom-700 italic border-t border-custom-100 pt-2">{spec.notes}</p>}
+            {spec.documents && spec.documents.length > 0 && (
+              <div className="border-t border-custom-100 pt-2">
+                <p className="text-xs font-semibold text-custom-700 mb-1.5">Attachments</p>
+                <div className="flex flex-wrap gap-2">
+                  {spec.documents.map(doc => (
+                    <a key={doc.id} href={doc.fileUrl} download={doc.fileName}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 border border-primary-200 text-xs font-semibold text-primary-600 hover:bg-primary-100 transition-colors">
+                      📎 {doc.fileName}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

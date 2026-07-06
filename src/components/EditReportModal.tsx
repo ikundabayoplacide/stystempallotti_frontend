@@ -4,6 +4,7 @@ import { HiOutlineX } from "react-icons/hi";
 import { useUpdateReportMutation } from "../store/services/reportsService";
 import { useGetAllRolesQuery } from "../store/services/rolesService";
 import type { Report } from "../store/services/reportsService";
+import { useGetUsersQuery } from "../store/services/usersService";
 
 type ReportItem = { record: string; quantity: string; amount: string };
 
@@ -27,11 +28,19 @@ export default function EditReportModal({ report, onClose }: Props) {
   const [file, setFile]                 = useState<File | null>(null);
   const [notes, setNotes]               = useState(report.notes ?? "");
   const [selectedRoles, setSelectedRoles] = useState<string[]>(report.visibleTo ?? []);
+  const [supervisorId, setSupervisorId] = useState<string>(report.supervisorId ?? "");
   const [submitting, setSubmitting]     = useState(false);
 
   const [updateReport] = useUpdateReportMutation();
   const { data: roles = [], isLoading: loadingRoles } = useGetAllRolesQuery();
   const activeRoles = roles.filter((r) => r.isActive);
+
+  const supervisorRoleName = selectedRoles.find((r) => r.toUpperCase() === "SUPERVISOR") ?? null;
+  const { data: supervisorsData } = useGetUsersQuery(
+    supervisorRoleName ? { role: supervisorRoleName, limit: 200 } : { limit: 0 },
+    { skip: !supervisorRoleName }
+  );
+  const supervisors = supervisorsData?.users ?? [];
 
   useEffect(() => {
     setTitle(report.title ?? "");
@@ -47,6 +56,7 @@ export default function EditReportModal({ report, onClose }: Props) {
     );
     setNotes(report.notes ?? "");
     setSelectedRoles(report.visibleTo ?? []);
+    setSupervisorId(report.supervisorId ?? "");
     setFile(null);
   }, [report]);
 
@@ -76,6 +86,7 @@ export default function EditReportModal({ report, onClose }: Props) {
         notes: notes.trim(),
         attachment: file ?? undefined,
         visibleTo: selectedRoles,
+        supervisorId: supervisorId || null,
       }).unwrap();
       toast.success("Report updated successfully");
       onClose();
@@ -230,7 +241,12 @@ export default function EditReportModal({ report, onClose }: Props) {
                     <button
                       key={role.id}
                       type="button"
-                      onClick={() => toggleRole(role.name)}
+                      onClick={() => {
+                        if (role.name.toUpperCase() === "SUPERVISOR" && selectedRoles.includes(role.name)) {
+                          setSupervisorId("");
+                        }
+                        toggleRole(role.name);
+                      }}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                         selected
                           ? "bg-primary-500 text-white border-primary-500"
@@ -242,6 +258,28 @@ export default function EditReportModal({ report, onClose }: Props) {
                     </button>
                   );
                 })}
+              </div>
+            )}
+            {supervisorRoleName && (
+              <div className="mt-3">
+                <label className="block text-xs font-semibold text-secondary-100 mb-1">
+                  Select Supervisor <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={supervisorId}
+                  onChange={(e) => setSupervisorId(e.target.value)}
+                  className={cls}
+                >
+                  <option value="">— Choose a supervisor —</option>
+                  {supervisors.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {supervisorId && (
+                  <p className="text-xs text-primary-500 mt-1">
+                    ✓ {supervisors.find((s) => s.id === supervisorId)?.name}
+                  </p>
+                )}
               </div>
             )}
             {selectedRoles.length > 0 && (
