@@ -1,7 +1,7 @@
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { useState } from "react";
 import { FiLock, FiMail } from "react-icons/fi";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import loginAnimation from "../assets/Login.json";
 import { Button, Card, Input, PasswordInput, SectionTitle } from "../components/ui";
@@ -158,8 +158,8 @@ export default function LoginPage() {
                   Remember me
                 </span>
               </label>
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="
                   text-xs text-yellow-400 hover:text-yellow-300
                   font-[family-name:var(--font-family-primary)]
@@ -168,7 +168,7 @@ export default function LoginPage() {
                 "
               >
                 Forgot your password?
-              </a>
+              </Link>
             </div>
 
             {/* Login button — yellow override via className */}

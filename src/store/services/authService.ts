@@ -63,8 +63,25 @@ export const authApi = createApi({
         body: credentials,
       }),
     }),
+
+    // POST /auth/forgot-password
+    forgotPassword: builder.mutation<{ success: boolean; message: string }, { email: string }>({
+      query: (body) => ({
+        url: "/auth/forgot-password",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    // POST /auth/reset-password
+    resetPassword: builder.mutation<{ success: boolean; message: string }, { token: string; password: string }>({
+      query: (body) => ({
+        url: "/auth/reset-password",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
-// Auto-generated hook — use this in your component
-export const { useLoginMutation } = authApi;
+export const { useLoginMutation, useForgotPasswordMutation, useResetPasswordMutation } = authApi;
