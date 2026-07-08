@@ -92,7 +92,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/sales", icon: HiOutlineHome },
     { label: "Jobs", path: "/sales/jobs", icon: HiOutlineBriefcase, permissionKey: "jobs.view" },
     { label: "Stock", path: "/sales/stocks", icon: HiOutlineArchive, permissionKey: "stock.view" },
-    { label: "Performa Invoice", path: "/sales/proformas", icon: HiOutlineDocumentText},
+    { label: "Porforma Invoice", path: "/sales/proformas", icon: HiOutlineDocumentText},
     // { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
     { label: "My Leave", path: "/sales/leave", icon: HiOutlineCalendar },
     {

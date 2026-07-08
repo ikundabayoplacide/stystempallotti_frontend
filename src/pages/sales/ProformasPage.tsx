@@ -1,6 +1,4 @@
 import { useState } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import {
   HiOutlineCheckCircle,
   HiOutlineClock,
@@ -48,235 +46,110 @@ function getItems(q: Proforma) {
   return q.job?.jobItems ?? q.job?.items ?? [];
 }
 
-// ─── Print quotation ──────────────────────────────────────────────────────────
-// A quotation is a proposal for negotiation — it shows items and an estimated
-// amount. Tax is NOT shown here; it will be applied at invoice stage.
+// ─── Shared HTML proforma layout (print + PDF source) ────────────────────────
+
+function buildProformaHtml(q: Proforma): string {
+  const customer = getCustomer(q);
+  const items = getItems(q);
+  const date = new Date(q.createdAt).toLocaleDateString("en-GB").replace(/\//g, "/");
+  // Format: N°181/2026 — extract numeric part from proformaNo
+  const proformaLabel = q.proformaNo;
+
+  const itemRows = items.map((item, i) => {
+    const desc = item.itemName ?? item.stockItem?.name ?? "—";
+    const qty  = item.quantityNeeded;
+    const up   = item.unitCost != null ? Number(item.unitCost).toLocaleString() : "—";
+    const tp   = item.totalCost != null ? Number(item.totalCost).toLocaleString() : "—";
+    return `<tr>
+      <td style="text-align:center">${i + 1}.</td>
+      <td><em>${desc}</em></td>
+      <td style="text-align:center">${qty}</td>
+      <td style="text-align:center">${up}</td>
+      <td style="text-align:center">${tp}</td>
+    </tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${proformaLabel}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#111}
+    @page{margin-bottom:60px}
+    .page{width:210mm;margin:0 auto}
+    .body{flex:1;padding:20px 28px}
+    .top-info{display:flex;justify-content:space-between;margin-bottom:16px;font-size:12px}
+    .doc-title{text-align:center;font-size:17px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse;margin-bottom:0}
+    th{background:#fff;border:1px solid #333;padding:7px 8px;text-align:center;font-size:11px;font-weight:bold;text-transform:uppercase}
+    td{border:1px solid #333;padding:7px 8px;font-size:11px;vertical-align:top}
+    .totals-section{display:flex;justify-content:flex-end;margin-top:0}
+    .totals-box{border:1px solid #333;border-top:none;min-width:200px}
+    .totals-box .trow{display:flex;justify-content:space-between;gap:24px;padding:5px 10px;border-bottom:1px solid #ddd;font-size:11px;font-weight:bold}
+    .totals-box .trow:last-child{border-bottom:none}
+    .footer{position:fixed;bottom:0;left:0;right:0;border-top:1px solid #ddd;padding:8px 28px 6px;font-size:9.5px;color:#444;background:#fff}
+    .footer-cols{display:flex;justify-content:space-between;margin-bottom:4px}
+    .footer-tagline{text-align:center;font-weight:bold;color:#00aeef;font-style:italic;font-size:11px;letter-spacing:1px}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{width:100%}}
+  </style></head><body>
+  <div class="page">
+    <div class="header">
+      <img src="/header.png" alt="Pallotti Presse" style="width:100%;display:block"/>
+    </div>
+    <div class="body">
+      <div class="top-info">
+        <div>
+          <strong>CLIENT NAME:</strong> ${customer?.name ?? "—"}
+          ${customer?.phone ? `<br/><strong>TEL:</strong> ${customer.phone}` : ""}
+          ${customer?.email ? `<br/><strong>EMAIL:</strong> ${customer.email}` : ""}
+        </div>
+        <div><strong>Kigali,</strong> ${date}</div>
+      </div>
+      <div class="doc-title">PROFORMA INVOICE N°${proformaLabel}</div>
+      <table>
+        <thead><tr><th style="width:40px">No.</th><th>DESCRIPTION</th><th style="width:60px">QTY</th><th style="width:90px">U.P (RWF)</th><th style="width:90px">T.P (RWF)</th></tr></thead>
+        <tbody>${itemRows || '<tr><td colspan="5" style="text-align:center;color:#888">No items</td></tr>'}</tbody>
+      </table>
+      <div class="totals-section">
+        <div class="totals-box">
+          <div class="trow"><span>SUB-TOTAL</span><span>${(q.subtotal ?? 0).toLocaleString()}</span></div>
+          <div class="trow"><span>VAT</span><span>${(q.taxAmount ?? 0).toLocaleString()}</span></div>
+          <div class="trow"><span>TOTAL TAXES INCLUSIVE</span><span>${(q.totalAmount ?? 0).toLocaleString()}</span></div>
+        </div>
+      </div>
+      ${q.terms ? `<p style="margin-top:14px;font-size:11px"><strong>Terms:</strong> ${q.terms}</p>` : ""}
+      ${q.notes ? `<p style="margin-top:8px;font-size:11px"><strong>Notes:</strong> ${q.notes}</p>` : ""}
+    </div>
+    <div class="footer">
+      <div class="footer-cols">
+        <div><div>B.P. 863 Kigali - Rwanda</div><div>TIN / <strong>T.V.A. N° 100021520</strong></div></div>
+        <div><div>Tél: Reception (+250) 788 313 617 / (+250) 788 304 549</div><div>No. RC: 536 / 09 / NYR</div></div>
+        <div><div>E-mail: pallottipresse@yahoo.com</div><div>Compte : BK : <strong>100000174372</strong></div></div>
+      </div>
+      <div class="footer-tagline">Rapidité · Qualité · Innovation · Esprit d'Equipe</div>
+    </div>
+  </div>
+  </body></html>`;
+}
 
 function printProforma(q: Proforma) {
-  const customer = getCustomer(q);
-  const items = getItems(q);
-  const html = `
-    <html><head><title>${q.proformaNo}</title>
-    <style>
-      body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
-      h1 { font-size: 22px; margin-bottom: 4px; }
-      .meta { color: #555; font-size: 13px; margin-bottom: 24px; }
-      .note { font-size: 11px; color: #888; font-style: italic; margin-bottom: 16px; }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-      th { background: #f3f4f6; text-align: left; padding: 8px 12px; font-size: 12px; text-transform: uppercase; }
-      td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
-      .totals td { border: none; }
-      .total-row td { font-weight: bold; font-size: 15px; border-top: 2px solid #111; }
-      .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; background: #dbeafe; color: #1d4ed8; }
-    </style></head><body>
-    <h1>${q.proformaNo}</h1>
-    <p class="note">This is a performa / proposal. Prices are estimates subject to negotiation. Tax will be applied on final invoice.</p>
-    <div class="meta">
-      ${customer ? `<strong>${customer.name}</strong>${customer.company ? ` · ${customer.company}` : ""}${customer.phone ? ` · ${customer.phone}` : ""}<br/>` : ""}
-      ${q.job ? `Job: ${q.job.jobNumber} — ${q.job.title}<br/>` : ""}
-      Status: <span class="badge">${q.status.toUpperCase()}</span>
-      ${q.validUntil ? ` · Valid until: ${q.validUntil.slice(0, 10)}` : ""}
-    </div>
-    ${items.length > 0 ? `
-    <table>
-      <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Notes</th></tr></thead>
-      <tbody>${items.map((i) => `<tr><td>${i.itemName ?? i.stockItem?.name ?? '—'}</td><td>${i.quantityNeeded}</td><td>${i.unit ?? i.stockItem?.unit ?? ''}</td><td>${i.notes ?? ''}</td></tr>`).join("")}</tbody>
-    </table>` : ""}
-    <table class="totals">
-      <tr class="total-row"><td>Estimated Amount</td><td style="text-align:right">${(q.totalAmount ?? q.subtotal ?? 0).toLocaleString()} RWF</td></tr>
-    </table>
-    ${q.terms ? `<p><strong>Terms:</strong> ${q.terms}</p>` : ""}
-    ${q.notes ? `<p><strong>Notes:</strong> ${q.notes}</p>` : ""}
-    </body></html>`;
   const win = window.open("", "_blank");
-  if (win) { win.document.write(html); win.document.close(); win.print(); }
+  if (!win) return;
+  win.document.write(buildProformaHtml(q));
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 400);
 }
 
-// ─── PDF helpers (same letterhead as ReceptionReportsPage) ───────────────────
+// ─── Download proforma as PDF (print the HTML layout) ────────────────────────
 
-const COMPANY = {
-  address: "B.P. 863 Kigali - Rwanda",
-  tin:     "TIN / T.V.A.: NO 100021520",
-  tel:     "Tel: Reception (+250) 788 313 617 / (+250) 788 304 549",
-  rc:      "No. RC: 536 / 09 / NYR",
-  email:   "E-mail: pallottipresse@yahoo.com",
-  compte:  "Compte: BK: 10000017 4372",
-  motto:   "Rapidite - Qualite - Innovation - Esprit d'Equipe",
-};
-
-const HEADER_H   = 35;
-const FOOTER_TOP = 26;
-
-function loadImageAsBase64(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      canvas.getContext("2d")!.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = reject;
-    img.src = url;
+function downloadProforma(q: Proforma): Promise<void> {
+  return new Promise((resolve) => {
+    const win = window.open("", "_blank");
+    if (!win) { resolve(); return; }
+    win.document.write(buildProformaHtml(q));
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); resolve(); }, 400);
   });
-}
-
-function drawLetterhead(pdf: any, headerBase64: string | null, title: string, subtitle: string) {
-  const pw = pdf.internal.pageSize.getWidth();
-  if (headerBase64) pdf.addImage(headerBase64, "PNG", 0, 0, pw, HEADER_H);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-  pdf.setTextColor(25, 25, 25);
-  pdf.text(title, pw / 2, HEADER_H + 10, { align: "center" });
-  if (subtitle) {
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(7.5);
-    pdf.setTextColor(110, 110, 110);
-    pdf.text(subtitle, pw / 2, HEADER_H + 16, { align: "center" });
-  }
-}
-
-function drawFooter(pdf: any, pageNum: number, totalPages: number) {
-  const pw = pdf.internal.pageSize.getWidth();
-  const ph = pdf.internal.pageSize.getHeight();
-  const fy = ph - FOOTER_TOP;
-  pdf.setDrawColor(200, 200, 200);
-  pdf.setLineWidth(0.3);
-  pdf.line(10, fy, pw - 10, fy);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(60, 60, 60);
-  const col1 = 12, col2 = pw / 2, col3 = pw - 12;
-  const row1 = fy + 5, row2 = fy + 10;
-  pdf.text(COMPANY.address, col1, row1);
-  pdf.text(COMPANY.tin,     col1, row2);
-  pdf.text(COMPANY.tel,     col2, row1, { align: "center" });
-  pdf.text(COMPANY.rc,      col2, row2, { align: "center" });
-  pdf.text(COMPANY.email,   col3, row1, { align: "right" });
-  pdf.text(COMPANY.compte,  col3, row2, { align: "right" });
-  pdf.setFont("helvetica", "bolditalic");
-  pdf.setFontSize(7);
-  pdf.setTextColor(0, 160, 210);
-  pdf.text(COMPANY.motto, col2, fy + 16, { align: "center" });
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(6.5);
-  pdf.setTextColor(150, 150, 150);
-  pdf.text(`Page ${pageNum} of ${totalPages}`, pw - 10, fy + 16, { align: "right" });
-}
-
-// ─── Download proforma as PDF ─────────────────────────────────────────────────
-
-async function downloadProforma(q: Proforma) {
-  const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
-  const customer = getCustomer(q);
-  const items = getItems(q);
-  const estimatedAmount = q.totalAmount ?? q.subtotal ?? 0;
-
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pw = pdf.internal.pageSize.getWidth();
-  const margin = 10;
-
-  const title    = `PROFORMA INVOICE — ${q.proformaNo}`;
-  const subtitle = `Date: ${new Date(q.createdAt).toLocaleDateString("en-RW")}${q.validUntil ? `   |   Valid until: ${q.validUntil.slice(0, 10)}` : ""}   |   Status: ${q.status.toUpperCase()}`;
-
-  drawLetterhead(pdf, headerBase64, title, subtitle);
-
-  // ── Customer + Job info block ─────────────────────────────────────────────
-  let y = HEADER_H + 22;
-
-  if (customer || q.job) {
-    pdf.setDrawColor(0, 160, 210);
-    pdf.setLineWidth(0.4);
-    pdf.line(margin, y, pw - margin, y);
-    y += 5;
-
-    if (customer) {
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(80, 80, 80);
-      pdf.text("CLIENT", margin, y); y += 4;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(25, 25, 25);
-      pdf.text(customer.name, margin, y); y += 4;
-      if (customer.company) { pdf.text(customer.company, margin, y); y += 4; }
-      if (customer.phone)   { pdf.text(customer.phone,   margin, y); y += 4; }
-      if (customer.email)   { pdf.text(customer.email,   margin, y); y += 4; }
-    }
-
-    if (q.job) {
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(80, 80, 80);
-      pdf.text(`Job: ${q.job.jobNumber} — ${q.job.title}`, pw / 2, HEADER_H + 27, { align: "center" });
-    }
-
-    pdf.setDrawColor(0, 160, 210);
-    pdf.line(margin, y + 2, pw - margin, y + 2);
-    y += 8;
-  }
-
-  // ── Items table ───────────────────────────────────────────────────────────
-  if (items.length > 0) {
-    autoTable(pdf, {
-      head: [["Item", "Qty", "Unit", "Notes"]],
-      body: items.map((i) => [i.itemName ?? i.stockItem?.name ?? '—', String(i.quantityNeeded), i.unit ?? i.stockItem?.unit ?? '', i.notes ?? ""]),
-      startY: y,
-      margin: { left: margin, right: margin, bottom: FOOTER_TOP + 6 },
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [0, 160, 210], textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [245, 251, 255] },
-      didDrawPage: (data: { pageNumber: number }) => {
-        if (data.pageNumber > 1) drawLetterhead(pdf, headerBase64, title, subtitle);
-        drawFooter(pdf, data.pageNumber, (pdf as any).internal.getNumberOfPages());
-      },
-    });
-    y = (pdf as any).lastAutoTable.finalY + 8;
-  }
-
-  // ── Estimated amount summary ──────────────────────────────────────────────
-  const col1 = pw - 90, col2 = pw - margin;
-  pdf.setDrawColor(0, 160, 210);
-  pdf.setLineWidth(0.4);
-  pdf.line(col1, y - 2, col2, y - 2);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(9);
-  pdf.setTextColor(40, 40, 40);
-  pdf.text("ESTIMATED AMOUNT:", col1, y + 4);
-  pdf.text(`${estimatedAmount.toLocaleString()} RWF`, col2, y + 4, { align: "right" });
-  pdf.setFont("helvetica", "italic");
-  pdf.setFontSize(7);
-  pdf.setTextColor(130, 130, 130);
-  pdf.text("* Tax and final adjustments applied at invoice stage.", col2, y + 9, { align: "right" });
-  pdf.line(col1, y + 12, col2, y + 12);
-  y += 18;
-
-  // ── Terms / Notes ─────────────────────────────────────────────────────────
-  if (q.terms) {
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(80, 80, 80);
-    pdf.text("Terms & Conditions", margin, y); y += 5;
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(60, 60, 60);
-    const lines = pdf.splitTextToSize(q.terms, pw - margin * 2);
-    pdf.text(lines, margin, y); y += lines.length * 4.5 + 4;
-  }
-  if (q.notes) {
-    pdf.setFont("helvetica", "bold"); pdf.setFontSize(8); pdf.setTextColor(80, 80, 80);
-    pdf.text("Notes", margin, y); y += 5;
-    pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(60, 60, 60);
-    const lines = pdf.splitTextToSize(q.notes, pw - margin * 2);
-    pdf.text(lines, margin, y);
-  }
-
-  // ── Re-draw footers with final page count ────────────────────────────────
-  const totalPages = (pdf as any).internal.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    pdf.setPage(i);
-    drawFooter(pdf, i, totalPages);
-  }
-
-  pdf.save(`${q.proformaNo}.pdf`);
 }
 
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
