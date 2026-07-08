@@ -57,6 +57,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Production", path: "/admin/production", icon: HiOutlineCube, permissionKey: "production.view" },
     { label: "Machines", path: "/admin/machines", icon: HiOutlineCog },
     { label: "Sales", path: "/admin/sales", icon: HiOutlineBriefcase, permissionKey: "quotations.view" },
+    { label: "Proforma Invoice", path: "/admin/proformas", icon: HiOutlineDocumentText },
     { label: "Finance", path: "/admin/finance", icon: HiOutlineCurrencyDollar, permissionKey: "finance.view" },
     { label: "Expenses", path: "/admin/expenses", icon: HiOutlineCash },
     { label: "Withdrawals", path: "/admin/withdrawals", icon: HiOutlineTrendingUp },

@@ -56,6 +56,7 @@ export interface UpdateUserPayload {
   id: string;
   name?: string;
   email?: string;
+  password?: string;
   phone?: string;
   gender?: string;
   role?: string;

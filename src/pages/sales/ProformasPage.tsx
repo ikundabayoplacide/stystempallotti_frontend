@@ -7,16 +7,20 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineEye,
   HiOutlinePencil,
+  HiOutlinePlus,
   HiOutlinePrinter,
   HiOutlineRefresh,
   HiOutlineSearch,
+  HiOutlineTrash,
   HiOutlineX,
   HiOutlineXCircle,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
-import type { Proforma, ProformaStatus } from "../../store/services/proformasService";
+import type { Proforma, ProformaItem, ProformaPayload, ProformaStatus } from "../../store/services/proformasService";
 import {
+  useCreateProformaMutation,
+  useDeleteProformaMutation,
   useGetProformasQuery,
   useUpdateProformaMutation,
   useUpdateProformaStatusMutation,
@@ -37,37 +41,67 @@ const selectCls =
   "focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 " +
   "transition-colors text-sm font-[family-name:var(--font-family-primary)]";
 
-// Resolve customer from top-level or nested in job
-function getCustomer(q: Proforma) {
-  return q.customer ?? q.job?.customer ?? null;
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Resolve client display name — standalone proformas use clientName field
+function getClientName(q: Proforma): string {
+  return q.clientName ?? q.customer?.name ?? q.job?.customer?.name ?? "—";
 }
 
-function getItems(q: Proforma) {
-  return q.job?.jobItems ?? q.job?.items ?? [];
+function getClientPhone(q: Proforma): string | null {
+  return q.clientPhone ?? q.customer?.phone ?? q.job?.customer?.phone ?? null;
+}
+
+function getJobLabel(q: Proforma): string | null {
+  if (q.jobNumber) return q.jobNumber;
+  if (q.job?.jobNumber) return q.job.jobNumber;
+  return null;
+}
+
+function getJobName(q: Proforma): string | null {
+  return q.jobName ?? q.job?.title ?? null;
 }
 
 // ─── Shared HTML proforma layout (print + PDF source) ────────────────────────
 
 function buildProformaHtml(q: Proforma): string {
-  const customer = getCustomer(q);
-  const items = getItems(q);
-  const date = new Date(q.createdAt).toLocaleDateString("en-GB").replace(/\//g, "/");
-  // Format: N°181/2026 — extract numeric part from proformaNo
+  const clientName  = getClientName(q);
+  const clientPhone = getClientPhone(q);
+  const jobNo       = getJobLabel(q);
+  const jobName     = getJobName(q);
+  const date = new Date(q.jobCreatedAt ?? q.createdAt).toLocaleDateString("en-GB").replace(/\//g, "/");
   const proformaLabel = q.proformaNo;
 
-  const itemRows = items.map((item, i) => {
-    const desc = item.itemName ?? item.stockItem?.name ?? "—";
-    const qty  = item.quantityNeeded;
-    const up   = item.unitCost != null ? Number(item.unitCost).toLocaleString() : "—";
-    const tp   = item.totalCost != null ? Number(item.totalCost).toLocaleString() : "—";
-    return `<tr>
-      <td style="text-align:center">${i + 1}.</td>
-      <td><em>${desc}</em></td>
-      <td style="text-align:center">${qty}</td>
-      <td style="text-align:center">${up}</td>
-      <td style="text-align:center">${tp}</td>
-    </tr>`;
-  }).join("");
+  // Standalone proforma items (new model)
+  const standaloneItems: ProformaItem[] = q.items ?? [];
+  // Legacy: job items
+  const legacyItems = q.job?.jobItems ?? q.job?.items ?? [];
+
+  const itemRows = standaloneItems.length > 0
+    ? standaloneItems.map((item, i) => {
+        const up = Number(item.unitPrice ?? 0).toLocaleString();
+        const tp = Number(item.totalPrice ?? (item.unitPrice * item.qty)).toLocaleString();
+        return `<tr>
+          <td style="text-align:center">${i + 1}.</td>
+          <td><em>${item.description}</em></td>
+          <td style="text-align:center">${item.qty}</td>
+          <td style="text-align:center">${up}</td>
+          <td style="text-align:center">${tp}</td>
+        </tr>`;
+      }).join("")
+    : legacyItems.map((item: any, i: number) => {
+        const desc = item.itemName ?? item.stockItem?.name ?? "—";
+        const qty  = item.quantityNeeded;
+        const up   = item.unitCost != null ? Number(item.unitCost).toLocaleString() : "—";
+        const tp   = item.totalCost != null ? Number(item.totalCost).toLocaleString() : "—";
+        return `<tr>
+          <td style="text-align:center">${i + 1}.</td>
+          <td><em>${desc}</em></td>
+          <td style="text-align:center">${qty}</td>
+          <td style="text-align:center">${up}</td>
+          <td style="text-align:center">${tp}</td>
+        </tr>`;
+      }).join("");
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${proformaLabel}</title>
   <style>
@@ -97,9 +131,10 @@ function buildProformaHtml(q: Proforma): string {
     <div class="body">
       <div class="top-info">
         <div>
-          <strong>CLIENT NAME:</strong> ${customer?.name ?? "—"}
-          ${customer?.phone ? `<br/><strong>TEL:</strong> ${customer.phone}` : ""}
-          ${customer?.email ? `<br/><strong>EMAIL:</strong> ${customer.email}` : ""}
+          <strong>CLIENT NAME:</strong> ${clientName}
+          ${clientPhone ? `<br/><strong>TEL:</strong> ${clientPhone}` : ""}
+          ${jobNo       ? `<br/><strong>JOB #:</strong> ${jobNo}`    : ""}
+          ${jobName     ? `<br/><strong>JOB:</strong> ${jobName}`    : ""}
         </div>
         <div><strong>Kigali,</strong> ${date}</div>
       </div>
@@ -111,7 +146,8 @@ function buildProformaHtml(q: Proforma): string {
       <div class="totals-section">
         <div class="totals-box">
           <div class="trow"><span>SUB-TOTAL</span><span>${(q.subtotal ?? 0).toLocaleString()}</span></div>
-          <div class="trow"><span>VAT</span><span>${(q.taxAmount ?? 0).toLocaleString()}</span></div>
+          <div class="trow"><span>VAT (${q.taxRate ?? 18}%)</span><span>${(q.taxAmount ?? 0).toLocaleString()}</span></div>
+          ${q.discount ? `<div class="trow"><span>DISCOUNT</span><span>-${Number(q.discount).toLocaleString()}</span></div>` : ""}
           <div class="trow"><span>TOTAL TAXES INCLUSIVE</span><span>${(q.totalAmount ?? 0).toLocaleString()}</span></div>
         </div>
       </div>
@@ -152,50 +188,304 @@ function downloadProforma(q: Proforma): Promise<void> {
   });
 }
 
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
-// Only editable fields for a quotation proposal: negotiated amount, validity,
-// terms and notes. Tax is NOT part of a quotation — it goes on the invoice.
+// ─── Shared Item Editor (used by Create & Edit modals) ───────────────────────
 
-function EditProformaModal({
-  quotation,
-  onClose,
-}: {
-  quotation: Proforma;
-  onClose: () => void;
-}) {
+interface ItemRow { description: string; qty: string; unitPrice: string; }
+
+const emptyRow = (): ItemRow => ({ description: "", qty: "1", unitPrice: "" });
+
+function ItemsEditor({ rows, onChange }: { rows: ItemRow[]; onChange: (rows: ItemRow[]) => void }) {
+  const update = (i: number, field: keyof ItemRow, val: string) => {
+    const next = rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r));
+    onChange(next);
+  };
+  const remove = (i: number) => onChange(rows.filter((_, idx) => idx !== i));
+  const add    = () => onChange([...rows, emptyRow()]);
+
+  const subtotal = rows.reduce((s, r) => s + (parseFloat(r.unitPrice) || 0) * (parseFloat(r.qty) || 0), 0);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold text-custom-700 uppercase tracking-wide">Items</span>
+        <button type="button" onClick={add}
+          className="flex items-center gap-1 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors">
+          <HiOutlinePlus className="w-3.5 h-3.5" /> Add Item
+        </button>
+      </div>
+      <div className="space-y-2">
+        {rows.map((row, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2 items-center">
+            <input
+              className={`${selectCls} col-span-6`}
+              placeholder="Description"
+              value={row.description}
+              onChange={(e) => update(i, "description", e.target.value)}
+            />
+            <input
+              className={`${selectCls} col-span-2`}
+              placeholder="Qty"
+              type="number" min="1"
+              value={row.qty}
+              onChange={(e) => update(i, "qty", e.target.value)}
+            />
+            <input
+              className={`${selectCls} col-span-3`}
+              placeholder="Unit Price"
+              type="number" min="0"
+              value={row.unitPrice}
+              onChange={(e) => update(i, "unitPrice", e.target.value)}
+            />
+            <button type="button" onClick={() => remove(i)}
+              className="col-span-1 text-red-400 hover:text-red-600 transition-colors flex justify-center">
+              <HiOutlineTrash className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+      {rows.length > 0 && (
+        <div className="flex justify-end mt-2 text-xs font-semibold text-custom-700">
+          Subtotal: <span className="ml-2 text-secondary-100">{subtotal.toLocaleString()} RWF</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Create Proforma Modal ────────────────────────────────────────────────────
+
+function CreateProformaModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
-    amount:     String(quotation.totalAmount ?? quotation.subtotal ?? 0),
-    terms:      quotation.terms ?? "",
-    notes:      quotation.notes ?? "",
-    validUntil: quotation.validUntil ? quotation.validUntil.slice(0, 10) : "",
+    jobNumber:    "",
+    jobName:      "",
+    clientName:   "",
+    clientPhone:  "",
+    jobCreatedAt: new Date().toISOString().slice(0, 10),
+    taxRate:      "18",
+    discount:     "0",
+    terms:        "",
+    notes:        "",
+    validUntil:   "",
   });
-  const [updateProforma, { isLoading }] = useUpdateProformaMutation();
+  const [itemRows, setItemRows] = useState<ItemRow[]>([emptyRow()]);
   const [error, setError] = useState<string | null>(null);
+  const [createProforma, { isLoading }] = useCreateProformaMutation();
 
-  const items = getItems(quotation);
+  const field = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
 
-  const handleSave = async () => {
+  const handleSubmit = async () => {
     setError(null);
+    const validItems = itemRows.filter((r) => r.description.trim() && parseFloat(r.unitPrice) > 0);
+    if (!form.clientName.trim()) { setError("Client name is required."); return; }
+    if (validItems.length === 0) { setError("Add at least one item with description and price."); return; }
+
+    const payload: ProformaPayload = {
+      jobNumber:    form.jobNumber    || undefined,
+      jobName:      form.jobName      || undefined,
+      clientName:   form.clientName,
+      clientPhone:  form.clientPhone  || undefined,
+      jobCreatedAt: form.jobCreatedAt || undefined,
+      taxRate:      parseFloat(form.taxRate)   || 18,
+      discount:     parseFloat(form.discount)  || 0,
+      terms:        form.terms        || undefined,
+      notes:        form.notes        || undefined,
+      validUntil:   form.validUntil   || undefined,
+      items: validItems.map((r) => ({
+        description: r.description.trim(),
+        qty:         parseFloat(r.qty)       || 1,
+        unitPrice:   parseFloat(r.unitPrice) || 0,
+      })),
+    };
+
     try {
-      await updateProforma({
-        id:         quotation.id,
-        // send taxRate=0 and discount=0 to keep backend happy; amount drives totalAmount
-        taxRate:    0,
-        discount:   0,
-        terms:      form.terms      || undefined,
-        notes:      form.notes      || undefined,
-        validUntil: form.validUntil || undefined,
-      }).unwrap();
+      await createProforma(payload).unwrap();
       onClose();
     } catch (e: unknown) {
       const err = e as { data?: { message?: string } };
-      setError(err?.data?.message ?? "Failed to update performa.");
+      setError(err?.data?.message ?? "Failed to create proforma.");
     }
   };
 
   return (
     <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-lg font-bold text-secondary-100">New Proforma Invoice</h3>
+            <p className="text-xs text-custom-700 mt-0.5">Standalone — not linked to a job</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Client info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Client Name <span className="text-red-500">*</span></label>
+              <input name="clientName" value={form.clientName} onChange={field} placeholder="John Doe"
+                className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Client Phone</label>
+              <input name="clientPhone" value={form.clientPhone} onChange={field} placeholder="0788000000"
+                className={selectCls} />
+            </div>
+          </div>
+
+          {/* Job info (optional) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Job Number (optional)</label>
+              <input name="jobNumber" value={form.jobNumber} onChange={field} placeholder="JOB-2026-001"
+                className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Job Name (optional)</label>
+              <input name="jobName" value={form.jobName} onChange={field} placeholder="Business Cards"
+                className={selectCls} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Date</label>
+              <input name="jobCreatedAt" type="date" value={form.jobCreatedAt} onChange={field}
+                className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Valid Until</label>
+              <input name="validUntil" type="date" value={form.validUntil} onChange={field}
+                className={selectCls} />
+            </div>
+          </div>
+
+          {/* Items */}
+          <ItemsEditor rows={itemRows} onChange={setItemRows} />
+
+          {/* Tax / Discount */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Tax Rate (%)</label>
+              <input name="taxRate" type="number" min="0" max="100" value={form.taxRate} onChange={field}
+                className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Discount (RWF)</label>
+              <input name="discount" type="number" min="0" value={form.discount} onChange={field}
+                className={selectCls} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Terms & Conditions</label>
+            <textarea name="terms" value={form.terms} onChange={field} rows={2}
+              placeholder="Payment terms, delivery conditions…" className={`${selectCls} resize-none`} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Notes</label>
+            <textarea name="notes" value={form.notes} onChange={field} rows={2}
+              placeholder="Additional notes…" className={`${selectCls} resize-none`} />
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+              <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />{error}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-3 justify-end mt-5 pt-4 border-t border-custom-300">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? "Creating…" : "Create Proforma"}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+
+function EditProformaModal({ quotation, onClose }: { quotation: Proforma; onClose: () => void }) {
+  const [form, setForm] = useState({
+    clientName:   quotation.clientName  ?? quotation.customer?.name  ?? "",
+    clientPhone:  quotation.clientPhone ?? quotation.customer?.phone ?? "",
+    jobNumber:    quotation.jobNumber   ?? quotation.job?.jobNumber  ?? "",
+    jobName:      quotation.jobName     ?? quotation.job?.title      ?? "",
+    jobCreatedAt: (quotation.jobCreatedAt ?? quotation.createdAt ?? "").slice(0, 10),
+    taxRate:      String(quotation.taxRate  ?? 18),
+    discount:     String(quotation.discount ?? 0),
+    terms:        quotation.terms      ?? "",
+    notes:        quotation.notes      ?? "",
+    validUntil:   quotation.validUntil ? quotation.validUntil.slice(0, 10) : "",
+  });
+
+  // Pre-populate items from existing proforma items OR legacy job items
+  const initItems = (): ItemRow[] => {
+    if (quotation.items && quotation.items.length > 0) {
+      return quotation.items.map((it) => ({
+        description: it.description,
+        qty:         String(it.qty),
+        unitPrice:   String(it.unitPrice),
+      }));
+    }
+    const legacy = (quotation.job?.jobItems ?? quotation.job?.items ?? []) as any[];
+    if (legacy.length > 0) {
+      return legacy.map((it: any) => ({
+        description: it.itemName ?? it.stockItem?.name ?? "",
+        qty:         String(it.quantityNeeded ?? 1),
+        unitPrice:   String(it.unitCost ?? 0),
+      }));
+    }
+    return [emptyRow()];
+  };
+
+  const [itemRows, setItemRows] = useState<ItemRow[]>(initItems);
+  const [updateProforma, { isLoading }] = useUpdateProformaMutation();
+  const [error, setError] = useState<string | null>(null);
+
+  const field = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
+
+  const handleSave = async () => {
+    setError(null);
+    const validItems = itemRows.filter((r) => r.description.trim() && parseFloat(r.unitPrice) > 0);
+    if (!form.clientName.trim()) { setError("Client name is required."); return; }
+    if (validItems.length === 0) { setError("Add at least one item."); return; }
+
+    try {
+      await updateProforma({
+        id:           quotation.id,
+        clientName:   form.clientName   || undefined,
+        clientPhone:  form.clientPhone  || undefined,
+        jobNumber:    form.jobNumber    || undefined,
+        jobName:      form.jobName      || undefined,
+        jobCreatedAt: form.jobCreatedAt || undefined,
+        taxRate:      parseFloat(form.taxRate)  || 18,
+        discount:     parseFloat(form.discount) || 0,
+        terms:        form.terms        || undefined,
+        notes:        form.notes        || undefined,
+        validUntil:   form.validUntil   || undefined,
+        items: validItems.map((r) => ({
+          description: r.description.trim(),
+          qty:         parseFloat(r.qty)       || 1,
+          unitPrice:   parseFloat(r.unitPrice) || 0,
+        })),
+      }).unwrap();
+      onClose();
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string } };
+      setError(err?.data?.message ?? "Failed to update proforma.");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold text-secondary-100">Edit Proforma</h3>
@@ -207,64 +497,63 @@ function EditProformaModal({
         </div>
 
         <div className="space-y-4">
-
-          {/* Items summary (read-only) */}
-          {items.length > 0 && (
-            <div className="rounded-xl bg-custom-100 border border-custom-300 p-4">
-              <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Items</p>
-              <div className="space-y-1">
-                {items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span className="text-custom-700 truncate">{item.itemName ?? item.stockItem?.name ?? "—"}</span>
-                    <span className="font-semibold text-secondary-100 shrink-0 ml-4">
-                      {item.quantityNeeded} {item.unit ?? item.stockItem?.unit ?? ""}
-                    </span>
-                  </div>
-                ))}
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Client Name <span className="text-red-500">*</span></label>
+              <input name="clientName" value={form.clientName} onChange={field} className={selectCls} />
             </div>
-          )}
-
-          {/* Estimated amount — this is what appears on the quotation */}
-          <div className="rounded-xl bg-custom-100 border border-custom-300 p-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-bold text-secondary-100">Estimated Amount</span>
-              <span className="text-lg font-bold text-primary-500">
-                {parseFloat(form.amount || "0").toLocaleString()} RWF
-              </span>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Client Phone</label>
+              <input name="clientPhone" value={form.clientPhone} onChange={field} className={selectCls} />
             </div>
-            <p className="text-xs text-custom-700 mt-1">
-              Tax and final adjustments will be applied at invoice stage, not here.
-            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Job Number</label>
+              <input name="jobNumber" value={form.jobNumber} onChange={field} className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Job Name</label>
+              <input name="jobName" value={form.jobName} onChange={field} className={selectCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Date</label>
+              <input name="jobCreatedAt" type="date" value={form.jobCreatedAt} onChange={field} className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Valid Until</label>
+              <input name="validUntil" type="date" value={form.validUntil} onChange={field} className={selectCls} />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Valid Until</label>
-            <input type="date" value={form.validUntil}
-              onChange={(e) => setForm((p) => ({ ...p, validUntil: e.target.value }))}
-              className={selectCls} />
-          </div>
+          <ItemsEditor rows={itemRows} onChange={setItemRows} />
 
-          <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Terms & Conditions</label>
-            <textarea rows={3} value={form.terms}
-              onChange={(e) => setForm((p) => ({ ...p, terms: e.target.value }))}
-              placeholder="Payment terms, delivery conditions…"
-              className={`${selectCls} resize-none`} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Tax Rate (%)</label>
+              <input name="taxRate" type="number" min="0" max="100" value={form.taxRate} onChange={field} className={selectCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Discount (RWF)</label>
+              <input name="discount" type="number" min="0" value={form.discount} onChange={field} className={selectCls} />
+            </div>
           </div>
-
           <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Notes</label>
-            <textarea rows={2} value={form.notes}
-              onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-              placeholder="Additional notes for the client…"
-              className={`${selectCls} resize-none`} />
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Terms & Conditions</label>
+            <textarea name="terms" value={form.terms} onChange={field} rows={2}
+              placeholder="Payment terms…" className={`${selectCls} resize-none`} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Notes</label>
+            <textarea name="notes" value={form.notes} onChange={field} rows={2}
+              placeholder="Additional notes…" className={`${selectCls} resize-none`} />
           </div>
 
           {error && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-              <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />
-              {error}
+              <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />{error}
             </div>
           )}
         </div>
@@ -286,16 +575,30 @@ function DetailModal({
   quotation,
   onClose,
   onEdit,
+  onDeleted,
 }: {
   quotation: Proforma;
   onClose: () => void;
   onEdit: () => void;
+  onDeleted: () => void;
 }) {
   const [updateStatus, { isLoading: updatingStatus }] = useUpdateProformaStatusMutation();
+  const [deleteProforma, { isLoading: deleting }]     = useDeleteProformaMutation();
+  const [confirmDelete, setConfirmDelete]             = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const cfg = statusConfig[quotation.status];
+  const cfg  = statusConfig[quotation.status];
   const Icon = cfg.icon;
+
+  const clientName  = getClientName(quotation);
+  const clientPhone = getClientPhone(quotation);
+  const jobNo       = getJobLabel(quotation);
+  const jobName     = getJobName(quotation);
+
+  // Prefer standalone items; fall back to legacy job items
+  const standaloneItems: ProformaItem[] = quotation.items ?? [];
+  const legacyItems = (quotation.job?.jobItems ?? quotation.job?.items ?? []) as any[];
+  const hasItems = standaloneItems.length > 0 || legacyItems.length > 0;
 
   const handleStatus = async (status: ProformaStatus) => {
     setError(null);
@@ -308,9 +611,16 @@ function DetailModal({
     }
   };
 
-  const customer = getCustomer(quotation);
-  const items = getItems(quotation);
-  const estimatedAmount = quotation.totalAmount ?? quotation.subtotal ?? 0;
+  const handleDelete = async () => {
+    try {
+      await deleteProforma(quotation.id).unwrap();
+      onDeleted();
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string } };
+      setError(err?.data?.message ?? "Failed to delete proforma.");
+      setConfirmDelete(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
@@ -319,9 +629,14 @@ function DetailModal({
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-xl font-bold text-secondary-100">{quotation.proformaNo}</h3>
-            {customer && (
-              <p className="text-sm text-custom-700 mt-0.5">
-                {customer.name}{customer.phone ? ` · ${customer.phone}` : ""}{customer.company ? ` · ${customer.company}` : ""}
+            <p className="text-sm text-custom-700 mt-0.5">
+              {clientName}{clientPhone ? ` · ${clientPhone}` : ""}
+            </p>
+            {(jobNo || jobName) && (
+              <p className="text-xs text-custom-600 mt-0.5">
+                {jobNo && <span className="font-semibold text-primary-500">{jobNo}</span>}
+                {jobNo && jobName && " · "}
+                {jobName}
               </p>
             )}
             <span className={`inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1 rounded-full ${cfg.bg} ${cfg.color}`}>
@@ -334,65 +649,67 @@ function DetailModal({
           </button>
         </div>
 
-        {/* Proposal notice */}
-        <div className="mb-4 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-xs">
-          This is a <strong>performa / proposal</strong> for negotiation and client approval.
-          Tax and final charges will be applied at the invoice stage.
-        </div>
-
         <div className="space-y-5">
-          {/* Job info */}
-          {quotation.job && (
-            <div className="rounded-xl bg-custom-50 border border-custom-300 p-4 text-sm">
-              <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Job</p>
-              <div className="flex justify-between">
-                <span className="text-custom-700">Job #</span>
-                <span className="font-semibold text-primary-500">{quotation.job.jobNumber}</span>
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-custom-700">Title</span>
-                <span className="font-semibold text-secondary-100">{quotation.job.title}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Stock items */}
-          {items.length > 0 && (
+          {/* Items table */}
+          {hasItems && (
             <div>
-              <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Products / Services</p>
+              <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Items</p>
               <div className="rounded-xl border border-custom-300 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-custom-100">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-custom-700">Item</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold text-custom-700">Qty</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-custom-700">Notes</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-custom-700">Description</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-custom-700">Qty</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-custom-700">Unit Price</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-custom-700">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-custom-200">
-                    {items.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-4 py-2.5 text-secondary-100 font-medium">{item.itemName ?? item.stockItem?.name ?? "—"}</td>
-                        <td className="px-4 py-2.5 text-right text-secondary-100">{item.quantityNeeded} {item.unit ?? item.stockItem?.unit ?? ""}</td>
-                        <td className="px-4 py-2.5 text-custom-700 text-xs">{item.notes ?? "—"}</td>
-                      </tr>
-                    ))}
+                    {standaloneItems.length > 0
+                      ? standaloneItems.map((item) => (
+                          <tr key={item.id ?? item.description}>
+                            <td className="px-4 py-2.5 text-secondary-100 font-medium">{item.description}</td>
+                            <td className="px-3 py-2.5 text-right text-secondary-100">{item.qty}</td>
+                            <td className="px-3 py-2.5 text-right text-secondary-100">{Number(item.unitPrice).toLocaleString()}</td>
+                            <td className="px-3 py-2.5 text-right font-semibold text-secondary-100">
+                              {Number(item.totalPrice ?? item.unitPrice * item.qty).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))
+                      : legacyItems.map((item: any) => (
+                          <tr key={item.id}>
+                            <td className="px-4 py-2.5 text-secondary-100 font-medium">{item.itemName ?? item.stockItem?.name ?? "—"}</td>
+                            <td className="px-3 py-2.5 text-right text-secondary-100">{item.quantityNeeded}</td>
+                            <td className="px-3 py-2.5 text-right text-secondary-100">{item.unitCost != null ? Number(item.unitCost).toLocaleString() : "—"}</td>
+                            <td className="px-3 py-2.5 text-right font-semibold text-secondary-100">{item.totalCost != null ? Number(item.totalCost).toLocaleString() : "—"}</td>
+                          </tr>
+                        ))}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {/* Estimated amount — no tax breakdown */}
-          <div className="rounded-xl bg-custom-50 border border-custom-300 p-4 text-sm">
-            <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-3">Estimated Amount</p>
-            <div className="flex justify-between items-center">
-              <span className="text-custom-700">Total (excl. tax)</span>
-              <span className="text-xl font-bold text-primary-500">{estimatedAmount.toLocaleString()} RWF</span>
+          {/* Totals */}
+          <div className="rounded-xl bg-custom-50 border border-custom-300 p-4 text-sm space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-custom-700">Subtotal</span>
+              <span className="font-semibold text-secondary-100">{Number(quotation.subtotal ?? 0).toLocaleString()} RWF</span>
             </div>
-            <p className="text-xs text-custom-600 mt-2 italic">
-              * Tax will be calculated and added at the invoice / payment stage.
-            </p>
+            {quotation.discount ? (
+              <div className="flex justify-between">
+                <span className="text-custom-700">Discount</span>
+                <span className="font-semibold text-red-500">-{Number(quotation.discount).toLocaleString()} RWF</span>
+              </div>
+            ) : null}
+            <div className="flex justify-between">
+              <span className="text-custom-700">VAT ({quotation.taxRate ?? 18}%)</span>
+              <span className="font-semibold text-secondary-100">{Number(quotation.taxAmount ?? 0).toLocaleString()} RWF</span>
+            </div>
+            <div className="flex justify-between border-t border-custom-300 pt-1.5 mt-1">
+              <span className="font-bold text-secondary-100">Total</span>
+              <span className="text-xl font-bold text-primary-500">{Number(quotation.totalAmount ?? 0).toLocaleString()} RWF</span>
+            </div>
           </div>
 
           {/* Terms / Notes / Validity */}
@@ -419,10 +736,25 @@ function DetailModal({
             </div>
           )}
 
+          {/* Delete confirmation */}
+          {confirmDelete && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+              <HiOutlineExclamationCircle className="w-5 h-5 text-red-500 shrink-0" />
+              <p className="text-sm text-red-700 flex-1">Delete this proforma? This cannot be undone.</p>
+              <button onClick={() => setConfirmDelete(false)}
+                className="text-xs font-semibold text-custom-700 hover:text-secondary-100 px-2 py-1 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleDelete} disabled={deleting}
+                className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg transition-colors disabled:opacity-50">
+                {deleting ? "Deleting…" : "Yes, Delete"}
+              </button>
+            </div>
+          )}
+
           {error && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-              <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />
-              {error}
+              <HiOutlineExclamationCircle className="w-4 h-4 shrink-0" />{error}
             </div>
           )}
         </div>
@@ -435,9 +767,12 @@ function DetailModal({
                 <Button onClick={onEdit} variant="outline">
                   <HiOutlinePencil className="w-4 h-4 mr-1" /> Edit
                 </Button>
-                <Button onClick={() => handleStatus("sent")} disabled={updatingStatus}>
-                  {updatingStatus ? "Sending…" : "Send to Client"}
-                </Button>
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-colors text-sm font-semibold"
+                >
+                  <HiOutlineTrash className="w-4 h-4" /> Delete
+                </button>
               </>
             )}
             {quotation.status === "sent" && (
@@ -454,16 +789,12 @@ function DetailModal({
             )}
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={() => printProforma(quotation)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold"
-            >
+            <button onClick={() => printProforma(quotation)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold">
               <HiOutlinePrinter className="w-4 h-4" /> Print
             </button>
-            <button
-              onClick={() => downloadProforma(quotation).catch(console.error)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold"
-            >
+            <button onClick={() => downloadProforma(quotation).catch(console.error)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-sm font-semibold">
               <HiOutlineDownload className="w-4 h-4" /> Save
             </button>
             <Button variant="outline" onClick={onClose}>Close</Button>
@@ -482,6 +813,7 @@ export default function ProformasPage() {
   const [page, setPage]                 = useState(1);
   const [selected, setSelected]         = useState<Proforma | null>(null);
   const [editing, setEditing]           = useState<Proforma | null>(null);
+  const [creating, setCreating]         = useState(false);
 
   const { data, isLoading, isError, refetch } = useGetProformasQuery({
     status: statusFilter !== "all" ? statusFilter : undefined,
@@ -506,18 +838,27 @@ export default function ProformasPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">PROFORMA</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">PROFORMA INVOICES</h1>
             <p className="text-sm text-custom-700 mt-1">
-              Proposals sent to clients for negotiation and approval tax applied at invoice stage
+              Standalone proposals — created independently, not linked to jobs
             </p>
           </div>
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 text-sm w-fit"
-          >
-            <HiOutlineRefresh className="w-4 h-4" />
-            <span className="font-semibold">Refresh</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refetch()}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 text-sm"
+            >
+              <HiOutlineRefresh className="w-4 h-4" />
+              <span className="font-semibold hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              onClick={() => setCreating(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 transition-colors text-white text-sm font-semibold"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              New Proforma
+            </button>
+          </div>
         </div>
 
         {/* KPI Cards */}
@@ -589,14 +930,18 @@ export default function ProformasPage() {
         ) : isError ? (
           <Card className="!p-12 text-center">
             <HiOutlineExclamationCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">Failed to load PROFORMA</p>
+            <p className="text-secondary-100 font-semibold">Failed to load proformas</p>
             <button onClick={() => refetch()} className="mt-4 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold">Retry</button>
           </Card>
         ) : quotations.length === 0 ? (
           <Card className="!p-12 text-center">
             <HiOutlineDocumentText className="w-10 h-10 text-custom-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">No PROFORMA found</p>
-            <p className="text-sm text-custom-700 mt-1">PROFORMA are auto-created when a job is created</p>
+            <p className="text-secondary-100 font-semibold">No proformas found</p>
+            <p className="text-sm text-custom-700 mt-1 mb-4">Create your first standalone proforma invoice</p>
+            <button onClick={() => setCreating(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">
+              <HiOutlinePlus className="w-4 h-4" /> New Proforma
+            </button>
           </Card>
         ) : (
           <Card className="!p-0 overflow-hidden">
@@ -604,10 +949,10 @@ export default function ProformasPage() {
               <table className="w-full text-sm">
                 <thead className="bg-custom-100 border-b border-custom-300">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Performa #</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Customer</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Proforma #</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Client</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Job</th>
-                    <th className="px-4 py-3 text-right text-xs font-bold text-custom-700 uppercase">Est. Amount</th>
+                    <th className="px-4 py-3 text-right text-xs font-bold text-custom-700 uppercase">Total</th>
                     <th className="px-4 py-3 text-center text-xs font-bold text-custom-700 uppercase">Status</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Valid Until</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-custom-700 uppercase">Created</th>
@@ -616,34 +961,32 @@ export default function ProformasPage() {
                 </thead>
                 <tbody className="divide-y divide-custom-200">
                   {quotations.map((q) => {
-                    const cfg = statusConfig[q.status] ?? statusConfig.draft;
-                    const Icon = cfg.icon;
-                    const customer = getCustomer(q);
-                    const estimatedAmount = q.totalAmount ?? q.subtotal ?? 0;
+                    const cfg       = statusConfig[q.status] ?? statusConfig.draft;
+                    const Icon      = cfg.icon;
+                    const cName     = getClientName(q);
+                    const cPhone    = getClientPhone(q);
+                    const jNo       = getJobLabel(q);
+                    const jName     = getJobName(q);
+                    const total     = q.totalAmount ?? q.subtotal ?? 0;
                     return (
                       <tr key={q.id} className="hover:bg-custom-50 transition-colors">
                         <td className="px-4 py-3">
                           <span className="font-bold text-primary-500">{q.proformaNo}</span>
                         </td>
                         <td className="px-4 py-3">
-                          {customer ? (
-                            <div>
-                              <p className="font-semibold text-secondary-100">{customer.name}</p>
-                              {customer.phone && <p className="text-xs text-custom-700">{customer.phone}</p>}
-                              {customer.company && <p className="text-xs text-custom-600">{customer.company}</p>}
-                            </div>
-                          ) : <span className="text-custom-700">—</span>}
+                          <p className="font-semibold text-secondary-100">{cName}</p>
+                          {cPhone && <p className="text-xs text-custom-700">{cPhone}</p>}
                         </td>
                         <td className="px-4 py-3">
-                          {q.job ? (
+                          {jNo || jName ? (
                             <div>
-                              <p className="font-semibold text-secondary-100 text-xs">{q.job.jobNumber}</p>
-                              <p className="text-xs text-custom-700 truncate max-w-[140px]">{q.job.title}</p>
+                              {jNo   && <p className="font-semibold text-primary-500 text-xs">{jNo}</p>}
+                              {jName && <p className="text-xs text-custom-700 truncate max-w-[140px]">{jName}</p>}
                             </div>
                           ) : <span className="text-custom-700">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-secondary-100">
-                          {estimatedAmount.toLocaleString()} RWF
+                          {Number(total).toLocaleString()} RWF
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${cfg.bg} ${cfg.color}`}>
@@ -726,12 +1069,18 @@ export default function ProformasPage() {
         )}
       </div>
 
+      {/* Create modal */}
+      {creating && (
+        <CreateProformaModal onClose={() => setCreating(false)} />
+      )}
+
       {/* Detail modal */}
       {selected && (
         <DetailModal
           quotation={selected}
           onClose={() => setSelected(null)}
           onEdit={() => { setEditing(selected); setSelected(null); }}
+          onDeleted={() => setSelected(null)}
         />
       )}
 

@@ -240,11 +240,17 @@ export default function UserManagementPage() {
   };
 
   const handleSave = async () => {
-    const validationErrors = validate(
-      editingUser
-        ? { ...form, password: form.password || "xxxxx", confirmPassword: form.confirmPassword || "xxxxx" }
-        : form
-    );
+    let validationErrors: FormErrors;
+    if (editingUser) {
+      // On edit: validate everything except password (only validate password if filled)
+      validationErrors = validate({ ...form, password: "xxxxx", confirmPassword: "xxxxx" });
+      if (form.password) {
+        if (form.password.length < 5) validationErrors.password = "Password must be at least 5 characters.";
+        if (form.password !== form.confirmPassword) validationErrors.confirmPassword = "Passwords do not match.";
+      }
+    } else {
+      validationErrors = validate(form);
+    }
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -252,7 +258,6 @@ export default function UserManagementPage() {
 
     try {
       if (editingUser) {
-        // ── Update ──────────────────────────────────────────────────────────
         await updateUser({
           id: editingUser.id,
           name: form.name,
@@ -261,6 +266,7 @@ export default function UserManagementPage() {
           gender: form.gender,
           role: form.role,
           departmentId: form.department || undefined,
+          ...(form.password ? { password: form.password } : {}),
         }).unwrap();
         toast.success("User updated successfully.");
       } else {
@@ -758,36 +764,6 @@ export default function UserManagementPage() {
                   {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
                 </div>
 
-                {/* Password — only required on create */}
-                {!editingUser && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-custom-700 mb-1">
-                        Password <span className="text-red-500">*</span>
-                      </label>
-                      <PasswordInput
-                        value={form.password}
-                        onChange={(e) => handleField("password", e.target.value)}
-                        placeholder="Min. 5 characters"
-                        autoComplete="new-password"
-                        error={errors.password}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-custom-700 mb-1">
-                        Confirm Password <span className="text-red-500">*</span>
-                      </label>
-                      <PasswordInput
-                        value={form.confirmPassword}
-                        onChange={(e) => handleField("confirmPassword", e.target.value)}
-                        placeholder="Repeat password"
-                        autoComplete="new-password"
-                        error={errors.confirmPassword}
-                      />
-                    </div>
-                  </>
-                )}
-
                 {/* Phone + Gender */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -860,6 +836,35 @@ export default function UserManagementPage() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Password — required on create, optional on edit */}
+                <div>
+                  <label className="block text-sm font-semibold text-custom-700 mb-1">
+                    {editingUser ? "New Password" : "Password"}{" "}
+                    {!editingUser && <span className="text-red-500">*</span>}
+                    {editingUser && <span className="text-xs font-normal text-custom-500">(leave blank to keep current)</span>}
+                  </label>
+                  <PasswordInput
+                    value={form.password}
+                    onChange={(e) => handleField("password", e.target.value)}
+                    placeholder={editingUser ? "Enter new password" : "Min. 5 characters"}
+                    autoComplete="new-password"
+                    error={errors.password}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-custom-700 mb-1">
+                    Confirm Password{" "}
+                    {!editingUser && <span className="text-red-500">*</span>}
+                  </label>
+                  <PasswordInput
+                    value={form.confirmPassword}
+                    onChange={(e) => handleField("confirmPassword", e.target.value)}
+                    placeholder="Repeat password"
+                    autoComplete="new-password"
+                    error={errors.confirmPassword}
+                  />
                 </div>
 
               </div>
