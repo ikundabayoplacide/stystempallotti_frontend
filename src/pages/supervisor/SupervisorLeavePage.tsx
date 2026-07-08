@@ -51,6 +51,20 @@ function daysBetween(start: string, end: string) {
   return Math.max(1, Math.round((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24)) + 1);
 }
 
+function formatDuration(startDate: string, startTime: string, endDate: string, endTime: string) {
+  const from = new Date(`${startDate}T${startTime || "00:00"}`);
+  const to   = new Date(`${endDate}T${endTime   || "23:59"}`);
+  const totalMins = Math.max(0, Math.round((to.getTime() - from.getTime()) / 60000));
+  const days  = Math.floor(totalMins / (60 * 24));
+  const hours = Math.floor((totalMins % (60 * 24)) / 60);
+  const mins  = totalMins % 60;
+  const parts: string[] = [];
+  if (days)  parts.push(`${days}d`);
+  if (hours) parts.push(`${hours}h`);
+  if (mins)  parts.push(`${mins}m`);
+  return parts.length ? parts.join(' ') : '0m';
+}
+
 function daysRemaining(endDate: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const end = new Date(endDate); end.setHours(0, 0, 0, 0);
@@ -136,7 +150,7 @@ function LeaveDetailModal({ leave, onClose }: {
             </div>
           )}
           {leave.documentUrl && (
-            <a href={leave.documentUrl} target="_blank" rel="noopener noreferrer"
+            <a href={leave.documentUrl} download
               className="flex items-center gap-2 text-sm text-primary-600 hover:underline font-semibold">
               <HiOutlineDocumentText className="w-4 h-4" /> View Supporting Document
             </a>
@@ -426,10 +440,14 @@ function MyLeaveTab() {
   );
 }
 
+const timeCls = "w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
 function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [type, setType] = useState<string>("ANNUAL");
   const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("08:00");
   const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("17:00");
   const [reason, setReason] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -451,13 +469,11 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
         documentUrl = res.data.url;
         setUploading(false);
       }
-      await createLeave({ type: type as LeaveType, startDate, endDate, reason: reason.trim(), documentUrl }).unwrap();
+      await createLeave({ type: type as LeaveType, startDate, startTime, endDate, endTime, reason: reason.trim(), documentUrl }).unwrap();
       toast.success("Leave request submitted successfully");
       onSuccess();
     } catch (err: any) { setUploading(false); toast.error(err?.data?.message ?? "Failed to submit leave request"); }
   };
-
-  const inputCls = "w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -469,22 +485,32 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Leave Type *</label>
-            <select value={type} onChange={(e) => setType(e.target.value)} className={inputCls}>
+            <select value={type} onChange={(e) => setType(e.target.value)} className={timeCls}>
               {LEAVE_TYPE_LABELS_FULL.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Start Date *</label>
-              <input type="date" value={startDate} min={today} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+              <input type="date" value={startDate} min={today} onChange={(e) => setStartDate(e.target.value)} className={timeCls} />
             </div>
             <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Start Time *</label>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={timeCls} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
               <label className="block text-sm font-semibold text-secondary-100 mb-1.5">End Date *</label>
-              <input type="date" value={endDate} min={startDate || today} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
+              <input type="date" value={endDate} min={startDate || today} onChange={(e) => setEndDate(e.target.value)} className={timeCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">End Time *</label>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={timeCls} />
             </div>
           </div>
           {startDate && endDate && new Date(endDate) >= new Date(startDate) && (
-            <p className="text-xs text-primary-600 font-semibold">Duration: {daysBetween(startDate, endDate)} day(s)</p>
+            <p className="text-xs text-primary-600 font-semibold">Duration: {formatDuration(startDate, startTime, endDate, endTime)}</p>
           )}
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Reason *</label>
