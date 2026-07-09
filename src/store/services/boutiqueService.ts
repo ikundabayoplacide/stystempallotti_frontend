@@ -68,7 +68,7 @@ export interface PaginatedProducts {
 
 export interface CreateCategoryPayload {
   name: string;
-  prefix: string;
+  skuPrefix: string;
 }
 
 export interface UpdateCategoryPayload {
@@ -227,7 +227,7 @@ export const boutiqueApi = createApi({
     },
   }),
 
-  tagTypes: ["BoutiqueCategory", "BoutiqueProduct", "StockMovement", "BoutiqueRequest"],
+  tagTypes: ["BoutiqueCategory", "BoutiqueProduct", "StockMovement", "BoutiqueRequest", "BoutiqueSale"],
 
   endpoints: (builder) => ({
 
@@ -368,6 +368,7 @@ export const boutiqueApi = createApi({
         { type: "BoutiqueProduct", id },
         { type: "BoutiqueProduct", id: "LIST" },
         { type: "StockMovement", id },
+        { type: "BoutiqueSale", id: "LIST" },
       ],
     }),
 
@@ -383,6 +384,7 @@ export const boutiqueApi = createApi({
         };
         return { sales, pagination };
       },
+      providesTags: [{ type: "BoutiqueSale", id: "LIST" }],
       transformErrorResponse: (err) => {
         console.error("[getSales] error:", JSON.stringify(err, null, 2));
         return err;

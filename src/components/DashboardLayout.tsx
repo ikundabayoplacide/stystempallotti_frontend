@@ -83,6 +83,8 @@ export default function DashboardLayout({
     pollingInterval: 30_000,
   });
 
+  console.log("[DashboardLayout] isAuthenticated:", isAuthenticated, "| unreadCount:", unreadCount);
+
   const userRole = (authRole ?? userRoleProp ?? "receptionist") as UserRole;
   const userName = authName ?? userNameProp ?? "User";
 

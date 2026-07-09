@@ -71,6 +71,7 @@ export interface CreateLeadPayload {
   nextFollowUp?: string;
   document?: File;
   newDocuments?: File[];
+  removeDocumentIds?: string[];
 }
 
 export type UpdateLeadPayload = Partial<CreateLeadPayload> & { id: string };
@@ -160,13 +161,14 @@ export const procurementApi = createApi({
 
     // PUT /procurement/:id
     updateLead: builder.mutation<ProcurementLead, UpdateLeadPayload>({
-      query: ({ id, document, newDocuments, ...rest }) => {
+      query: ({ id, document, newDocuments, removeDocumentIds, ...rest }) => {
         const form = new FormData();
         Object.entries(rest).forEach(([k, v]) => {
           if (v !== undefined && v !== null) form.append(k, String(v));
         });
         if (document) form.append("document", document);
         newDocuments?.forEach((f) => form.append("documents", f));
+        removeDocumentIds?.forEach((docId) => form.append("removeDocumentIds", docId));
         return { url: `/procurement/${id}`, method: "PUT", body: form };
       },
       transformResponse: (res: ApiResponse<ProcurementLead>) => res.data,

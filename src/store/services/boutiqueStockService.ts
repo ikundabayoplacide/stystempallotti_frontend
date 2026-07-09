@@ -29,10 +29,18 @@ export interface BoutiqueStockEntry {
 
 export type SortieStatus = "pending" | "approved" | "rejected";
 
+export interface BoutiqueStockSortieItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  stockItem?: BoutiqueStockItem;
+}
+
 export interface BoutiqueStockSortie {
   id: string;
   stockItemId: string;
   stockItem?: BoutiqueStockItem;
+  items?: BoutiqueStockSortieItem[];
   quantityOut: string;
   reason?: string;
   notes?: string | null;
@@ -129,10 +137,16 @@ export const boutiqueStockApi = createApi({
     }),
     approveBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, string>({
       query: (id) => ({ url: `/sorties/${id}/approve`, method: "PATCH" }),
-      transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => {
-        console.log("[approve] raw response:", res);
-        console.log("[approve] stockItem after approve:", res.data?.stockItem);
+      transformResponse: (res: ApiResponse<BoutiqueStockSortie>, _meta, id) => {
+        console.log("[approve] raw response for id", id, ":", res);
+        console.log("[approve] success:", res?.success, "| message:", res?.message, "| data:", res?.data);
+        if (!res?.success) console.warn("[approve] backend returned success=false:", res?.message);
+        if (!res?.data) console.warn("[approve] res.data is null/undefined — this will cause unwrap() to throw!");
         return res.data;
+      },
+      transformErrorResponse: (err, _meta, id) => {
+        console.error("[approve] HTTP error for id", id, ":", err);
+        return err;
       },
       invalidatesTags: (_r, _e, id) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSItem", id: "LIST" }],
     }),
@@ -140,6 +154,15 @@ export const boutiqueStockApi = createApi({
       query: ({ id, ...body }) => ({ url: `/sorties/${id}/reject`, method: "PATCH", body }),
       transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => res.data,
       invalidatesTags: (_r, _e, { id }) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSSortie", id: "MY" }],
+    }),
+    updateBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, { id: string; quantityOut?: number; reason?: string; notes?: string }>({
+      query: ({ id, ...body }) => ({ url: `/sorties/${id}`, method: "PUT", body }),
+      transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => res.data,
+      invalidatesTags: (_r, _e, { id }) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSSortie", id: "MY" }],
+    }),
+    deleteBoutiqueStockSortie: builder.mutation<void, string>({
+      query: (id) => ({ url: `/sorties/${id}`, method: "DELETE" }),
+      invalidatesTags: (_r, _e, id) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSSortie", id: "MY" }],
     }),
   }),
 });
@@ -156,4 +179,6 @@ export const {
   useCreateBoutiqueStockSortieMutation,
   useApproveBoutiqueStockSortieMutation,
   useRejectBoutiqueStockSortieMutation,
+  useUpdateBoutiqueStockSortieMutation,
+  useDeleteBoutiqueStockSortieMutation,
 } = boutiqueStockApi;

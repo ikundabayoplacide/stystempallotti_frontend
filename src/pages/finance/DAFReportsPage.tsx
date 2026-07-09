@@ -247,7 +247,7 @@ const jobStatusColor: Record<string, string> = {
 };
 
 function JobApprovalReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -637,7 +637,7 @@ function ProcurementReport() {
 // ─── Employees Report ─────────────────────────────────────────────────────────
 
 function EmployeesReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -1038,7 +1038,7 @@ function PayrollReport() {
 // ─── Leave Report ─────────────────────────────────────────────────────────────
 
 function LeaveReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -1259,7 +1259,7 @@ function LeaveReport() {
 // ─── Casual Workers Report ────────────────────────────────────────────────────
 
 function CasualWorkersReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");

@@ -21,6 +21,14 @@ import {
 import type { Report } from "../../store/services/reportsService";
 import { useAuth } from "../../context/AuthContext";
 
+const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api").replace(/\/api$/, "");
+
+function resolveUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) return url;
+  return `${API_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 const PAGE_SIZE = 10;
 
 // ─── Shared report card ───────────────────────────────────────────────────────
@@ -118,7 +126,7 @@ function ReportCard({
             <div>
               <p className="text-xs font-bold text-secondary-100 uppercase mb-1.5">Visible To</p>
               <div className="flex flex-wrap gap-1.5">
-                {report.visibleTo.map((role: string) => (
+                {(Array.isArray(report.visibleTo) ? report.visibleTo : String(report.visibleTo).split(",")).map((role: string) => (
                   <span key={role} className="px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 text-xs font-semibold">
                     {role}
                   </span>
@@ -141,7 +149,7 @@ function ReportCard({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-custom-200 bg-white">
-                    {report.items.map((item: any, i: number) => (
+                    {(Array.isArray(report.items) ? report.items : []).map((item: any, i: number) => (
                       <tr key={i}>
                         <td className="px-3 py-2 text-custom-700">{i + 1}</td>
                         <td className="px-3 py-2 text-secondary-100">{item.record}</td>
@@ -168,11 +176,13 @@ function ReportCard({
           {/* Attachment */}
           {report.attachmentUrl && (
             <a
-              href={report.attachmentUrl}
+              href={resolveUrl(report.attachmentUrl)}
               download
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
             >
-              <HiOutlinePaperClip className="w-4 h-4" /> View Attachment
+              <HiOutlinePaperClip className="w-4 h-4" /> Download Attachment
             </a>
           )}
         </div>

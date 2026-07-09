@@ -281,7 +281,7 @@ const PM_STATUSES = new Set([
 ]);
 
 function AllJobsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -438,7 +438,7 @@ function AllJobsReport() {
 // ─── Tab 1: Jobs in Production ────────────────────────────────────────────────
 
 function ProductionJobsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -729,7 +729,7 @@ function DepartmentsReport() {
 // ─── Tab 3: Completed Jobs Report ─────────────────────────────────────────────
 
 function CompletedJobsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");

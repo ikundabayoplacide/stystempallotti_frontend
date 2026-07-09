@@ -3,6 +3,7 @@ import {
   HiOutlineClipboardList,
   HiOutlinePlus,
   HiOutlineTrash,
+  HiOutlinePencil,
   HiOutlineRefresh,
   HiOutlineArchive,
   HiOutlineExclamationCircle,
@@ -17,7 +18,10 @@ import {
   useGetBoutiqueStockItemsQuery,
   useCreateBoutiqueStockSortieMutation,
   useGetMyBoutiqueStockSortiesQuery,
+  useUpdateBoutiqueStockSortieMutation,
+  useDeleteBoutiqueStockSortieMutation,
   type BoutiqueStockItem,
+  type BoutiqueStockSortie,
 } from "../../store/services/boutiqueStockService";
 
 const sortieStatusColors: Record<string, string> = {
@@ -28,16 +32,35 @@ const sortieStatusColors: Record<string, string> = {
 
 interface RequestItem { stockItem: BoutiqueStockItem; quantity: number }
 
-function RequestModal({ items: stockItems, onClose, onSuccess }: {
+function RequestModal({ items: stockItems, onClose, onSuccess, editTarget }: {
   items: BoutiqueStockItem[];
   onClose: () => void;
   onSuccess: () => void;
+  editTarget?: BoutiqueStockSortie;
 }) {
-  const [items, setItems]           = useState<RequestItem[]>([]);
+  const isEdit = !!editTarget;
+
+  const [items, setItems] = useState<RequestItem[]>(() => {
+    if (!editTarget) return [];
+    // new grouped API: items array
+    if (editTarget.items && editTarget.items.length > 0) {
+      return editTarget.items.map((si) => ({
+        stockItem: si.stockItem ?? stockItems.find((h) => h.id === si.productId) ?? { id: si.productId, itemName: si.productId } as BoutiqueStockItem,
+        quantity: si.quantity,
+      }));
+    }
+    // old API: single stockItem + quantityOut on the sortie itself
+    if (editTarget.stockItem) {
+      return [{ stockItem: editTarget.stockItem, quantity: parseFloat(editTarget.quantityOut) || 1 }];
+    }
+    return [];
+  });
   const [selectedId, setSelectedId] = useState("");
   const [qty, setQty]               = useState("1");
-  const [reason, setReason]         = useState("");
-  const [createSortie, { isLoading }] = useCreateBoutiqueStockSortieMutation();
+  const [reason, setReason]         = useState(editTarget?.reason ?? editTarget?.notes ?? "");
+  const [createSortie, { isLoading: creating }] = useCreateBoutiqueStockSortieMutation();
+  const [updateSortie, { isLoading: updating }] = useUpdateBoutiqueStockSortieMutation();
+  const isLoading = creating || updating;
 
   const available = stockItems.filter((h) => !items.find((i) => i.stockItem.id === h.id));
 
@@ -56,14 +79,23 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) { toast.error("Add at least one item"); return; }
-    if (!reason.trim())     { toast.error("Please provide a reason"); return; }
     try {
-      await Promise.all(
-        items.map((i) =>
-          createSortie({ stockItemId: i.stockItem.id, quantityOut: i.quantity, reason: reason.trim() }).unwrap()
-        )
-      );
-      toast.success(`${items.length} request${items.length > 1 ? "s" : ""} submitted`);
+      if (isEdit && editTarget) {
+        await updateSortie({
+          id: editTarget.id,
+          quantityOut: items[0]?.quantity,
+          reason: reason.trim() || undefined,
+        }).unwrap();
+        toast.success("Request updated");
+      } else {
+        if (!reason.trim()) { toast.error("Please provide a reason"); return; }
+        await Promise.all(
+          items.map((i) =>
+            createSortie({ stockItemId: i.stockItem.id, quantityOut: i.quantity, reason: reason.trim() }).unwrap()
+          )
+        );
+        toast.success(`${items.length} request${items.length > 1 ? "s" : ""} submitted`);
+      }
       onSuccess();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to submit request");
@@ -75,8 +107,8 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
       <Card className="!p-6 max-w-xl w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h3 className="text-xl font-bold text-secondary-100">Request Boutique Stock</h3>
-            <p className="text-sm text-custom-700 mt-0.5">Select items and quantities to request from boutique stock</p>
+            <h3 className="text-xl font-bold text-secondary-100">{isEdit ? "Edit Request" : "Request Boutique Stock"}</h3>
+            <p className="text-sm text-custom-700 mt-0.5">{isEdit ? "Update items and notes for this request" : "Select items and quantities to request from boutique stock"}</p>
           </div>
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
             <HiOutlineX className="w-6 h-6" />
@@ -144,7 +176,7 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
             >Cancel</button>
             <button type="submit" disabled={isLoading || items.length === 0}
               className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
-            >{isLoading ? "Submitting..." : "Submit Request"}</button>
+            >{isLoading ? (isEdit ? "Saving..." : "Submitting...") : (isEdit ? "Save Changes" : "Submit Request")}</button>
           </div>
         </form>
       </Card>
@@ -155,8 +187,23 @@ function RequestModal({ items: stockItems, onClose, onSuccess }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function BoutiqueStockRequestsPage() {
-  const [showModal, setShowModal] = useState(false);
-  const [search, setSearch]       = useState("");
+  const [showModal, setShowModal]         = useState(false);
+  const [editTarget, setEditTarget]       = useState<BoutiqueStockSortie | undefined>(undefined);
+  const [deleteTarget, setDeleteTarget]   = useState<BoutiqueStockSortie | undefined>(undefined);
+  const [search, setSearch]               = useState("");
+  const [deleteSortie, { isLoading: deleting }] = useDeleteBoutiqueStockSortieMutation();
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteSortie(deleteTarget.id).unwrap();
+      toast.success("Request deleted");
+      setDeleteTarget(undefined);
+      refetchSorties();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to delete request");
+    }
+  };
 
   const { data: stockData, isLoading: stockLoading, refetch: refetchStock } =
     useGetBoutiqueStockItemsQuery({ limit: 200 });
@@ -197,7 +244,7 @@ export default function BoutiqueStockRequestsPage() {
             >
               <HiOutlineRefresh className={`w-4 h-4 ${stockLoading || sortiesLoading ? "animate-spin" : ""}`} />
             </button>
-            <button onClick={() => setShowModal(true)} disabled={allItems.length === 0}
+            <button onClick={() => { setEditTarget(undefined); setShowModal(true); }} disabled={allItems.length === 0}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
             >
               <HiOutlinePlus className="w-4 h-4" />
@@ -315,7 +362,7 @@ export default function BoutiqueStockRequestsPage() {
                 <HiOutlineClipboardList className="w-8 h-8 text-custom-400 mx-auto mb-2" />
                 <p className="text-sm text-secondary-100 font-semibold">No requests yet</p>
                 <p className="text-xs text-custom-700 mt-1 mb-4">Submit your first request using the button above</p>
-                <button onClick={() => setShowModal(true)} disabled={allItems.length === 0}
+                <button onClick={() => { setEditTarget(undefined); setShowModal(true); }} disabled={allItems.length === 0}
                   className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 disabled:opacity-40 transition-colors"
                 >
                   New Request
@@ -334,9 +381,29 @@ export default function BoutiqueStockRequestsPage() {
                           {sortie.status}
                         </span>
                       </div>
-                      <span className="text-xs text-custom-700">
-                        {new Date(sortie.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short" })}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-custom-700">
+                          {new Date(sortie.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short" })}
+                        </span>
+                        {sortie.status === "pending" && (
+                          <>
+                            <button
+                              onClick={() => { setEditTarget(sortie); setShowModal(true); }}
+                              className="p-1 rounded-lg text-primary-500 hover:bg-primary-50 transition-colors"
+                              title="Edit request"
+                            >
+                              <HiOutlinePencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteTarget(sortie)}
+                              className="p-1 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                              title="Delete request"
+                            >
+                              <HiOutlineTrash className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                     <div className="px-4 py-2.5 flex items-center gap-4 text-sm">
                       <span className="text-custom-700">Qty: <span className="font-bold text-secondary-100">{parseFloat(sortie.quantityOut)}</span></span>
@@ -368,9 +435,41 @@ export default function BoutiqueStockRequestsPage() {
       {showModal && (
         <RequestModal
           items={stockData?.data ?? []}
-          onClose={() => setShowModal(false)}
-          onSuccess={() => { setShowModal(false); refetchSorties(); }}
+          onClose={() => { setShowModal(false); setEditTarget(undefined); }}
+          onSuccess={() => { setShowModal(false); setEditTarget(undefined); refetchSorties(); }}
+          editTarget={editTarget}
         />
+      )}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+          <Card className="!p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+                <HiOutlineTrash className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Delete Request</h3>
+                <p className="text-xs text-custom-700 mt-0.5">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-secondary-100 mb-6">
+              Are you sure you want to delete the request for{" "}
+              <span className="font-semibold">{deleteTarget.stockItem?.itemName ?? "this item"}</span>?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteTarget(undefined)}
+                className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+              >Cancel</button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors"
+              >{deleting ? "Deleting..." : "Delete"}</button>
+            </div>
+          </Card>
+        </div>
       )}
     </DashboardLayout>
   );

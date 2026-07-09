@@ -14,14 +14,13 @@ export type NotificationType =
   | "JOB_CREATED"
   | "JOB_ASSIGNED"
   | "JOB_STATUS_CHANGED"
-  | "PROGRESS_COMPLETED"
-  | "JOB_DONE"
-  | "JOB_COMPLETED"
+  | "DEPARTMENT_ASSIGNED"
+  | "PAYMENT_RECEIVED"
   | "EMPLOYEE_CREATED"
   | "JOB_DAF_ACTION"
-  | "STOCK_SORTIE_APPROVED"
-  | "STOCK_SORTIE_REJECTED"
-  | "STOCK_SORTIE_REQUEST";
+  | "HOBE_CREATED"
+  | "OUTSTAND_CREATED"
+  | "GENERAL";
 
 export interface Notification {
   id: string;                  // NotificationRead id
@@ -73,6 +72,8 @@ export const notificationsApi = createApi({
     baseUrl: import.meta.env.VITE_API_URL ?? "http://localhost:8000/api",
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.token;
+      console.log("[notif] prepareHeaders — token present:", !!token, "| role:", (getState() as RootState).auth.user?.role);
+      if (!token) console.warn("[notif] prepareHeaders: NO token — request will be unauthenticated!");
       if (token) headers.set("Authorization", `Bearer ${token}`);
       return headers;
     },
@@ -84,31 +85,41 @@ export const notificationsApi = createApi({
     // GET /notifications/stats — bell icon data
     getNotificationStats: builder.query<NotificationStats, void>({
       query: () => "/notifications/stats",
-      transformResponse: (res: ApiResponse<{ unreadCount: number; latest: any[] }>) => ({
-        unreadCount: res.data.unreadCount,
-        latest: (res.data.latest ?? []).map((row: any) => ({
-          id: row.notificationId ?? row.id,
-          notificationId: row.notificationId ?? row.id,
-          type: row.notification?.type ?? row.type,
-          title: row.notification?.title ?? row.title,
-          message: row.notification?.message ?? row.message,
-          relatedEntityType: row.notification?.relatedEntityType,
-          relatedEntityId: row.notification?.relatedEntityId,
-          createdById: row.notification?.createdById,
-          createdBy: row.notification?.createdBy,
-          targetRoles: row.notification?.targetRoles ?? [],
-          createdAt: row.notification?.createdAt ?? row.createdAt,
-          isRead: row.isRead,
-          viewedAt: row.viewedAt,
-        })),
-      }),
+      transformResponse: (res: ApiResponse<{ unreadCount: number; latest: any[] }>) => {
+        console.log("[notif] stats raw:", res);
+        console.log("[notif] stats unreadCount:", res?.data?.unreadCount, "| latest count:", res?.data?.latest?.length);
+        return {
+          unreadCount: res.data.unreadCount,
+          latest: (res.data.latest ?? []).map((row: any) => ({
+            id: row.notificationId ?? row.id,
+            notificationId: row.notificationId ?? row.id,
+            type: row.notification?.type ?? row.type,
+            title: row.notification?.title ?? row.title,
+            message: row.notification?.message ?? row.message,
+            relatedEntityType: row.notification?.relatedEntityType,
+            relatedEntityId: row.notification?.relatedEntityId,
+            createdById: row.notification?.createdById,
+            createdBy: row.notification?.createdBy,
+            targetRoles: row.notification?.targetRoles ?? [],
+            createdAt: row.notification?.createdAt ?? row.createdAt,
+            isRead: row.isRead,
+            viewedAt: row.viewedAt,
+          })),
+        };
+      },
       providesTags: ["NotificationStats"],
     }),
 
     // GET /notifications/unread-count
     getUnreadCount: builder.query<number, void>({
       query: () => "/notifications/unread-count",
-      transformResponse: (res: ApiResponse<{ unreadCount: number }>) => res.data.unreadCount,
+      transformResponse: (res: ApiResponse<{ unreadCount: number }>) => {
+        console.log("[notif] unread-count raw:", res);
+        console.log("[notif] unread-count → success:", res?.success, "| unreadCount:", res?.data?.unreadCount);
+        if (!res?.success) console.warn("[notif] unread-count: success=false, message:", (res as any)?.message);
+        if (res?.data?.unreadCount == null) console.warn("[notif] unread-count: data.unreadCount is null/undefined — full data:", res?.data);
+        return res.data.unreadCount;
+      },
       providesTags: ["NotificationStats"],
     }),
 
@@ -117,27 +128,36 @@ export const notificationsApi = createApi({
       PaginatedNotifications,
       { page?: number; limit?: number; unreadOnly?: boolean }
     >({
-      query: (params) => ({ url: "/notifications", params }),
-      transformResponse: (res: ApiResponse<any[]>) => ({
-        notifications: (res.data ?? []).map((row: any) => ({
-          id: row.notificationId ?? row.id,
-          notificationId: row.notificationId ?? row.id,
-          type: row.notification?.type ?? row.type,
-          title: row.notification?.title ?? row.title,
-          message: row.notification?.message ?? row.message,
-          relatedEntityType: row.notification?.relatedEntityType ?? row.relatedEntityType,
-          relatedEntityId: row.notification?.relatedEntityId ?? row.relatedEntityId,
-          createdById: row.notification?.createdById ?? row.createdById,
-          createdBy: row.notification?.createdBy ?? row.createdBy,
-          targetRoles: row.notification?.targetRoles ?? row.targetRoles ?? [],
-          createdAt: row.notification?.createdAt ?? row.createdAt,
-          isRead: row.isRead,
-          viewedAt: row.viewedAt,
-        })),
-        total: res.pagination?.total ?? 0,
-        page: res.pagination?.page ?? 1,
-        totalPages: res.pagination?.totalPages ?? 1,
-      }),
+      query: (params) => {
+        console.log("[notif] getNotifications query params:", params);
+        return { url: "/notifications", params };
+      },
+      transformResponse: (res: ApiResponse<any[]>) => {
+        console.log("[notif] getNotifications raw response:", res);
+        console.log("[notif] getNotifications → success:", res?.success, "| count:", res?.data?.length, "| pagination:", res?.pagination);
+        if (!res?.success) console.warn("[notif] getNotifications: success=false, message:", (res as any)?.message);
+        if (!res?.data?.length) console.warn("[notif] getNotifications: empty data array — are notifications created for this user's role?");
+        return {
+          notifications: (res.data ?? []).map((row: any) => ({
+            id: row.notificationId ?? row.id,
+            notificationId: row.notificationId ?? row.id,
+            type: row.notification?.type ?? row.type,
+            title: row.notification?.title ?? row.title,
+            message: row.notification?.message ?? row.message,
+            relatedEntityType: row.notification?.relatedEntityType ?? row.relatedEntityType,
+            relatedEntityId: row.notification?.relatedEntityId ?? row.relatedEntityId,
+            createdById: row.notification?.createdById ?? row.createdById,
+            createdBy: row.notification?.createdBy ?? row.createdBy,
+            targetRoles: row.notification?.targetRoles ?? row.targetRoles ?? [],
+            createdAt: row.notification?.createdAt ?? row.createdAt,
+            isRead: row.isRead,
+            viewedAt: row.viewedAt,
+          })),
+          total: res.pagination?.total ?? 0,
+          page: res.pagination?.page ?? 1,
+          totalPages: res.pagination?.totalPages ?? 1,
+        };
+      },
       providesTags: (result) =>
         result?.notifications?.length
           ? [

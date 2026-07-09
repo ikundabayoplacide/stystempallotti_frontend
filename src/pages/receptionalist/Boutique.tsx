@@ -24,16 +24,14 @@ import {
   useCreateCategoryMutation,
   useRecordSaleMutation,
   useUpdateSaleMutation,
+  useUpdateStockMutation,
   useGetSalesQuery,
   type BoutiqueProduct,
   type BoutiqueSale,
   type StockStatus,
   type PaymentMethod,
 } from "../../store/services/boutiqueService";
-import {
-  useCreateBoutiqueStockEntryMutation,
-  useGetBoutiqueStockItemsQuery,
-} from "../../store/services/boutiqueStockService";
+
 import {
   useCreateStockSortieMutation,
   useGetMySortiesQuery,
@@ -72,21 +70,14 @@ function RestockModal({ product, onClose, onSuccess }: {
 }) {
   const [qty, setQty]   = useState("");
   const [note, setNote] = useState("");
-  const { data: stockItemsData } = useGetBoutiqueStockItemsQuery({ limit: 200 });
-  const [createEntry, { isLoading }] = useCreateBoutiqueStockEntryMutation();
-
-  // Match boutique product to boutique stock item by name
-  const stockItem = (stockItemsData?.data ?? []).find(
-    (s) => s.itemName.toLowerCase() === product.name.toLowerCase()
-  );
+  const [updateStock, { isLoading }] = useUpdateStockMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const n = Number(qty);
     if (!n || n <= 0) { toast.error("Enter a valid quantity"); return; }
-    if (!stockItem) { toast.error("No matching boutique stock item found for this product"); return; }
     try {
-      await createEntry({ stockItemId: stockItem.id, quantity: n, note: note.trim() || undefined }).unwrap();
+      await updateStock({ id: product.id, change: n, reason: note.trim() || "Manual restock" }).unwrap();
       toast.success(`Added ${n} units to ${product.name}`);
       onSuccess();
     } catch (err: any) {
@@ -116,12 +107,9 @@ function RestockModal({ product, onClose, onSuccess }: {
             <label className="block text-xs font-semibold text-secondary-100 mb-1">Note <span className="font-normal text-custom-700">(optional)</span></label>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. New delivery" className={inputClass} />
           </div>
-          {!stockItem && (
-            <p className="text-xs text-red-500">⚠ No matching boutique stock item found. Contact stock manager.</p>
-          )}
           <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={isLoading || !stockItem}
+            <button type="submit" disabled={isLoading}
               className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
               {isLoading ? "Adding..." : "Add Stock"}
             </button>
@@ -158,7 +146,7 @@ function AddProductModal({ categories, onClose, onSuccess }: {
     if (isAddNew) {
       if (!newCategoryName.trim()) { toast.error("Please enter a category name"); return; }
       try {
-        const cat = await createCategory({ name: newCategoryName.trim(), prefix: newCategoryName.trim().slice(0, 3).toUpperCase() }).unwrap();
+        const cat = await createCategory({ name: newCategoryName.trim(), skuPrefix: newCategoryName.trim().slice(0, 3).toUpperCase() }).unwrap();
         categoryId = cat.id;
       } catch (err: any) {
         toast.error(err?.data?.message ?? "Failed to create category"); return;
@@ -279,7 +267,7 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
   const [note, setNote]                   = useState("");
   const [receipt, setReceipt]             = useState<BoutiqueSale | null>(null);
   const [recordSale, { isLoading }]       = useRecordSaleMutation();
-  const { data: customersData }           = useGetCustomersQuery({ limit: 200 });
+  const { data: customersData }           = useGetCustomersQuery({ limit: 200, type: "BOUTIQUE" });
   const customers                         = customersData?.customers ?? [];
 
   const totalExpected = (parseInt(qty) || 1) * product.price;
@@ -292,6 +280,7 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
     if (!q || q <= 0)       { toast.error("Enter a valid quantity"); return; }
     if (q > product.stock)  { toast.error(`Only ${product.stock} units available`); return; }
     if (!paid || paid <= 0) { toast.error("Enter amount paid"); return; }
+    if (!customerId)        { toast.error("Please select a customer"); return; }
     try {
       const result = await recordSale({
         id: product.id,
@@ -377,7 +366,7 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-md w-full my-8">
+      <Card className="!p-6 max-w-2xl w-full my-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -436,7 +425,7 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Paid (RWF) *</label>
-                <input type="number" min={1} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)}
+                <input type="number" min={0} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)}
                   placeholder={totalExpected.toLocaleString()} className={inputCls} />
               </div>
             </div>
@@ -468,13 +457,11 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
               </div>
             </div>
 
-            {/* Customer (optional) */}
+            {/* Customer */}
             <div>
-              <label className="block text-xs font-semibold text-secondary-100 mb-1">
-                Customer <span className="font-normal text-custom-700">(optional — leave blank for walk-in)</span>
-              </label>
-              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className={inputCls}>
-                <option value="">Walk-in customer</option>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Customer *</label>
+              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="w-full px-3 py-3 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+                <option value="">Select customer...</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}{c.phone ? ` — ${c.phone}` : ""}</option>
                 ))}
@@ -960,6 +947,13 @@ export default function BoutiquePage() {
   const { data: overpaidData } = useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
   const pendingCount = (partialData?.sales?.length ?? 0) + (overpaidData?.sales?.length ?? 0);
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayFrom = new Date(todayStr + "T00:00:00").toISOString();
+  const todayTo   = new Date(todayStr + "T23:59:59.999").toISOString();
+  const { data: todaySalesData } = useGetSalesQuery({ from: todayFrom, to: todayTo, limit: 500 });
+  const todaySoldCount  = (todaySalesData?.sales ?? []).reduce((sum, s) => sum + Number(s.quantity), 0);
+  const todaySoldAmount = (todaySalesData?.sales ?? []).reduce((sum, s) => sum + Number(s.amountPaid), 0);
+
   const products = data?.products ?? [];
 
   const isLoading = categoriesLoading || productsLoading;
@@ -1040,7 +1034,7 @@ export default function BoutiquePage() {
         </div>
 
         {/* ── Summary Cards ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <Card className="!p-4">
             <p className="text-xs text-custom-700 mb-1">Total Products</p>
             <p className="text-2xl font-bold text-secondary-100">
@@ -1064,6 +1058,11 @@ export default function BoutiquePage() {
             <p className="text-2xl font-bold text-red-600">
               {isLoading ? "—" : outOfStockCount}
             </p>
+          </Card>
+          <Card className="!p-4">
+            <p className="text-xs text-custom-700 mb-1">Sold Today</p>
+            <p className="text-2xl font-bold text-primary-500">{todaySoldCount} <span className="text-sm font-normal text-custom-700">units</span></p>
+            <p className="text-xs font-semibold text-emerald-600 mt-0.5">{todaySoldAmount.toLocaleString()} RWF</p>
           </Card>
         </div>
 

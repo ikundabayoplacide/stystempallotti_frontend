@@ -49,6 +49,8 @@ export interface GetPayrollsParams {
   workerType?: WorkerType;
   status?: PayrollStatus;
   period?: string;
+  dateFrom?: string;
+  dateTo?: string;
   search?: string;
 }
 

@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { HiOutlineX } from "react-icons/hi";
+import { HiOutlineX, HiOutlineDownload, HiOutlineEye } from "react-icons/hi";
 import { useUpdateReportMutation } from "../store/services/reportsService";
 import { useGetAllRolesQuery } from "../store/services/rolesService";
 import type { Report } from "../store/services/reportsService";
 import { useGetUsersQuery } from "../store/services/usersService";
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api").replace(/\/api$/, "");
+function resolveUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("http") || url.startsWith("blob:") || url.startsWith("data:")) return url;
+  return `${API_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 
 type ReportItem = { record: string; quantity: string; amount: string };
 
@@ -103,7 +110,7 @@ export default function EditReportModal({ report, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <div className="bg-style-500 rounded-2xl shadow-xl max-w-lg w-full my-8 p-6">
+      <div className="bg-style-500 rounded-2xl shadow-xl max-w-2xl w-full my-8 p-6">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
@@ -194,9 +201,26 @@ export default function EditReportModal({ report, onClose }: Props) {
               Replace Attachment <span className="text-custom-700 font-normal">(optional)</span>
             </label>
             {report.attachmentUrl && !file && (
-              <p className="text-xs text-custom-700 mb-1">
-                Current: <a href={report.attachmentUrl} download className="text-primary-500 hover:underline">View</a>
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs text-custom-700">Current:</span>
+                <a
+                  href={resolveUrl(report.attachmentUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
+                >
+                  <HiOutlineEye className="w-3.5 h-3.5" /> View
+                </a>
+                <a
+                  href={resolveUrl(report.attachmentUrl)}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                >
+                  <HiOutlineDownload className="w-3.5 h-3.5" /> Download
+                </a>
+              </div>
             )}
             <input
               type="file"

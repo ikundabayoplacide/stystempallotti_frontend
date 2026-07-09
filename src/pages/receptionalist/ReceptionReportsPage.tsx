@@ -330,7 +330,7 @@ function Section({ icon: Icon, title, color, children }: {
 const PAGE_SIZE = 5;
 
 function BoutiqueSalesReport() {
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("day");
   const [page, setPage]     = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -549,7 +549,7 @@ function BoutiqueSalesReport() {
 // ─── Visitor Report ───────────────────────────────────────────────────────────
 
 function VisitorReport() {
-  const [period, setPeriod]       = useState<Period>("month");
+  const [period, setPeriod]       = useState<Period>("day");
   const [page, setPage]           = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -725,7 +725,7 @@ function VisitorReport() {
 // ─── Payments Report ──────────────────────────────────────────────────────────
 
 function PaymentsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -894,7 +894,7 @@ function PaymentsReport() {
 // ─── Deliveries Report ────────────────────────────────────────────────────────
 
 function DeliveriesReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
   const [useCustom, setUseCustom]   = useState(false);

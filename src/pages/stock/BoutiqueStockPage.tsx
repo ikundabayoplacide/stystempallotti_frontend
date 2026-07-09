@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   HiOutlineArchive,
   HiOutlinePlus,
@@ -282,7 +282,7 @@ function Pagination({ page, total, onChange }: { page: number; total: number; on
   );
 }
 
-function ItemsTab({ refetchRef }: { refetchRef?: React.MutableRefObject<() => void> }) {
+function ItemsTab() {
   const [showForm, setShowForm]       = useState(false);
   const [editItem, setEditItem]       = useState<BoutiqueStockItem | null>(null);
   const [restockItem, setRestockItem] = useState<BoutiqueStockItem | null>(null);
@@ -293,8 +293,6 @@ function ItemsTab({ refetchRef }: { refetchRef?: React.MutableRefObject<() => vo
   const { data, isLoading, refetch } = useGetBoutiqueStockItemsQuery({ limit: 200 });
   const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "approved", limit: 1000 });
   const totalDeducted = (sortiesData?.data ?? []).reduce((sum, s) => sum + parseFloat(s.quantityOut), 0);
-
-  if (refetchRef) refetchRef.current = refetch;
 
   const allItems = data?.data ?? [];
   const filtered = allItems.filter((i) => {
@@ -483,7 +481,7 @@ function RejectModal({ sortie, onClose, onSuccess }: {
 
 // ─── Sorties Tab ──────────────────────────────────────────────────────────────
 
-function SortiesTab({ onApproved }: { onApproved: () => void }) {
+function SortiesTab() {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
   const [rejectTarget, setRejectTarget]   = useState<BoutiqueStockSortie | null>(null);
   const [approveTarget, setApproveTarget] = useState<BoutiqueStockSortie | null>(null);
@@ -504,12 +502,14 @@ function SortiesTab({ onApproved }: { onApproved: () => void }) {
   const handleApprove = async () => {
     if (!approveTarget) return;
     try {
-      await approve(approveTarget.id).unwrap();
+      console.log("[approve] calling approve for sortie id:", approveTarget.id);
+      const result = await approve(approveTarget.id).unwrap();
+      console.log("[approve] unwrap() succeeded, result:", result);
       toast.success("Request approved");
       setApproveTarget(null);
-      refetch();
-      onApproved();
     } catch (err: any) {
+      console.error("[approve] unwrap() threw:", err);
+      console.error("[approve] err.data:", err?.data, "| err.status:", err?.status, "| err.message:", err?.message);
       toast.error(err?.data?.message ?? "Failed to approve");
     }
   };
@@ -650,7 +650,6 @@ type Tab = "items" | "sorties";
 
 export default function BoutiqueStockPage() {
   const [tab, setTab] = useState<Tab>("items");
-  const itemsRefetch = React.useRef<() => void>(() => {});
 
   const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "pending", limit: 200 });
   const pendingCount = sortiesData?.data?.length ?? 0;
@@ -691,8 +690,8 @@ export default function BoutiqueStockPage() {
           ))}
         </div>
 
-        {tab === "items"   && <ItemsTab refetchRef={itemsRefetch} />}
-        {tab === "sorties" && <SortiesTab onApproved={() => itemsRefetch.current()} />}
+        {tab === "items"   && <ItemsTab />}
+        {tab === "sorties" && <SortiesTab />}
       </div>
     </DashboardLayout>
   );

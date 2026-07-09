@@ -7,6 +7,7 @@ import {
   HiOutlineCurrencyDollar,
   HiOutlineDocumentText,
   HiOutlineExclamationCircle,
+  HiOutlineDownload,
   HiOutlineEye,
   HiOutlineMail,
   HiOutlineMap,
@@ -61,15 +62,24 @@ const selectCls =
   "focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 " +
   "transition-colors text-sm font-[family-name:var(--font-family-primary)]";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api").replace(/\/api$/, "");
+
+function resolveDocUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:")) return url;
+  return `${API_BASE}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 function openDocument(url: string, name?: string) {
-  const win = window.open("", "_blank");
-  if (!win) return;
-  if (url.startsWith("data:image/")) {
-    win.document.write(`<html><body style="margin:0"><img src="${url}" style="max-width:100%"/></body></html>`);
-  } else {
-    win.document.write(`<html><body style="margin:0"><iframe src="${url}" style="width:100%;height:100vh;border:none" title="${name ?? "Document"}"></iframe></body></html>`);
-  }
-  win.document.close();
+  const resolved = resolveDocUrl(url);
+  const a = document.createElement("a");
+  a.href = resolved;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  if (name) a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 // ─── Lead Form Modal ──────────────────────────────────────────────────────────
@@ -104,11 +114,13 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
   });
   const [docFile] = useState<File | null>(null);
   const [newDocs, setNewDocs]   = useState<File[]>([]);
+  const [removedDocIds, setRemovedDocIds] = useState<string[]>([]);
   const [error, setError] = useState("");
 
   const handleSave = () => {
     if (!form.company.trim())        { setError("Company name is required.");    return; }
     if (!form.contactPerson.trim()) { setError("Contact person is required."); return; }
+    if (!form.phone.trim())         { setError("Phone number is required.");    return; }
     if (form.sector === "other" && !form.customSector.trim()) { setError("Please specify the sector."); return; }
     if (form.stage === "__new__" && !form.customStage.trim()) { setError("Please specify the stage.");  return; }
     setError("");
@@ -118,18 +130,19 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
       ? form.customStage.trim() : form.stage) as MarketStage;
     onSave({
       ...(initial?.id && { id: initial.id }),
-      company:        form.company.trim(),
-      contactPerson:  form.contactPerson.trim(),
-      phone:          form.phone.trim()    || undefined,
-      email:          form.email.trim()    || undefined,
-      sector:         resolvedSector,
-      stage:          resolvedStage,
-      estimatedValue: parseFloat(form.estimatedValue) || undefined,
-      location:       form.location.trim() || undefined,
-      notes:          form.notes.trim()    || undefined,
-      nextFollowUp:   form.nextFollowUp    || undefined,
-      document:       docFile ?? undefined,
-      newDocuments:   newDocs.length > 0 ? newDocs : undefined,
+      company:           form.company.trim(),
+      contactPerson:     form.contactPerson.trim(),
+      phone:             form.phone.trim()    || undefined,
+      email:             form.email.trim()    || undefined,
+      sector:            resolvedSector,
+      stage:             resolvedStage,
+      estimatedValue:    parseFloat(form.estimatedValue) || undefined,
+      location:          form.location.trim() || undefined,
+      notes:             form.notes.trim()    || undefined,
+      nextFollowUp:      form.nextFollowUp    || undefined,
+      document:          docFile ?? undefined,
+      newDocuments:      newDocs.length > 0 ? newDocs : undefined,
+      removeDocumentIds: removedDocIds.length > 0 ? removedDocIds : undefined,
     });
   };
 
@@ -139,7 +152,7 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
 
   return (
     <div className="fixed inset-0 bg-secondary-100/60 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <Card className="!p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold text-secondary-100">
@@ -170,9 +183,9 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
                 placeholder="Full name" className={selectCls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-secondary-100 mb-1.5">Phone</label>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1.5">Phone <span className="text-red-500">*</span></label>
               <input value={form.phone} onChange={f("phone")}
-                placeholder="+250 788 …" className={selectCls} />
+                placeholder="+250 788 …" className={selectCls} required />
             </div>
           </div>
 
@@ -251,13 +264,21 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
             {/* Existing saved documents */}
             {initial?.documents && initial.documents.length > 0 && (
               <ul className="mb-2 space-y-1">
-                {initial.documents.map((doc) => (
+                {initial.documents
+                  .filter((doc) => !removedDocIds.includes(doc.id))
+                  .map((doc) => (
                   <li key={doc.id} className="flex items-center justify-between text-xs bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5">
                     <span className="truncate text-secondary-100 font-medium">{doc.fileName}</span>
-                    <button type="button" onClick={() => openDocument(doc.fileUrl, doc.fileName)}
-                      className="p-1 hover:text-primary-500 text-custom-700 transition-colors shrink-0">
-                      <HiOutlineEye className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button type="button" onClick={() => openDocument(doc.fileUrl, doc.fileName)}
+                        className="p-1 hover:text-primary-500 text-custom-700 transition-colors">
+                        <HiOutlineEye className="w-3.5 h-3.5" />
+                      </button>
+                      <button type="button" onClick={() => setRemovedDocIds((p) => [...p, doc.id])}
+                        className="p-1 hover:text-red-500 text-custom-700 transition-colors" title="Remove">
+                        <HiOutlineX className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -270,7 +291,7 @@ function LeadFormModal({ initial, onSave, isSaving, onClose }: LeadFormProps) {
                   <li key={i} className="flex items-center justify-between text-xs bg-custom-50 border border-custom-200 rounded-lg px-3 py-1.5">
                     <span className="truncate text-secondary-100 font-medium">{file.name}</span>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" onClick={() => openDocument(URL.createObjectURL(file), file.name)}
+                      <button type="button" onClick={() => window.open(URL.createObjectURL(file), "_blank", "noopener,noreferrer")}
                         className="p-1 hover:text-primary-500 text-custom-700 transition-colors">
                         <HiOutlineEye className="w-3.5 h-3.5" />
                       </button>
@@ -410,14 +431,24 @@ function LeadDetailModal({
               <p className="text-xs font-bold text-custom-700 uppercase tracking-wide mb-2">Documents</p>
               <ul className="space-y-1.5">
                 {lead.documents.map((doc) => (
-                  <li key={doc.id}>
+                  <li key={doc.id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-custom-200 bg-white">
+                    <HiOutlineDocumentText className="w-4 h-4 text-primary-500 shrink-0" />
+                    <span className="truncate text-sm font-medium text-secondary-100 flex-1">{doc.fileName}</span>
                     <button
                       onClick={() => openDocument(doc.fileUrl, doc.fileName)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-custom-200 hover:bg-white transition-colors text-sm font-medium text-secondary-100 text-left"
+                      className="p-1 rounded-lg hover:bg-custom-100 text-custom-700 hover:text-primary-500 transition-colors shrink-0"
+                      title="Open"
                     >
-                      <HiOutlineDocumentText className="w-4 h-4 text-primary-500 shrink-0" />
-                      <span className="truncate">{doc.fileName}</span>
+                      <HiOutlineEye className="w-4 h-4" />
                     </button>
+                    <a
+                      href={resolveDocUrl(doc.fileUrl)}
+                      download={doc.fileName}
+                      className="p-1 rounded-lg hover:bg-custom-100 text-custom-700 hover:text-emerald-600 transition-colors shrink-0"
+                      title="Download"
+                    >
+                      <HiOutlineDownload className="w-4 h-4" />
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -659,9 +690,7 @@ export default function ProdurementPage() {
                     <p className={`text-2xl font-bold ${cfg.color} mt-1`}>{count}</p>
                     {totalValue > 0 && (
                       <p className={`text-xs ${cfg.color} opacity-70`}>
-                        {totalValue >= 1_000_000
-                          ? `${(totalValue / 1_000_000).toFixed(1)}M`
-                          : totalValue.toLocaleString()} RWF
+                        {totalValue.toLocaleString()} RWF
                       </p>
                     )}
                   </div>

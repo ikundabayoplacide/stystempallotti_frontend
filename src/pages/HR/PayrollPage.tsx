@@ -48,6 +48,7 @@ export default function PayrollPage() {
   const [filterType, setFilterType] = useState<WorkerType | "">("");
   const [filterStatus, setFilterStatus] = useState<PayrollStatus | "">("");
   const [filterPeriod, setFilterPeriod] = useState("");
+  const [periodPreset, setPeriodPreset] = useState<"" | "day" | "week" | "month" | "year">("month");
   const [showCreate, setShowCreate] = useState(false);
   const [editPayroll, setEditPayroll] = useState<Payroll | null>(null);
   const [deletePayroll, setDeletePayroll] = useState<Payroll | null>(null);
@@ -61,7 +62,16 @@ export default function PayrollPage() {
     limit: 15,
     ...(filterType ? { workerType: filterType } : {}),
     ...(filterStatus ? { status: filterStatus } : {}),
-    ...(filterPeriod ? { period: filterPeriod } : {}),
+    ...(filterPeriod ? { period: filterPeriod } : periodPreset ? (() => {
+      const now = new Date();
+      const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      if (periodPreset === "day")   return { dateFrom: `${y}-${pad(m+1)}-${pad(d)}`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` };
+      if (periodPreset === "week")  { const w = new Date(y, m, d - 6); return { dateFrom: `${w.getFullYear()}-${pad(w.getMonth()+1)}-${pad(w.getDate())}`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` }; }
+      if (periodPreset === "month") return { dateFrom: `${y}-${pad(m+1)}-01`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` };
+      if (periodPreset === "year")  return { dateFrom: `${y}-01-01`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` };
+      return {};
+    })() : {}),
     ...(search ? { search } : {}),
   });
 
@@ -101,7 +111,21 @@ export default function PayrollPage() {
           ))}
         </div>
 
-        {/* Filters */}
+        {/* Period preset tabs */}
+        <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
+          {(["day", "week", "month", "year"] as const).map((p) => (
+            <button key={p} onClick={() => { setPeriodPreset(p); setFilterPeriod(""); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                periodPreset === p && !filterPeriod
+                  ? "bg-style-500 text-secondary-100 shadow-sm"
+                  : "text-custom-700 hover:text-secondary-100"
+              }`}>
+              {p === "day" ? "Today" : p === "week" ? "This Week" : p === "month" ? "This Month" : "This Year"}
+            </button>
+          ))}
+        </div>
+
+        {/* Row 2: search + type + status + custom month + clear */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative">
             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-custom-400" />
@@ -129,10 +153,10 @@ export default function PayrollPage() {
             <option value="approved">Approved</option>
             <option value="paid">Paid</option>
           </select>
-          <input type="month" value={filterPeriod} onChange={(e) => { setFilterPeriod(e.target.value); setPage(1); }}
+          <input type="month" value={filterPeriod} onChange={(e) => { setFilterPeriod(e.target.value); setPeriodPreset(""); setPage(1); }}
             className="px-3 py-2 rounded-lg border border-custom-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
-          {(filterType || filterStatus || filterPeriod || search) && (
-            <button onClick={() => { setFilterType(""); setFilterStatus(""); setFilterPeriod(""); setSearch(""); setPage(1); }}
+          {(filterType || filterStatus || filterPeriod || search || periodPreset) && (
+            <button onClick={() => { setFilterType(""); setFilterStatus(""); setFilterPeriod(""); setSearch(""); setPeriodPreset("month"); setPage(1); }}
               className="text-xs text-red-500 hover:underline">Clear filters</button>
           )}
         </div>

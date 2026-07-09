@@ -250,7 +250,7 @@ function WorkerFormModal({ worker, onClose }: { worker?: CasualWorker; onClose: 
             </div>
 
             <div className="col-span-2">
-              <label className={labelCls}>Job Done <span className="text-red-500">*</span></label>
+              <label className={labelCls}>Job <span className="text-red-500">*</span></label>
               <input type="text" required value={form.jobDone} onChange={(e) => set("jobDone", e.target.value)}
                 placeholder="e.g. Painting, Loading, Cleaning…" className={inputCls} />
             </div>
