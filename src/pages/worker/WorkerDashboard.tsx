@@ -97,7 +97,7 @@ export default function WorkerDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">My Work Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Work Dashboard</h1>
           <p className="text-sm text-custom-700 mt-1">
             {me ? (
               <>Welcome, <span className="font-semibold text-primary-600">{me.fullName}</span></>
@@ -140,8 +140,8 @@ export default function WorkerDashboard() {
           { label: "Urgent",          value: urgentJobs.length,       icon: HiOutlineExclamationCircle, color: "text-red-500",   bg: "bg-red-100"     },
           { label: "Completed Today", value: completedToday.length,   icon: HiOutlineCheckCircle,   color: "text-green-600",  bg: "bg-green-100"   },
         ].map(({ label, value, icon: Icon, color, bg }) => (
-          <Card key={label} className="!p-5">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bg} mb-3`}>
+          <Card key={label} className="!p-5 flex gap-2">
+            <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${bg} mb-3`}>
               <Icon className={`w-5 h-5 ${color}`} />
             </div>
             <p className="text-2xl font-bold text-secondary-100">{isLoading ? "—" : value}</p>

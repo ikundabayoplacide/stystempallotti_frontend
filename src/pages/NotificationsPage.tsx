@@ -139,6 +139,7 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     JOB_DAF_ACTION: "/supervisor/jobs",
     DEPARTMENT_ASSIGNED: "/supervisor/jobs",
     EMPLOYEE_CREATED: "/supervisor/employees",
+    BOUTIQUE_STOCK_REQUEST: "/supervisor/binding-stock",
     REPORT_GENERATED: "/supervisor/reports",
   },
   stock: {
@@ -219,6 +220,7 @@ function resolveRoute(userRole: UserRole, n: Notification): string | null {
     if (text.includes("report")) return "/production-manager/reports";
   }
   if (userRole === "supervisor") {
+    if (text.includes("binding") || text.includes("stock request") || text.includes("sortie")) return "/supervisor/binding-stock";
     if (text.includes("job") || text.includes("confirm") || text.includes("approv") || text.includes("assign") || text.includes("progress") || text.includes("deliver")) return "/supervisor/jobs";
     if (text.includes("employee") || text.includes("worker") || text.includes("staff")) return "/supervisor/employees";
     if (text.includes("report")) return "/supervisor/reports";

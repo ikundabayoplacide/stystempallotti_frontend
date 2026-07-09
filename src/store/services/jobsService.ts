@@ -278,12 +278,14 @@ function normalizeJob(job: any): Job {
 function normalizePaginatedJobs(raw: unknown): PaginatedJobs {
   if (raw && typeof raw === "object" && "jobs" in raw) {
     const r = raw as any;
+    const limit = r.limit ?? 10;
+    const total = r.total ?? 0;
     return {
       jobs: Array.isArray(r.jobs) ? r.jobs.map(normalizeJob) : [],
-      total: r.total ?? 0,
+      total,
       page: r.page ?? 1,
-      limit: r.limit ?? 10,
-      totalPages: r.totalPages ?? 1,
+      limit,
+      totalPages: r.totalPages ?? (Math.ceil(total / limit) || 1),
     };
   }
   if (Array.isArray(raw)) {
@@ -326,7 +328,19 @@ export const jobsApi = createApi({
     // GET /jobs
     getJobs: builder.query<PaginatedJobs, GetJobsParams | void>({
       query: (params) => ({ url: "/jobs", params: (params ?? {}) as Record<string, any> }),
-      transformResponse: (res: ApiResponse<unknown>) => normalizePaginatedJobs(res.data),
+      transformResponse: (res: any) => {
+        const pagination = res?.pagination ?? {};
+        const jobs = Array.isArray(res?.data) ? res.data : (res?.data?.jobs ?? []);
+        const total = pagination.total ?? res?.data?.total ?? jobs.length;
+        const limit = pagination.limit ?? 10;
+        return {
+          jobs: jobs.map(normalizeJob),
+          total,
+          page: pagination.page ?? 1,
+          limit,
+          totalPages: pagination.totalPages ?? (Math.ceil(total / limit) || 1),
+        };
+      },
       providesTags: (result) =>
         result?.jobs?.length
           ? [

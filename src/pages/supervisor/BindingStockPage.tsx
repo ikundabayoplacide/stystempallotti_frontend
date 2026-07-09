@@ -63,7 +63,7 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
     category:     item?.category                         ?? "",
     unit:         item?.unit                             ?? "",
     currentStock: item?.currentStock != null ? String(item.currentStock) : "",
-    alarmStock:   item?.alarmStock   != null ? String(item.alarmStock)   : "",
+    alarmStock:   item?.alarmStock   != null ? String(item.alarmStock)   : "0",
   });
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -98,13 +98,13 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-lg w-full my-8">
+      <Card className="!p-6 max-w-xl w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-xl font-bold text-secondary-100">{isEdit ? "Edit Item" : "Add Binding Stock Item"}</h3>
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Item Name *</label>
               <input value={form.itemName} onChange={set("itemName")} placeholder="e.g. Binding Wire" className={cls} />
@@ -116,10 +116,6 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
             <div>
               <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit *</label>
               <input value={form.unit} onChange={set("unit")} placeholder="e.g. rolls, pcs, kg" className={cls} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-secondary-100 mb-1">Alarm Stock Level</label>
-              <input type="text" inputMode="numeric" pattern="[0-9]*" min={0} value={form.alarmStock} onChange={set("alarmStock")} placeholder="e.g. 5" className={cls} />
             </div>
             {!isEdit && (
               <div>
@@ -245,12 +241,10 @@ function ItemsTab() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {[
-          { label: "Total Items",  value: items.length,                                                color: "text-secondary-100" },
-          { label: "Available",    value: items.filter((i) => i.stockStatus === "available").length,   color: "text-emerald-600" },
-          { label: "Low Stock",    value: items.filter((i) => i.stockStatus === "low").length,         color: "text-yellow-600" },
-          { label: "Out of Stock", value: items.filter((i) => i.stockStatus === "out-of-stock").length, color: "text-red-600" },
+          { label: "Total Items", value: items.length,                                              color: "text-secondary-100" },
+          { label: "Available",   value: items.filter((i) => i.stockStatus === "available").length, color: "text-emerald-600" },
         ].map(({ label, value, color }) => (
           <Card key={label} className="!p-4 text-center">
             <p className="text-xs text-custom-700 mb-1">{label}</p>
@@ -264,16 +258,16 @@ function ItemsTab() {
           <table className="w-full">
             <thead className="bg-custom-100 border-b border-custom-300">
               <tr>
-                {["Item Name", "Category", "Unit", "Stock", "Alarm", "Status", "Actions"].map((h) => (
+                {["Item Name", "Category", "Unit", "Stock", "Status", "Actions"].map((h) => (
                   <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-custom-200">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center">
+                <tr><td colSpan={6} className="px-4 py-10 text-center">
                   <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
                   <p className="text-sm text-secondary-100 font-semibold">No binding stock items</p>
                   <p className="text-xs text-custom-700 mt-1">Add the first item using the button above</p>
@@ -287,7 +281,6 @@ function ItemsTab() {
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.category}</td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{item.unit}</td>
                   <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">{item.currentStock}</td>
-                  <td className="px-3 py-2.5 text-sm text-custom-700">{item.alarmStock}</td>
                   <td className="px-3 py-2.5">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>
                       {item.stockStatus.replace("-", " ")}

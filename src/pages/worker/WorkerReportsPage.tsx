@@ -216,7 +216,7 @@ const priorityColor: Record<string, string> = {
 // ─── Tab 1: My Jobs ───────────────────────────────────────────────────────────
 
 function JobsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");

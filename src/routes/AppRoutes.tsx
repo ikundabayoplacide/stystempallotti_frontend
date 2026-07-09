@@ -75,6 +75,7 @@ import {
   PaymentCollectionPage,
   ReceptionPage,
   BoutiqueStockRequestsPage,
+  BindingStockRequestsPage,
   SheetsPage,
   // TaskAssignmentPage,
 } from "../pages/receptionalist";
@@ -90,6 +91,7 @@ import MyReportsPage from "../pages/shared/MyReportsPage";
 import UserGuidesPage from "../pages/UserGuidesPage";
 import ReceptionReportsPage from "../pages/receptionalist/ReceptionReportsPage";
 import JobManagementPage from "../pages/sales/JobManagementPage";
+import AdminJobManagementPage from "../pages/admin/JobManagementPage";
 import HRPage from "../pages/HR/HRPage";
 import EmployeesPage from "../pages/HR/EmployeesPage";
 import HRReportsPage from "../pages/HR/HRReportsPage";
@@ -128,7 +130,7 @@ export default function AppRoutes() {
       <Route path="/admin/users" element={<ProtectedRoute allowedRoles={["admin"]} pageId="users"><UserManagementPage /></ProtectedRoute>} />
       <Route path="/admin/customers" element={<ProtectedRoute allowedRoles={["admin"]}><CustomerPage /></ProtectedRoute>} />
       <Route path="/admin/employees" element={<ProtectedRoute allowedRoles={["admin"]}><EmployeesPage /></ProtectedRoute>} />
-      <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><JobManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><AdminJobManagementPage /></ProtectedRoute>} />
       <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartmentsPage /></ProtectedRoute>} />
       <Route path="/admin/production" element={<ProtectedRoute allowedRoles={["admin"]}><ProductionOverviewPage /></ProtectedRoute>} />
       <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><FinancePage /></ProtectedRoute>} />
@@ -164,6 +166,7 @@ export default function AppRoutes() {
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
       <Route path="/reception/reports/my" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/reception/boutique-stock" element={<ProtectedRoute allowedRoles={["receptionist"]}><BoutiqueStockRequestsPage /></ProtectedRoute>} />
+      <Route path="/reception/binding-stock" element={<ProtectedRoute allowedRoles={["receptionist"]}><BindingStockRequestsPage /></ProtectedRoute>} />
       <Route path="/reception/sheets" element={<ProtectedRoute allowedRoles={["receptionist", "admin"]}><SheetsPage /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}

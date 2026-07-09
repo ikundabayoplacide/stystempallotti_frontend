@@ -87,7 +87,7 @@ export default function JobManagementPage() {
   const [approvalMode, setApprovalMode]         = useState<"approve" | "reject" | "verify">("approve");
   const [rejectReason, setRejectReason]         = useState("");
   const [page, setPage] = useState(1);
-  const limit = 20;
+  const limit = 5;
 
   // Build query params — only send defined filters
   const queryParams = {
@@ -383,31 +383,56 @@ export default function JobManagementPage() {
           </div>
 
           {/* ── Pagination ──────────────────────────────────────────────── */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-custom-300">
-              <p className="text-xs text-custom-700">
-                Page {page} of {totalPages} · {total} total jobs
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-custom-300">
+            <p className="text-xs text-custom-700 order-2 sm:order-1">
+              Showing {jobs.length === 0 ? 0 : (page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total} jobs
+            </p>
+            <div className="flex items-center gap-1 order-1 sm:order-2">
+              {/* Prev */}
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm font-semibold text-custom-700 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                ←
+              </button>
+
+              {/* Page numbers */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-sm text-custom-500">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p as number)}
+                      className={`min-w-[32px] px-2 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${
+                        page === p
+                          ? "bg-primary-500 border-primary-500 text-white"
+                          : "border-custom-300 text-custom-700 hover:bg-custom-100"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+              {/* Next */}
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm font-semibold text-custom-700 hover:bg-custom-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                →
+              </button>
             </div>
-          )}
+          </div>
         </Card>
 
         {/* ── Filter Modal ─────────────────────────────────────────────────── */}

@@ -4,7 +4,6 @@ import {
   HiOutlineCheckCircle,
   HiOutlineChevronDown,
   HiOutlineChevronRight,
-  HiOutlineClipboardList,
   HiOutlineClock,
   HiOutlineMail,
   HiOutlinePhone,
@@ -303,14 +302,6 @@ export default function DepartmentEmployeesPage() {
               }`}
             >
               <HiOutlineUsers className="w-4 h-4 inline mr-1" /> Employees
-            </button>
-            <button
-              onClick={() => setViewMode("jobs")}
-              className={`px-4 py-2 rounded-xl transition-colors text-sm font-semibold ${
-                viewMode === "jobs" ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-              }`}
-            >
-              <HiOutlineClipboardList className="w-4 h-4 inline mr-1" /> Jobs
             </button>
           </div>
         </div>

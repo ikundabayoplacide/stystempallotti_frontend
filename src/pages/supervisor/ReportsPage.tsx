@@ -226,7 +226,7 @@ const priorityColor: Record<string, string> = {
 
 function ProductionReport() {
   const { departmentId } = useAuth();
-  const [period, setPeriod]             = useState<Period>("month");
+  const [period, setPeriod]             = useState<Period>("day");
   const [page, setPage]                 = useState(1);
   const [customFrom, setCustomFrom]     = useState("");
   const [customTo, setCustomTo]         = useState("");
@@ -268,9 +268,8 @@ function ProductionReport() {
   const totalPages  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const inProgress  = filtered.filter((j) => j.status.startsWith("in-")).length;
-  const qc          = filtered.filter((j) => j.status === "quality-check").length;
   const ready       = filtered.filter((j) => j.status === "ready-for-delivery").length;
-  const completed   = filtered.filter((j) => j.status === "completed" || j.status === "delivered").length;
+  const completed   = filtered.filter((j) => j.progress === "completed").length;
 
   const byStage: Record<string, number> = {};
   filtered.forEach((j) => { byStage[j.status] = (byStage[j.status] ?? 0) + 1; });
@@ -286,7 +285,6 @@ function ProductionReport() {
     summary: [
       { label: "Total Jobs",    value: String(filtered.length) },
       { label: "In Production", value: String(inProgress) },
-      { label: "Quality Check", value: String(qc) },
       { label: "Ready",         value: String(ready) },
       { label: "COMPLETED",     value: String(completed), bold: true },
     ] as SummaryRow[],
@@ -306,7 +304,6 @@ function ProductionReport() {
             <option value="in-printing">In Printing</option>
             <option value="in-binding">In Binding</option>
             <option value="in-packaging">In Packaging</option>
-            <option value="quality-check">Quality Check</option>
             <option value="ready-for-delivery">Ready for Delivery</option>
             <option value="delivered">Delivered</option>
             <option value="completed">Completed</option>
@@ -338,10 +335,9 @@ function ProductionReport() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <StatCard label="Total Jobs"    value={filtered.length} />
         <StatCard label="In Production" value={inProgress} color="text-blue-600" />
-        <StatCard label="Quality Check" value={qc}         color="text-pink-600" />
         <StatCard label="Completed"     value={completed}  color="text-emerald-600" />
       </div>
 
@@ -425,7 +421,6 @@ function ProductionReport() {
             {[
               { label: "Total Jobs",    value: String(filtered.length), cls: "text-secondary-100" },
               { label: "In Production", value: String(inProgress),      cls: "text-blue-600" },
-              { label: "Quality Check", value: String(qc),              cls: "text-pink-600" },
               { label: "Ready",         value: String(ready),           cls: "text-lime-600" },
               { label: "Completed",     value: String(completed),       cls: "text-emerald-600 font-bold" },
             ].map(({ label, value, cls }) => (

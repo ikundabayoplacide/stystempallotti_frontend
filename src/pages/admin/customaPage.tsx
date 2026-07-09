@@ -532,7 +532,7 @@ export default function CustomerPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <Card className="!p-4">
             <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center mb-2">
               <HiOutlineUsers className="w-5 h-5 text-primary-600" />
@@ -548,11 +548,25 @@ export default function CustomerPage() {
             <p className="text-xs text-custom-700">Business</p>
           </Card>
           <Card className="!p-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center mb-2">
-              <HiOutlineLogin className="w-5 h-5 text-emerald-600" />
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center mb-2">
+              <HiOutlineUsers className="w-5 h-5 text-purple-600" />
             </div>
-            <p className="text-2xl font-bold text-secondary-100">{activeVisitsList.length}</p>
-            <p className="text-xs text-custom-700">Currently In</p>
+            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "VISITOR").length}</p>
+            <p className="text-xs text-custom-700">Visit</p>
+          </Card>
+          <Card className="!p-4">
+            <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center mb-2">
+              <HiOutlineUsers className="w-5 h-5 text-pink-600" />
+            </div>
+            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "BOUTIQUE").length}</p>
+            <p className="text-xs text-custom-700">Boutique</p>
+          </Card>
+          <Card className="!p-4">
+            <div className="w-10 h-10 rounded-xl bg-yellow-100 flex items-center justify-center mb-2">
+              <HiOutlineUsers className="w-5 h-5 text-yellow-600" />
+            </div>
+            <p className="text-2xl font-bold text-secondary-100">{customers.filter((c) => c.type === "HOBE").length}</p>
+            <p className="text-xs text-custom-700">Hobe</p>
           </Card>
         </div>
 

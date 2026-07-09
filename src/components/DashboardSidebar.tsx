@@ -81,6 +81,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
     { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
     { label: "Boutique Stock", path: "/reception/boutique-stock", icon: HiOutlineArchive },
+    { label: "Binding Stock", path: "/reception/binding-stock", icon: HiOutlineArchive },
     { label: "Sheets", path: "/reception/sheets", icon: HiOutlineDocumentText },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
