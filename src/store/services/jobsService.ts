@@ -604,6 +604,16 @@ export const jobsApi = createApi({
       invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
     }),
 
+    // GET /jobs/departments/:id/jobs/history
+    getJobDepartmentHistory: builder.query<PaginatedJobs, { departmentId: string; page?: number; limit?: number }>({
+      query: ({ departmentId, page, limit }) => ({
+        url: `/jobs/departments/${departmentId}/jobs/history`,
+        params: { page, limit },
+      }),
+      transformResponse: (res: ApiResponse<unknown>) => normalizePaginatedJobs(res.data),
+      providesTags: [{ type: "Job", id: "LIST" }],
+    }),
+
     // ── Job Items ─────────────────────────────────────────────────────────────
 
     getJobItems: builder.query<JobItem[], string>({
@@ -671,4 +681,5 @@ export const {
   usePauseJobMutation,
   useResumeJobMutation,
   useVerifyJobMutation,
+  useGetJobDepartmentHistoryQuery,
 } = jobsApi;

@@ -12,6 +12,7 @@ import {
   HiOutlineTrash,
   HiOutlineClipboardList,
   HiOutlineCash,
+  HiOutlinePencil,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
@@ -22,6 +23,7 @@ import {
   useGetProductsQuery,
   useCreateProductMutation,
   useCreateCategoryMutation,
+  useUpdateProductMutation,
   useRecordSaleMutation,
   useUpdateSaleMutation,
   useUpdateStockMutation,
@@ -60,6 +62,103 @@ const CATEGORY_COLORS = [
   "bg-green-100 text-green-700",
   "bg-rose-100 text-rose-700",
 ];
+
+// ─── Edit Product Modal ──────────────────────────────────────────────────────
+
+function EditProductModal({ product, onClose, onSuccess }: {
+  product: BoutiqueProduct;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState({
+    name:        product.name,
+    description: product.description ?? "",
+    unit:        product.unit,
+    price:       String(product.price),
+    minStock:    String(product.minStock),
+    isActive:    product.isActive,
+  });
+  const [updateProduct, { isLoading }] = useUpdateProductMutation();
+
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.unit.trim() || !form.price || !form.minStock) {
+      toast.error("Please fill in all required fields"); return;
+    }
+    try {
+      await updateProduct({
+        id: product.id,
+        name:        form.name.trim(),
+        description: form.description.trim(),
+        unit:        form.unit.trim(),
+        price:       Number(form.price),
+        minStock:    Number(form.minStock),
+      }).unwrap();
+      toast.success("Product updated");
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to update product");
+    }
+  };
+
+  const inputClass = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-lg w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Edit Product</h3>
+            <p className="text-xs font-mono text-custom-700 mt-0.5">SKU: {product.sku}</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Name *</label>
+              <input value={form.name} onChange={set("name")} className={inputClass} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Description</label>
+              <textarea value={form.description} onChange={set("description")} rows={2}
+                className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Unit *</label>
+              <input value={form.unit} onChange={set("unit")} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Price (RWF) *</label>
+              <input type="number" min={0} value={form.price} onChange={set("price")} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-1">Min Stock *</label>
+              <input type="number" min={0} value={form.minStock} onChange={set("minStock")} className={inputClass} />
+            </div>
+            <div className="flex items-center gap-2 pt-5">
+              <input type="checkbox" id="isActive" checked={form.isActive}
+                onChange={(e) => setForm((p) => ({ ...p, isActive: e.target.checked }))}
+                className="w-4 h-4 rounded accent-primary-500" />
+              <label htmlFor="isActive" className="text-sm font-semibold text-secondary-100">Active</label>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors disabled:opacity-40">
+              {isLoading ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
 
 // ─── Restock Modal ───────────────────────────────────────────────────────────
 
@@ -921,6 +1020,7 @@ export default function BoutiquePage() {
   const [showMyRequests, setShowMyRequests] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showPendingBalances, setShowPendingBalances] = useState(false);
+  const [editProduct, setEditProduct] = useState<BoutiqueProduct | null>(null);
 
   const { data: unreadCount = 0 } = useGetUnreadCountQuery();
 
@@ -1220,12 +1320,20 @@ export default function BoutiquePage() {
 
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-custom-400 font-mono">SKU: {product.sku}</p>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setRestockProduct(product); }}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-                    >
-                      <HiOutlinePlus className="w-3.5 h-3.5" /> Add Qty
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setRestockProduct(product); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                      >
+                        <HiOutlinePlus className="w-3.5 h-3.5" /> Add Qty
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditProduct(product); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors"
+                      >
+                        <HiOutlinePencil className="w-3.5 h-3.5" /> Edit
+                      </button>
+                    </div>
                   </div>
                 </Card>
               );
@@ -1350,6 +1458,16 @@ export default function BoutiquePage() {
           categories={categories}
           onClose={() => setShowAddProduct(false)}
           onSuccess={() => { setShowAddProduct(false); refetch(); }}
+        />
+      )}
+
+      {/* ── Edit Product Modal ───────────────────────────────────────────────── */}
+      {editProduct && (
+        <EditProductModal
+          product={editProduct}
+          categories={categories}
+          onClose={() => setEditProduct(null)}
+          onSuccess={() => { setEditProduct(null); refetch(); }}
         />
       )}
     </DashboardLayout>

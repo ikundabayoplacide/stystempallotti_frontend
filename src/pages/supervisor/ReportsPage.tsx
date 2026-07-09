@@ -15,7 +15,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { DashboardLayout, GenerateReportModal } from "../../components";
 import { Card } from "../../components/ui";
-import { useGetJobsQuery } from "../../store/services/jobsService";
+import { useGetJobsQuery, useGetJobDepartmentHistoryQuery } from "../../store/services/jobsService";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetMyLeavesQuery } from "../../store/services/leaveService";
 import { useAuth } from "../../context/AuthContext";
@@ -225,6 +225,7 @@ const priorityColor: Record<string, string> = {
 // ─── Tab 1 — Production Jobs ──────────────────────────────────────────────────
 
 function ProductionReport() {
+  const { departmentId } = useAuth();
   const [period, setPeriod]             = useState<Period>("month");
   const [page, setPage]                 = useState(1);
   const [customFrom, setCustomFrom]     = useState("");
@@ -237,23 +238,24 @@ function ProductionReport() {
     ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
-  const { data: d1, isLoading, refetch: r1 } = useGetJobsQuery({ limit: 500, status: "in-composition"     as any });
-  const { data: d2, refetch: r2 } = useGetJobsQuery({ limit: 500, status: "in-montage"          as any });
-  const { data: d3, refetch: r3 } = useGetJobsQuery({ limit: 500, status: "in-printing"         as any });
-  const { data: d4, refetch: r4 } = useGetJobsQuery({ limit: 500, status: "in-binding"          as any });
-  const { data: d5, refetch: r5 } = useGetJobsQuery({ limit: 500, status: "in-packaging"        as any });
-  const { data: d6, refetch: r6 } = useGetJobsQuery({ limit: 500, status: "quality-check"       as any });
-  const { data: d7, refetch: r7 } = useGetJobsQuery({ limit: 500, status: "ready-for-delivery"  as any });
-  const { data: d8, refetch: r8 } = useGetJobsQuery({ limit: 500, status: "delivered"           as any });
-  const { data: d9, refetch: r9 } = useGetJobsQuery({ limit: 500, status: "completed"           as any });
+  const { data: currentData, isLoading, refetch: refetchCurrent } = useGetJobsQuery(
+    { limit: 500, departmentAssignedToId: departmentId ?? undefined },
+    { skip: !departmentId }
+  );
+  const { data: historyData, refetch: refetchHistory } = useGetJobDepartmentHistoryQuery(
+    { departmentId: departmentId!, limit: 500 },
+    { skip: !departmentId }
+  );
 
-  const refetch = () => { r1(); r2(); r3(); r4(); r5(); r6(); r7(); r8(); r9(); };
+  const refetch = () => { refetchCurrent(); refetchHistory(); };
 
-  const allJobs = [
-    ...(d1?.jobs ?? []), ...(d2?.jobs ?? []), ...(d3?.jobs ?? []),
-    ...(d4?.jobs ?? []), ...(d5?.jobs ?? []), ...(d6?.jobs ?? []),
-    ...(d7?.jobs ?? []), ...(d8?.jobs ?? []), ...(d9?.jobs ?? []),
-  ];
+  // Merge current + history, deduplicate by id
+  const seen = new Set<string>();
+  const allJobs = [...(currentData?.jobs ?? []), ...(historyData?.jobs ?? [])].filter((j) => {
+    if (seen.has(j.id)) return false;
+    seen.add(j.id);
+    return true;
+  });
 
   const filtered = allJobs.filter((j) => {
     const d = new Date(j.createdAt);
