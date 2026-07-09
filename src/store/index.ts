@@ -31,6 +31,8 @@ import { machinesApi } from "./services/machinesService";
 import { jobSpecsApi } from "./services/jobSpecsService";
 import { departmentSamplesApi } from "./services/departmentSamplesService";
 import { withdrawalsApi } from "./services/withdrawalsService";
+import { sheetsApi } from "./services/sheetsService";
+import { stockRequestsApi } from "./services/stockRequestsService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -68,6 +70,8 @@ export const store = configureStore({
     [jobSpecsApi.reducerPath]: jobSpecsApi.reducer,
     [departmentSamplesApi.reducerPath]: departmentSamplesApi.reducer,
     [withdrawalsApi.reducerPath]: withdrawalsApi.reducer,
+    [sheetsApi.reducerPath]: sheetsApi.reducer,
+    [stockRequestsApi.reducerPath]: stockRequestsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -102,7 +106,9 @@ export const store = configureStore({
       .concat(machinesApi.middleware)
       .concat(jobSpecsApi.middleware)
       .concat(departmentSamplesApi.middleware)
-      .concat(withdrawalsApi.middleware),
+      .concat(withdrawalsApi.middleware)
+      .concat(sheetsApi.middleware)
+      .concat(stockRequestsApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

@@ -9,9 +9,9 @@ import {
   HiOutlineXCircle,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
+import { useSelector } from "react-redux";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
-import { useAuth } from "../../context/AuthContext";
 import {
   useGetGeneralStockItemsQuery,
   useGetMyGeneralStockSortiesQuery,
@@ -19,6 +19,7 @@ import {
   type GeneralStockSortie,
   type SortieStatus,
 } from "../../store/services/generalStockService";
+import type { RootState } from "../../store";
 
 const statusConfig: Record<SortieStatus, { label: string; color: string; icon: any; bgColor: string }> = {
   pending:  { label: "Pending",  color: "text-yellow-600", icon: HiOutlineClock,       bgColor: "bg-yellow-100" },
@@ -32,28 +33,31 @@ const stockStatusColors: Record<string, string> = {
   "out-of-stock": "bg-red-100 text-red-700",
 };
 
-export default function MaterialRequestPage() {
-  const { userName } = useAuth();
+export default function SupervisorMaterialRequestPage() {
+  const currentUser = useSelector((state: RootState) => state.auth.user);
 
   const { data: itemsData, isLoading: itemsLoading } = useGetGeneralStockItemsQuery({ limit: 200 });
-  const { data: sortiesData, isLoading: sortiesLoading, refetch } = useGetMyGeneralStockSortiesQuery({ limit: 100 });
+  const { data: mySortiesData, isLoading: mySortiesLoading, refetch: refetchMy } = useGetMyGeneralStockSortiesQuery({ limit: 100 });
   const [createSortie, { isLoading: isSubmitting }] = useCreateGeneralStockSortieMutation();
 
-  const items   = itemsData?.data   ?? [];
-  const sorties = sortiesData?.data ?? [];
+  const items     = itemsData?.data   ?? [];
+  const mySorties = mySortiesData?.data ?? [];
 
-  const [tab, setTab]           = useState<"browse" | "my-requests">("browse");
-  const [filter, setFilter]     = useState<SortieStatus | "all">("all");
+  const [tab, setTab]       = useState<"browse" | "my-requests">("browse");
+  const [filter, setFilter] = useState<SortieStatus | "all">("all");
   const [selectedSortie, setSelectedSortie] = useState<GeneralStockSortie | null>(null);
 
-  // Request modal state
-  const [showModal, setShowModal]     = useState(false);
+  const [showModal, setShowModal]       = useState(false);
   const [selectedItem, setSelectedItem] = useState("");
   const [quantity, setQuantity]         = useState("");
   const [reason, setReason]             = useState("");
   const [notes, setNotes]               = useState("");
 
-  const filteredSorties = filter === "all" ? sorties : sorties.filter((s) => s.status === filter);
+  const activeSorties    = mySorties;
+  const isLoadingSorties = mySortiesLoading;
+  const filteredSorties  = filter === "all" ? activeSorties : activeSorties.filter((s) => s.status === filter);
+
+  const refetch = () => { refetchMy(); };
 
   const resetForm = () => {
     setSelectedItem(""); setQuantity(""); setReason(""); setNotes("");
@@ -68,7 +72,7 @@ export default function MaterialRequestPage() {
     if (!reason.trim()) return toast.error("Reason is required");
     try {
       await createSortie({ stockItemId: selectedItem, quantityOut: qty, reason: reason.trim(), notes: notes.trim() || undefined }).unwrap();
-      toast.success("Request submitted — supervisor will be notified");
+      toast.success("Request submitted — admin/stock will be notified");
       resetForm();
       refetch();
     } catch (err: any) {
@@ -77,19 +81,19 @@ export default function MaterialRequestPage() {
   };
 
   return (
-    <DashboardLayout userRole="worker" userName={userName ?? "Worker"} notificationCount={0}>
+    <DashboardLayout userRole="supervisor" userName={currentUser?.name ?? "Supervisor"} notificationCount={0}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100"> Stock Requests</h1>
-            <p className="text-sm text-custom-700 mt-1">Browse available items and submit stock requests</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Stock Requests</h1>
+            <p className="text-sm text-custom-700 mt-1">Browse available items and submit or review stock requests</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => refetch()} disabled={sortiesLoading}
+            <button onClick={refetch} disabled={isLoadingSorties}
               className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors disabled:opacity-50">
-              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${sortiesLoading ? "animate-spin" : ""}`} />
+              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${isLoadingSorties ? "animate-spin" : ""}`} />
             </button>
             <button onClick={() => setShowModal(true)}
               className="px-4 py-2 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors text-sm flex items-center gap-2">
@@ -101,8 +105,8 @@ export default function MaterialRequestPage() {
         {/* Tabs */}
         <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
           {([
-            { id: "browse",      label: "Browse Items",  badge: items.length },
-            { id: "my-requests", label: "My Requests",   badge: sorties.filter((s) => s.status === "pending").length },
+            { id: "browse",      label: "Browse Items", badge: items.length },
+            { id: "my-requests", label: "My Requests",  badge: mySorties.filter((s) => s.status === "pending").length },
           ] as { id: "browse" | "my-requests"; label: string; badge?: number }[]).map(({ id, label, badge }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -169,30 +173,30 @@ export default function MaterialRequestPage() {
           </Card>
         )}
 
-        {/* ── My Requests Tab ── */}
-        {tab === "my-requests" && (
+        {/* ── My Requests / All Requests Tabs ── */}
+        {(tab === "my-requests") && (
           <>
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {(["all", "pending", "approved", "rejected"] as const).map((s) => {
-                const count = s === "all" ? sorties.length : sorties.filter((r) => r.status === s).length;
+                const count = s === "all" ? activeSorties.length : activeSorties.filter((r) => r.status === s).length;
                 const cfg   = s === "all" ? null : statusConfig[s];
                 return (
                   <Card key={s} className="!p-4">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-2 ${cfg ? cfg.bgColor : "bg-primary-100"}`}>
                       {cfg ? <cfg.icon className={`w-5 h-5 ${cfg.color}`} /> : <HiOutlineArchive className="w-5 h-5 text-primary-600" />}
                     </div>
-                    <p className="text-2xl font-bold text-secondary-100">{sortiesLoading ? "—" : count}</p>
+                    <p className="text-2xl font-bold text-secondary-100">{isLoadingSorties ? "—" : count}</p>
                     <p className="text-xs text-custom-700 capitalize">{s === "all" ? "Total" : cfg!.label}</p>
                   </Card>
                 );
               })}
             </div>
 
-            {/* Filter tabs */}
+            {/* Filter */}
             <div className="flex gap-2 overflow-x-auto">
               {(["all", "pending", "approved", "rejected"] as const).map((s) => {
-                const count = s === "all" ? sorties.length : sorties.filter((r) => r.status === s).length;
+                const count = s === "all" ? activeSorties.length : activeSorties.filter((r) => r.status === s).length;
                 return (
                   <button key={s} onClick={() => setFilter(s)}
                     className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
@@ -209,16 +213,18 @@ export default function MaterialRequestPage() {
                 <table className="w-full">
                   <thead className="bg-custom-100 border-b border-custom-300">
                     <tr>
-                      {["Item", "Qty", "Reason", "Status", "Date", ""].map((h) => (
+                      {[
+                        "Item", "Qty", "Reason", "Status", "Date", "",
+                      ].map((h) => (
                         <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-custom-200">
-                    {sortiesLoading ? (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
+                    {isLoadingSorties ? (
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
                     ) : filteredSorties.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No requests found</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700">No requests found</td></tr>
                     ) : filteredSorties.map((s) => {
                       const cfg  = statusConfig[s.status];
                       const Icon = cfg.icon;
@@ -311,6 +317,7 @@ export default function MaterialRequestPage() {
               </div>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between"><span className="text-custom-700">Quantity</span><span className="font-semibold text-secondary-100">{parseFloat(selectedSortie.quantityOut)} {selectedSortie.stockItem?.unit ?? ""}</span></div>
+                {selectedSortie.requester && <div className="flex justify-between"><span className="text-custom-700">Requested by</span><span className="font-semibold text-secondary-100">{selectedSortie.requester.name}</span></div>}
                 {selectedSortie.reason && <div className="flex justify-between gap-4"><span className="text-custom-700 shrink-0">Reason</span><span className="text-secondary-100 text-right">{selectedSortie.reason}</span></div>}
                 {selectedSortie.notes  && <div className="flex justify-between gap-4"><span className="text-custom-700 shrink-0">Notes</span><span className="text-secondary-100 text-right">{selectedSortie.notes}</span></div>}
                 {selectedSortie.approvedBy && <div className="flex justify-between"><span className="text-custom-700">{selectedSortie.status === "approved" ? "Approved by" : "Reviewed by"}</span><span className="font-semibold text-secondary-100">{selectedSortie.approvedBy.name}</span></div>}

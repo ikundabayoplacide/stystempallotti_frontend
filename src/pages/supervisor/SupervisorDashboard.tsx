@@ -204,9 +204,11 @@ export default function SupervisorDashboard() {
   const urgentJobs = jobs.filter(
     (j) => j.priority === "urgent" && j.status !== "completed" && j.status !== "delivered"
   );
-  const completedToday = completedJobs.filter(
-    (j) => new Date(j.updatedAt).toDateString() === new Date().toDateString()
-  );
+  const today = new Date().toDateString();
+  const completedToday = [
+    ...completedJobs.filter((j) => new Date(j.updatedAt).toDateString() === today),
+    ...jobs.filter((j) => j.progress === "completed"),
+  ].filter((j, i, arr) => arr.findIndex((x) => x.id === j.id) === i);
   const activeCount = jobs.filter((j) => j.status !== "completed" && j.status !== "rejected").length;
 
   const busyWorkers = useMemo(

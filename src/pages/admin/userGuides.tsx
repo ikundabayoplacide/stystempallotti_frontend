@@ -482,8 +482,8 @@ export default function AdminUserGuide() {
             <StepItem num={2}>To add a binding stock item, click <Lbl>Add Item</Lbl>.</StepItem>
             <img src={addBindingItemImg} alt="Add binding stock item" style={imgStyle} />
             <StepItem num={3}>Fill in: Item Name, Category, Unit, Alarm Level, Initial Stock, and optional Description. Click <Lbl>Create Item</Lbl>.</StepItem>
-            <StepItem num={4}>Click the <Lbl>Requests</Lbl> tab to review binding stock requests from workers.</StepItem>
-            <img src={bindingRequestsImg} alt="Binding stock requests" style={imgStyle} />
+            <StepItem num={4}>Click the <Lbl>Requests</Lbl> tab to review  Stock Requests from workers.</StepItem>
+            <img src={bindingRequestsImg} alt=" Stock Requests" style={imgStyle} />
             <StepItem num={5}>Click <Lbl>Approve</Lbl> to deduct stock or <Lbl>Reject</Lbl> to decline the request.</StepItem>
           </div>
 

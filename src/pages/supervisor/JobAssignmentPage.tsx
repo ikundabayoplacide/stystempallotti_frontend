@@ -429,7 +429,7 @@ function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone, onAdd
 
   const updatePos = () => {
     const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    if (rect) setMenuPos({ top: rect.top, right: window.innerWidth - rect.right });
   };
 
   useEffect(() => {
@@ -450,7 +450,7 @@ function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone, onAdd
 
   const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    setMenuPos({ top: rect.top, right: window.innerWidth - rect.right });
     setOpen((v) => !v);
   };
 
@@ -482,7 +482,7 @@ function ActionsMenu({ job, alreadyAssigned, onView, onAssign, onMarkDone, onAdd
       {open && menuPos && ReactDOM.createPortal(
         <div
           ref={menuRef}
-          style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          style={{ position: "fixed", bottom: window.innerHeight - menuPos.top, right: menuPos.right, zIndex: 9999 }}
           className="w-44 bg-style-600 border border-custom-200 rounded-xl shadow-xl py-1 text-sm"
         >
           <button
@@ -560,7 +560,7 @@ export default function SupervisorJobsPage() {
 
   const activeCount    = useMemo(() => allJobs.filter((j) => j.status !== "completed" && j.status !== "rejected").length, [allJobs]);
   const doneCount      = useMemo(() => allJobs.filter((j) => j.state && (j.state as string).endsWith("-done")).length, [allJobs]);
-  const completedCount = useMemo(() => allJobs.filter((j) => j.status === "completed").length, [allJobs]);
+  const completedCount = useMemo(() => allJobs.filter((j) => j.status === "completed" || j.progress === "completed").length, [allJobs]);
   const urgentCount    = useMemo(() => allJobs.filter((j) => j.priority === "urgent" && j.status !== "completed").length, [allJobs]);
 
   const openModal = (job: Job) => {

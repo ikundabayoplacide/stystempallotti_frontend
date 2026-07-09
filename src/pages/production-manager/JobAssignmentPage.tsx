@@ -327,7 +327,7 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
 
   const updatePos = () => {
     const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    if (rect) setPos({ top: rect.top, right: window.innerWidth - rect.right });
   };
 
   useEffect(() => {
@@ -382,7 +382,7 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
       {open && pos && ReactDOM.createPortal(
         <div
           ref={menuRef}
-          style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
+          style={{ position: "fixed", bottom: window.innerHeight - pos.top, right: pos.right, zIndex: 9999 }}
           className="w-44 bg-style-600 border border-custom-200 rounded-xl shadow-xl py-1 overflow-hidden"
         >
           {actions.map((a) => (

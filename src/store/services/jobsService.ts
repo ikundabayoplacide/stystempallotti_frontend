@@ -266,11 +266,20 @@ interface ApiResponse<T> {
   data: T;
 }
 
+function normalizeJob(job: any): Job {
+  const dp = job.departmentPosition;
+  return {
+    ...job,
+    state: job.state ?? dp?.state ?? null,
+    progress: job.progress ?? dp?.progress ?? null,
+  };
+}
+
 function normalizePaginatedJobs(raw: unknown): PaginatedJobs {
   if (raw && typeof raw === "object" && "jobs" in raw) {
-    const r = raw as PaginatedJobs;
+    const r = raw as any;
     return {
-      jobs: Array.isArray(r.jobs) ? r.jobs : [],
+      jobs: Array.isArray(r.jobs) ? r.jobs.map(normalizeJob) : [],
       total: r.total ?? 0,
       page: r.page ?? 1,
       limit: r.limit ?? 10,
@@ -279,10 +288,10 @@ function normalizePaginatedJobs(raw: unknown): PaginatedJobs {
   }
   if (Array.isArray(raw)) {
     return {
-      jobs: raw as Job[],
-      total: (raw as Job[]).length,
+      jobs: (raw as any[]).map(normalizeJob),
+      total: (raw as any[]).length,
       page: 1,
-      limit: (raw as Job[]).length || 10,
+      limit: (raw as any[]).length || 10,
       totalPages: 1,
     };
   }

@@ -81,6 +81,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
     { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
     { label: "Boutique Stock", path: "/reception/boutique-stock", icon: HiOutlineArchive },
+    { label: "Sheets", path: "/reception/sheets", icon: HiOutlineDocumentText },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
@@ -141,6 +142,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     {label: "Payroll", path: "/finance/daf/payroll", icon: HiOutlineCurrencyDollar },
     // { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
+    { label: "Stock Requests", path: "/finance/daf/stock-requests", icon: HiOutlineClipboardList },
     { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [
@@ -185,6 +187,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/stock", icon: HiOutlineHome },
     { label: "Boutique Stock", path: "/stock/boutique-stock", icon: HiOutlineArchive },
     { label: "General Stock", path: "/stock/general-stock", icon: HiOutlineCube },
+    { label: "Stock Requests", path: "/stock/requests", icon: HiOutlineClipboardList },
     // { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers, permissionKey: "suppliers.view" },
     { label: "My Leave", path: "/stock/leave", icon: HiOutlineCalendar },
     {
@@ -201,6 +204,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Machines", path: "/supervisor/machines", icon: HiOutlineCog },
     { label: "Samples", path: "/supervisor/samples", icon: HiOutlineDocumentText },
     { label: "Binding Stock", path: "/supervisor/binding-stock", icon: HiOutlineArchive, bindingOnly: true },
+    { label: "Material Requests", path: "/supervisor/materials", icon: HiOutlineCube },
     { label: "My Leave", path: "/supervisor/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/supervisor/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [

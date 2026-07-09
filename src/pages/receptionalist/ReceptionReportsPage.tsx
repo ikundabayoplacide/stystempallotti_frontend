@@ -20,6 +20,7 @@ import { useGetSalesQuery } from "../../store/services/boutiqueService";
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
 import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
+import { useGetSheetsQuery } from "../../store/services/sheetsService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1016,15 +1017,188 @@ function DeliveriesReport() {
   );
 }
 
+// ─── Sheets Report ────────────────────────────────────────────────────────────
+
+function SheetsReport() {
+  const [period, setPeriod]         = useState<Period>("day");
+  const [page, setPage]             = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo]     = useState("");
+  const [useCustom, setUseCustom]   = useState(false);
+
+  const range = useCustom && customFrom && customTo
+    ? { from: new Date(customFrom + "T00:00:00").toISOString(), to: new Date(customTo + "T23:59:59.999").toISOString() }
+    : getDateRange(period);
+
+  const { data, isLoading, refetch } = useGetSheetsQuery({ limit: 500 });
+
+  const allSheets = data?.sheets ?? [];
+
+  // Filter by date range client-side (same pattern as VisitorReport)
+  const sheets = allSheets.filter((s) => {
+    const d = new Date(s.createdAt);
+    return d >= new Date(range.from) && d <= new Date(range.to);
+  });
+
+  const totalPages    = Math.max(1, Math.ceil(sheets.length / PAGE_SIZE));
+  const paginated     = sheets.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalQty      = sheets.reduce((sum, s) => sum + Number(s.qty), 0);
+  const totalRevenue  = sheets.reduce((sum, s) => sum + Number(s.totalAmount), 0);
+
+  const getExportData = () => ({
+    headers: ["Ref", "Sheet Name", "Description", "Qty", "Unit Price (RWF)", "Total (RWF)", "Customer", "Phone", "Recorded By", "Date"],
+    rows: sheets.map((s) => [
+      s.ref ?? "",
+      s.name,
+      s.description ?? "",
+      String(s.qty),
+      Number(s.unitPrice).toLocaleString(),
+      Number(s.totalAmount).toLocaleString(),
+      s.customerName ?? "",
+      s.customerPhone ?? "",
+      s.createdBy?.name ?? "",
+      new Date(s.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+    ]),
+    summary: [
+      { label: "Total Transactions", value: String(sheets.length) },
+      { label: "Total Quantity",     value: totalQty.toLocaleString() },
+      { label: "TOTAL REVENUE",      value: `${totalRevenue.toLocaleString()} RWF`, bold: true },
+    ] as SummaryRow[],
+  });
+
+  return (
+    <Section icon={HiOutlineDocumentText} title="Sheets Sales" color="bg-blue-100 text-blue-600">
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
+        <div className="flex items-center gap-2 ml-auto">
+          <input
+            type="date" value={customFrom}
+            onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
+          />
+          <span className="text-xs text-custom-700">to</span>
+          <input
+            type="date" value={customTo} min={customFrom}
+            onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
+          />
+          {useCustom && (
+            <button
+              onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }}
+              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors"
+            >Clear</button>
+          )}
+          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="Sheets Sales Report" getExportData={getExportData} />
+        </div>
+      </div>
+
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <StatCard label="Total Transactions" value={sheets.length} />
+          <StatCard label="Total Quantity"     value={totalQty.toLocaleString()} />
+          <StatCard label="Total Revenue"      value={`${totalRevenue.toLocaleString()} RWF`} color="text-emerald-600" />
+        </div>
+
+        <Card className="!p-0 overflow-hidden mt-2">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-custom-100 border-b border-custom-300">
+                <tr>
+                  {["Ref", "Sheet Name", "Qty", "Unit Price", "Total", "Customer", "Date"].map((h) => (
+                    <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-custom-200">
+                {isLoading ? (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+                ) : sheets.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No sheet sales in this period</td></tr>
+                ) : paginated.map((s, idx) => (
+                  <tr key={s.id} className="hover:bg-custom-50 transition-colors">
+                    <td className="px-3 py-2.5 text-xs font-mono text-primary-500">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                    <td className="px-3 py-2.5">
+                      <p className="text-sm font-semibold text-secondary-100">{s.name}</p>
+                      {s.description && <p className="text-xs text-custom-700">{s.description}</p>}
+                    </td>
+                    <td className="px-3 py-2.5 text-sm text-secondary-100">{Number(s.qty).toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-sm text-secondary-100">{Number(s.unitPrice).toLocaleString()} RWF</td>
+                    <td className="px-3 py-2.5 text-sm font-bold text-emerald-600">{Number(s.totalAmount).toLocaleString()} RWF</td>
+                    <td className="px-3 py-2.5">
+                      {s.customerName
+                        ? <><p className="text-sm text-secondary-100">{s.customerName}</p>{s.customerPhone && <p className="text-xs text-custom-700">{s.customerPhone}</p>}</>
+                        : <span className="text-xs text-custom-400">—</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-custom-700">
+                      {new Date(s.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        {/* Summary */}
+        {sheets.length > 0 && (
+          <div className="flex justify-end mt-1">
+            <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
+              <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
+              {[
+                { label: "Total Transactions", value: String(sheets.length),             cls: "text-secondary-100" },
+                { label: "Total Quantity",      value: totalQty.toLocaleString(),         cls: "text-secondary-100" },
+                { label: "Total Revenue",       value: `${totalRevenue.toLocaleString()} RWF`, cls: "text-emerald-600 font-bold" },
+              ].map(({ label, value, cls }) => (
+                <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
+                  <span className="text-custom-700 text-xs">{label}</span>
+                  <span className={`text-xs ${cls}`}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {sheets.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between mt-1">
+            <p className="text-xs text-custom-700">
+              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, sheets.length)} of {sheets.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+              >Prev</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button key={n} onClick={() => setPage(n)}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                    n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+                  }`}
+                >{n}</button>
+              ))}
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+              >Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "sales" | "visitors" | "payments" | "deliveries";
+type Tab = "sales" | "visitors" | "payments" | "deliveries" | "sheets";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
   { value: "sales",      label: "Boutique Sales",  icon: HiOutlineCube },
   { value: "visitors",   label: "Visitors",         icon: HiOutlineUsers },
   { value: "payments",   label: "Payments",         icon: HiOutlineCash },
   { value: "deliveries", label: "Deliveries",       icon: HiOutlineTruck },
+  { value: "sheets",     label: "Sheets",           icon: HiOutlineDocumentText },
 ];
 
 export default function ReceptionReportsPage() {
@@ -1070,6 +1244,7 @@ export default function ReceptionReportsPage() {
         {activeTab === "visitors"   && <VisitorReport />}
         {activeTab === "payments"   && <PaymentsReport />}
         {activeTab === "deliveries" && <DeliveriesReport />}
+        {activeTab === "sheets"     && <SheetsReport />}
 
       </div>
     </DashboardLayout>

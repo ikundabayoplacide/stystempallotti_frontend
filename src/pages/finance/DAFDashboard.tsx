@@ -4,6 +4,7 @@ import {
   HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineCurrencyDollar,
+  HiOutlineDocumentText,
   HiOutlineExclamationCircle,
   HiOutlineRefresh,
   HiOutlineUsers,
@@ -14,6 +15,7 @@ import { Card } from "../../components/ui";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
+import { useGetSheetsQuery } from "../../store/services/sheetsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,6 +64,11 @@ export default function DAFDashboard() {
     () => payments.reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0),
     [payments]
   );
+
+  const { data: sheetsData, isLoading: loadingSheetsData } = useGetSheetsQuery({ limit: 500 });
+  const sheets = sheetsData?.sheets ?? [];
+  const totalSheetsQty    = sheets.reduce((s, r) => s + Number(r.qty), 0);
+  const totalSheetsAmount = sheets.reduce((s, r) => s + Number(r.totalAmount), 0);
 
   // Active employees
   const activeEmployees = useMemo(
@@ -113,7 +120,7 @@ export default function DAFDashboard() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {/* Total Revenue */}
         <Card
           className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
@@ -133,6 +140,29 @@ export default function DAFDashboard() {
                     {fmt(totalRevenue)}
                   </p>
                   <p className="text-xs text-custom-700">RWF</p>
+                  <span className="text-sm">for only Jobs</span>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
+
+             {/* Sheets */}
+        <Card className="!p-4 overflow-hidden">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-100 shrink-0">
+              <HiOutlineDocumentText className="w-4.5 h-4.5 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-custom-700 truncate">Sheets Sales</p>
+              {loadingSheetsData ? (
+                <div className="h-6 w-20 bg-custom-200 rounded animate-pulse mt-1" />
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-secondary-100 leading-tight">
+                    {fmt(totalSheetsQty)} <span className="text-sm font-normal text-custom-700">sheets</span>
+                  </p>
+                  <p className="text-xs text-blue-600 font-semibold">{fmt(totalSheetsAmount)} RWF</p>
                 </>
               )}
             </div>
@@ -184,6 +214,8 @@ export default function DAFDashboard() {
             </div>
           </div>
         </Card>
+
+   
 
         {/* Confirmed Jobs */}
         <Card

@@ -555,7 +555,7 @@ function SortiesTab() {
           <Card className="!p-10 text-center">
             <HiOutlineCheckCircle className="w-8 h-8 text-custom-400 mx-auto mb-2" />
             <p className="text-sm text-secondary-100 font-semibold">No stock requests found</p>
-            <p className="text-xs text-custom-700 mt-1">Worker binding stock requests will appear here</p>
+            <p className="text-xs text-custom-700 mt-1">Worker  stock requests will appear here</p>
           </Card>
         ) : sorties.map((sortie) => (
           <Card key={sortie.id} className="!p-0 overflow-hidden">
