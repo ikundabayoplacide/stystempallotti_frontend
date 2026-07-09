@@ -65,8 +65,9 @@ const CATEGORY_COLORS = [
 
 // ─── Edit Product Modal ──────────────────────────────────────────────────────
 
-function EditProductModal({ product, onClose, onSuccess }: {
+function EditProductModal({ product, categories: _categories, onClose, onSuccess }: {
   product: BoutiqueProduct;
+  categories: { id: string; name: string }[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -1322,16 +1323,16 @@ export default function BoutiquePage() {
                     <p className="text-xs text-custom-400 font-mono">SKU: {product.sku}</p>
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setRestockProduct(product); }}
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-                      >
-                        <HiOutlinePlus className="w-3.5 h-3.5" /> Add Qty
-                      </button>
-                      <button
                         onClick={(e) => { e.stopPropagation(); setEditProduct(product); }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition-colors"
                       >
                         <HiOutlinePencil className="w-3.5 h-3.5" /> Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setRestockProduct(product); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                      >
+                        <HiOutlinePlus className="w-3.5 h-3.5" /> Add Qty
                       </button>
                     </div>
                   </div>
