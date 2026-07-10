@@ -1048,7 +1048,8 @@ export default function BoutiquePage() {
   const { data: overpaidData } = useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
   const pendingCount = (partialData?.sales?.length ?? 0) + (overpaidData?.sales?.length ?? 0);
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const _now = new Date();
+  const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
   const todayFrom = new Date(todayStr + "T00:00:00").toISOString();
   const todayTo   = new Date(todayStr + "T23:59:59.999").toISOString();
   const { data: todaySalesData } = useGetSalesQuery({ from: todayFrom, to: todayTo, limit: 500 });

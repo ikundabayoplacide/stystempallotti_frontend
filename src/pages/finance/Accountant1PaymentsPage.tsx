@@ -457,7 +457,8 @@ function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void 
     0
   );
   const [notes, setNotes]     = useState("");
-  const todayStr = new Date().toISOString().split("T")[0];
+  const _now = new Date();
+  const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
   const [dueDate, setDueDate] = useState(todayStr);
 
   const [createInvoice, { isLoading, error }] = useCreateInvoiceMutation();

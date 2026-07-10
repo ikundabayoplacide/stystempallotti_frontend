@@ -73,20 +73,21 @@ export default function AdminDashboard() {
 
   const inProgressStatuses = ["confirmed","in-composition","in-montage","in-printing","in-binding","in-packaging","quality-check","ready-for-delivery"];
   const now = new Date();
-  const todayStr = now.toDateString();
+  const todayStr = now.toLocaleDateString();
+  const isToday = (d?: string | null) => !!d && new Date(d).toLocaleDateString() === todayStr;
   const oneWeekLater = new Date(now); oneWeekLater.setDate(now.getDate() + 7);
 
   // ── Computed stats from jobs data ────────────────────────────────────────
   const jobsInProgress = useMemo(() => jobs.filter((j) => inProgressStatuses.includes(j.status)).length, [jobs]);
   const pendingJobs    = useMemo(() => jobs.filter((j) => j.status === "pending").length, [jobs]);
-  const completedToday = useMemo(() => jobs.filter((j) => (j.status === "completed" || j.status === "delivered") && j.completedAt && new Date(j.completedAt).toDateString() === todayStr).length, [jobs]);
+  const completedToday = useMemo(() => jobs.filter((j) => (j.status === "completed" || j.status === "delivered") && (isToday(j.completedAt) || isToday(j.updatedAt))).length, [jobs]);
   const totalRevenue   = useMemo(() => jobs.reduce((s, j) => s + (Number(j.amount) || 0), 0), [jobs]);
   const totalPaid      = useMemo(() => jobs.reduce((s, j) => s + (j.payments ?? []).reduce((ps, p) => ps + (Number(p.amountPaid) || 0), 0), 0), [jobs]);
   const outstanding    = useMemo(() => totalRevenue - totalPaid, [totalRevenue, totalPaid]);
   const totalJobs      = jobs.length;
 
   const overdueJobs  = useMemo(() => jobs.filter((j) => j.dueDate && new Date(j.dueDate) < now && j.status !== "completed" && j.status !== "delivered"), [jobs]);
-  const dueTodayJobs = useMemo(() => jobs.filter((j) => j.dueDate && new Date(j.dueDate).toDateString() === todayStr && j.status !== "completed" && j.status !== "delivered"), [jobs]);
+  const dueTodayJobs = useMemo(() => jobs.filter((j) => j.dueDate && isToday(j.dueDate) && j.status !== "completed" && j.status !== "delivered"), [jobs]);
   const thisWeekJobs = useMemo(() => jobs.filter((j) => j.dueDate && new Date(j.dueDate) > now && new Date(j.dueDate) <= oneWeekLater && j.status !== "completed" && j.status !== "delivered"), [jobs]);
   const onTrackJobs  = useMemo(() => jobs.filter((j) => inProgressStatuses.includes(j.status) && (!j.dueDate || new Date(j.dueDate) > oneWeekLater)), [jobs]);
   const delayedJobs  = overdueJobs.length;

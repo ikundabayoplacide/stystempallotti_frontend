@@ -45,6 +45,9 @@ export default function SupervisorMaterialRequestPage() {
 
   const [tab, setTab]       = useState<"browse" | "my-requests">("browse");
   const [filter, setFilter] = useState<SortieStatus | "all">("all");
+  const [period, setPeriod] = useState<"all" | "week" | "year">("all");
+  const [itemSearch, setItemSearch]       = useState("");
+  const [requestSearch, setRequestSearch] = useState("");
   const [selectedSortie, setSelectedSortie] = useState<GeneralStockSortie | null>(null);
 
   const [showModal, setShowModal]       = useState(false);
@@ -53,9 +56,30 @@ export default function SupervisorMaterialRequestPage() {
   const [reason, setReason]             = useState("");
   const [notes, setNotes]               = useState("");
 
-  const activeSorties    = mySorties;
+  const now = new Date();
+  const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7), 0, 0, 0, 0);
+
   const isLoadingSorties = mySortiesLoading;
-  const filteredSorties  = filter === "all" ? activeSorties : activeSorties.filter((s) => s.status === filter);
+  const activeSorties = mySorties.filter((s) => {
+    if (period === "all") return true;
+    const d = new Date(s.createdAt);
+    if (period === "week") return d >= startOfWeek;
+    if (period === "year") return d.getFullYear() === now.getFullYear();
+    return true;
+  });
+  const q = requestSearch.trim().toLowerCase();
+  const searchedSorties = q
+    ? activeSorties.filter((s) =>
+        s.stockItem?.itemName?.toLowerCase().includes(q) ||
+        s.stockItem?.category?.toLowerCase().includes(q)
+      )
+    : activeSorties;
+  const filteredSorties = filter === "all" ? searchedSorties : searchedSorties.filter((s) => s.status === filter);
+
+  const iq = itemSearch.trim().toLowerCase();
+  const filteredItems = iq
+    ? items.filter((i) => i.itemName.toLowerCase().includes(iq) || i.category?.toLowerCase().includes(iq))
+    : items;
 
   const refetch = () => { refetchMy(); };
 
@@ -125,6 +149,13 @@ export default function SupervisorMaterialRequestPage() {
         {/* ── Browse Items Tab ── */}
         {tab === "browse" && (
           <Card className="!p-0 overflow-hidden">
+            <div className="p-3 border-b border-custom-300">
+              <input
+                value={itemSearch} onChange={(e) => setItemSearch(e.target.value)}
+                placeholder="Search by name or category…"
+                className="w-full sm:w-72 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              />
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-custom-100 border-b border-custom-300">
@@ -137,12 +168,12 @@ export default function SupervisorMaterialRequestPage() {
                 <tbody className="divide-y divide-custom-200">
                   {itemsLoading ? (
                     <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
-                  ) : items.length === 0 ? (
+                  ) : filteredItems.length === 0 ? (
                     <tr><td colSpan={6} className="px-4 py-10 text-center">
                       <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
-                      <p className="text-sm text-secondary-100 font-semibold">No items available</p>
+                      <p className="text-sm text-secondary-100 font-semibold">No items found</p>
                     </td></tr>
-                  ) : items.map((item) => (
+                  ) : filteredItems.map((item) => (
                     <tr key={item.id} className="hover:bg-custom-50 transition-colors">
                       <td className="px-3 py-2.5">
                         <p className="text-sm font-semibold text-secondary-100">{item.itemName}</p>
@@ -176,6 +207,27 @@ export default function SupervisorMaterialRequestPage() {
         {/* ── My Requests / All Requests Tabs ── */}
         {(tab === "my-requests") && (
           <>
+            {/* Search */}
+            <div>
+              <input
+                value={requestSearch} onChange={(e) => setRequestSearch(e.target.value)}
+                placeholder="Search by item name or category…"
+                className="w-full sm:w-72 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              />
+            </div>
+
+            {/* Period filter */}
+            <div className="flex gap-2">
+              {(["all", "week", "year"] as const).map((p) => (
+                <button key={p} onClick={() => setPeriod(p)}
+                  className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
+                    period === p ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+                  }`}>
+                  {p === "all" ? "All Time" : p === "week" ? "This Week" : "This Year"}
+                </button>
+              ))}
+            </div>
+
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {(["all", "pending", "approved", "rejected"] as const).map((s) => {

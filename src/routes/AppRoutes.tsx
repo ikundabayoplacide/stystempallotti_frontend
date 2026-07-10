@@ -77,6 +77,7 @@ import {
   BoutiqueStockRequestsPage,
   BindingStockRequestsPage,
   SheetsPage,
+  ReceptionMaterialRequestPage,
   // TaskAssignmentPage,
 } from "../pages/receptionalist";
 import { ProductionPage, SupervisorPage, SupervisorReviewReportsPage, ReportsPage as SupervisorReportsPage, JobAssignmentPage as SupervisorJobAssignmentPage, DepartmentEmployeesPage, SupervisorMaterialRequestPage } from "../pages/supervisor";
@@ -167,6 +168,7 @@ export default function AppRoutes() {
       <Route path="/reception/boutique-stock" element={<ProtectedRoute allowedRoles={["receptionist"]}><BoutiqueStockRequestsPage /></ProtectedRoute>} />
       <Route path="/reception/binding-stock" element={<ProtectedRoute allowedRoles={["receptionist"]}><BindingStockRequestsPage /></ProtectedRoute>} />
       <Route path="/reception/sheets" element={<ProtectedRoute allowedRoles={["receptionist", "admin"]}><SheetsPage /></ProtectedRoute>} />
+      <Route path="/reception/materials" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionMaterialRequestPage /></ProtectedRoute>} />
 
       {/* Sales Officer Routes */}
       <Route path="/sales" element={<ProtectedRoute allowedRoles={["sales"]}><SalesPage /></ProtectedRoute>} />

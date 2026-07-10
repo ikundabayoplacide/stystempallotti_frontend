@@ -143,7 +143,6 @@ const roleTypeRoutes: Partial<Record<UserRole, Partial<Record<NotificationType, 
     REPORT_GENERATED: "/supervisor/reports",
   },
   stock: {
-    BOUTIQUE_STOCK_REQUEST: "/stock/boutique-stock",
     BOUTIQUE_PRODUCT_ADDED: "/stock/boutique-stock",
     JOB_CREATED: "/stock/requests",
     JOB_STATUS_CHANGED: "/stock/inventory",
@@ -231,7 +230,9 @@ function resolveRoute(userRole: UserRole, n: Notification): string | null {
     if (text.includes("report")) return "/worker/reports";
   }
   if (userRole === "stock") {
-    if (text.includes("sortie") || text.includes("request") || text.includes("approv") || text.includes("rejected") || text.includes("boutique")) return "/stock/boutique-stock";
+    if (text.includes("boutique")) return "/stock/boutique-stock";
+    if (text.includes("sortie") || text.includes("stock request") || text.includes("general stock")) return "/stock/requests";
+    if (text.includes("request") || text.includes("approv") || text.includes("rejected")) return "/stock/requests";
     if (text.includes("inventory") || text.includes("product") || text.includes("item")) return "/stock/inventory";
     if (text.includes("supplier")) return "/stock/suppliers";
     if (text.includes("report")) return "/stock/reports";

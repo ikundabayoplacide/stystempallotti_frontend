@@ -204,11 +204,12 @@ export default function SupervisorDashboard() {
   const urgentJobs = jobs.filter(
     (j) => j.priority === "urgent" && j.status !== "completed" && j.status !== "delivered"
   );
-  const today = new Date().toDateString();
-  const completedToday = [
-    ...completedJobs.filter((j) => new Date(j.updatedAt).toDateString() === today),
-    ...jobs.filter((j) => j.progress === "completed"),
-  ].filter((j, i, arr) => arr.findIndex((x) => x.id === j.id) === i);
+  const todayStr = new Date().toLocaleDateString();
+  const isToday = (dateStr?: string | null) =>
+    !!dateStr && new Date(dateStr).toLocaleDateString() === todayStr;
+  const completedToday = [...completedJobs, ...jobs]
+    .filter((j) => isToday(j.completedAt) || isToday(j.updatedAt))
+    .filter((j, i, arr) => arr.findIndex((x) => x.id === j.id) === i);
   const activeCount = jobs.filter((j) => j.status !== "completed" && j.status !== "rejected").length;
 
   const busyWorkers = useMemo(
@@ -217,7 +218,10 @@ export default function SupervisorDashboard() {
   );
   const busyPct = workers.length > 0 ? Math.round((busyWorkers / workers.length) * 100) : 0;
 
-  const { data: machinesData = [] } = useGetMachinesQuery();
+  const { data: machinesData = [] } = useGetMachinesQuery(
+    myDeptId ? { departmentId: myDeptId } : undefined,
+    { skip: !myDeptId }
+  );
   const isBindingDept = !!myDept && myDept.name.toLowerCase().includes("binding");
   const { data: stockData } = useGetBindingStockItemsQuery(
     { limit: 200 },

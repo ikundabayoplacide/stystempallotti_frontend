@@ -52,10 +52,13 @@ export default function ProductionManagerDashboard() {
   );
 
   // Today's completed
-  const today = new Date().toISOString().split("T")[0];
+  const _now = new Date();
   const completedToday = useMemo(
-    () => completedJobs.filter((j) => j.completedAt?.startsWith(today) || j.updatedAt?.startsWith(today)),
-    [completedJobs, today]
+    () => completedJobs.filter((j) => {
+      const d = j.completedAt ?? j.updatedAt;
+      return !!d && new Date(d).toLocaleDateString() === _now.toLocaleDateString();
+    }),
+    [completedJobs]
   );
 
   // Delayed = past due date, still in production

@@ -22,6 +22,7 @@ import { useGetAllEmployeesQuery, useAssignJobToEmployeeMutation } from "../../s
 import type { Job, JobState } from "../../store/services/jobsService";
 import {
   useGetJobsQuery,
+  useGetJobDepartmentHistoryQuery,
   useGetJobDetailsQuery,
   useUpdateJobStateMutation,
   useMarkJobDoneMutation,
@@ -535,10 +536,16 @@ export default function SupervisorJobsPage() {
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const myDeptId = currentUser?.departmentId;
 
-  const { data: allData, isLoading, isFetching, refetch } = useGetJobsQuery(
-    { limit: 1000, departmentAssignedToId: myDeptId ?? undefined, search: search || undefined },
+  const { data: currentData, isLoading, isFetching, refetch: refetchCurrent } = useGetJobsQuery(
+    { limit: 1000, departmentAssignedToId: myDeptId ?? undefined },
     { skip: !myDeptId }
   );
+  const { data: historyData, refetch: refetchHistory } = useGetJobDepartmentHistoryQuery(
+    { departmentId: myDeptId!, limit: 1000 },
+    { skip: !myDeptId }
+  );
+  const refetch = () => { refetchCurrent(); refetchHistory(); };
+
   const { data: departments = [] } = useGetDepartmentsQuery();
   const [updateJobState, { isLoading: isSaving }] = useUpdateJobStateMutation();
   const [markJobDone, { isLoading: isMarkingDone }] = useMarkJobDoneMutation();
@@ -551,17 +558,39 @@ export default function SupervisorJobsPage() {
   const employees = employeesData?.data ?? [];
   const [assignToEmployee, { isLoading: isAssigning }] = useAssignJobToEmployeeMutation();
 
-  const allJobs    = allData?.jobs ?? [];
-  const total      = allJobs.length;
+  // Merge current + history, deduplicate by id
+  const currentIds = useMemo(() => new Set((currentData?.jobs ?? []).map((j) => j.id)), [currentData]);
+  const allJobs = useMemo(() => {
+    const seen = new Set<string>();
+    return [...(currentData?.jobs ?? []), ...(historyData?.jobs ?? [])].filter((j) => {
+      if (seen.has(j.id)) return false;
+      seen.add(j.id);
+      return true;
+    });
+  }, [currentData, historyData]);
+
+  // Client-side search across merged list
+  const filteredJobs = useMemo(() => {
+    if (!search.trim()) return allJobs;
+    const q = search.toLowerCase();
+    return allJobs.filter(
+      (j) =>
+        j.jobNumber?.toLowerCase().includes(q) ||
+        j.title?.toLowerCase().includes(q) ||
+        j.customer?.name?.toLowerCase().includes(q)
+    );
+  }, [allJobs, search]);
+
+  const total      = filteredJobs.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const jobs       = allJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const jobs       = filteredJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const myDept = departments.find((d) => d.id === myDeptId);
 
   const activeCount    = useMemo(() => allJobs.filter((j) => j.status !== "completed" && j.status !== "rejected").length, [allJobs]);
   const doneCount      = useMemo(() => allJobs.filter((j) => j.state && (j.state as string).endsWith("-done")).length, [allJobs]);
   const completedCount = useMemo(() => allJobs.filter((j) => j.status === "completed" || j.progress === "completed").length, [allJobs]);
-  const urgentCount    = useMemo(() => allJobs.filter((j) => j.priority === "urgent" && j.status !== "completed").length, [allJobs]);
+  const urgentCount    = useMemo(() => allJobs.filter((j) => j.priority === "urgent" && j.status !== "completed" && currentIds.has(j.id)).length, [allJobs, currentIds]);
 
   const openModal = (job: Job) => {
     setActiveJob(job);
@@ -570,7 +599,7 @@ export default function SupervisorJobsPage() {
   };
 
   const closeModal      = () => { setShowModal(false); setActiveJob(null); setError(""); };
-  const closeAndRefetch = () => { closeModal(); refetch(); };
+  const closeAndRefetch = () => { closeModal(); refetchCurrent(); refetchHistory(); };
 
   // ── Assign employee handlers ──
   const openAssignModal = (job: Job) => {
@@ -633,7 +662,7 @@ export default function SupervisorJobsPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Jobs</h1>
             <p className="text-sm text-custom-700 mt-1">
               Department: <span className="font-semibold text-primary-600">{myDept?.name ?? myDeptId}</span>
-              {" · "}Mark work done when your department finishes a job
+              {" · "}{allJobs.length} total ({currentIds.size} active, {historyData?.jobs?.length ?? 0} history)
             </p>
           </div>
           <button
@@ -718,12 +747,13 @@ export default function SupervisorJobsPage() {
                       {h}
                     </th>
                   ))}
+                  <th className="px-4 py-3 text-xs font-bold text-secondary-100 uppercase text-left">Origin</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-custom-200">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center">
+                    <td colSpan={9} className="px-4 py-12 text-center">
                       <div className="flex items-center justify-center gap-2 text-custom-700">
                         <HiOutlineRefresh className="w-5 h-5 animate-spin" />
                         <span className="text-sm">Loading jobs…</span>
@@ -732,17 +762,20 @@ export default function SupervisorJobsPage() {
                   </tr>
                 ) : jobs.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-custom-700 text-sm">
+                    <td colSpan={9} className="px-4 py-12 text-center text-custom-700 text-sm">
                       No jobs assigned to your department
                     </td>
                   </tr>
                 ) : (
                   jobs.map((job) => {
                     const statusCfg = jobStatusConfig[job.status] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
+                    const isHistory = !currentIds.has(job.id);
                     return (
                       <tr
                         key={job.id}
-                        className={`hover:bg-custom-50 transition-colors ${job.priority === "urgent" ? "bg-red-50" : ""}`}
+                        className={`hover:bg-custom-50 transition-colors ${
+                          isHistory ? "opacity-75" : job.priority === "urgent" ? "bg-red-50" : ""
+                        }`}
                       >
                         <td className="px-4 py-4">
                           <span className="text-sm font-bold text-primary-600">{job.jobNumber}</span>
@@ -783,6 +816,12 @@ export default function SupervisorJobsPage() {
                             onMarkDone={openModal}
                             onAddSpec={(j) => setSpecTarget({ id: j.id, jobNumber: j.jobNumber })}
                           />
+                        </td>
+                        <td className="px-4 py-4">
+                          {isHistory
+                            ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Moved on</span>
+                            : <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Here</span>
+                          }
                         </td>
                       </tr>
                     );

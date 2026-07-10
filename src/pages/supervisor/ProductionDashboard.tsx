@@ -49,10 +49,12 @@ export default function ProductionDashboard() {
   const urgentJobs = jobs.filter(
     (j) => j.priority === "urgent" && j.status !== "completed" && j.status !== "delivered"
   );
-  const completedToday = jobs.filter((j) => {
-    if (j.status !== "completed" && j.status !== "delivered") return false;
-    return new Date(j.updatedAt).toDateString() === new Date().toDateString();
-  });
+  const todayStr = new Date().toLocaleDateString();
+  const isToday = (d?: string | null) => !!d && new Date(d).toLocaleDateString() === todayStr;
+  const completedToday = jobs.filter((j) =>
+    (j.status === "completed" || j.status === "delivered") &&
+    (isToday(j.completedAt) || isToday(j.updatedAt))
+  );
 
   const kpis = [
     { label: "Confirmed", value: confirmedJobs.length, icon: HiOutlineClipboardList, color: "text-primary-500", bg: "bg-primary-100" },

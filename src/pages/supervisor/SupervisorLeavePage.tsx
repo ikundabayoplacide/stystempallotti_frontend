@@ -453,7 +453,7 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
   const [uploading, setUploading] = useState(false);
   const [createLeave, { isLoading }] = useCreateLeaveMutation();
   const [uploadDoc] = useUploadLeaveDocumentMutation();
-  const today = new Date().toISOString().split("T")[0];
+  const _n = new Date(); const today = `${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,"0")}-${String(_n.getDate()).padStart(2,"0")}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -9,5 +9,6 @@ export { default as ReceptionPage } from './ReceptionPage';
 export { default as BoutiqueStockRequestsPage } from './BoutiqueStockRequestsPage';
 export { default as BindingStockRequestsPage } from './BindingStockRequestsPage';
 export { default as SheetsPage } from './SheetsPage';
+export { default as ReceptionMaterialRequestPage } from './ReceptionMaterialRequestPage';
 // export { default as TaskAssignmentPage } from './TaskAssignmentPage';
 
