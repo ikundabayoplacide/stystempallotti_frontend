@@ -7,9 +7,16 @@ import { useGetHobeSalesQuery } from "../../store/services/hobeService";
 type Period = "day" | "week" | "month" | "year";
 const PAGE_SIZE = 8;
 
+function toLocalDateStr(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function getDateRange(period: Period) {
   const now = new Date();
-  const to = `${now.toISOString().split("T")[0]}T23:59:59.000Z`;
+  const to = `${toLocalDateStr(now)}T23:59:59`;
   let from: Date;
   switch (period) {
     case "day": from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
@@ -17,7 +24,7 @@ function getDateRange(period: Period) {
     case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
     default: from = new Date(now.getFullYear(), 0, 1); break;
   }
-  return { from: from.toISOString().split("T")[0], to };
+  return { from: toLocalDateStr(from), to };
 }
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -101,13 +108,13 @@ export default function SalesDashboard() {
 }
 
 function BoutiqueTab() {
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("day");
   const [page, setPage] = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [useCustom, setUseCustom] = useState(false);
 
-  const range = useCustom && customFrom && customTo ? { from: customFrom, to: customTo + "T23:59:59.000Z" } : getDateRange(period);
+  const range = useCustom && customFrom && customTo ? { from: customFrom, to: customTo + "T23:59:59" } : getDateRange(period);
   const { data, isLoading, refetch } = useGetSalesQuery({ from: range.from, to: range.to, limit: 500 });
   const sales = data?.sales ?? [];
 
@@ -180,13 +187,13 @@ function BoutiqueTab() {
 }
 
 function HobeTab() {
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("day");
   const [page, setPage] = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [useCustom, setUseCustom] = useState(false);
 
-  const range = useCustom && customFrom && customTo ? { from: customFrom, to: customTo + "T23:59:59.000Z" } : getDateRange(period);
+  const range = useCustom && customFrom && customTo ? { from: customFrom, to: customTo + "T23:59:59" } : getDateRange(period);
   const { data, isLoading, refetch } = useGetHobeSalesQuery({ from: range.from, to: range.to, limit: 500 });
   const sales = data?.sales ?? [];
 

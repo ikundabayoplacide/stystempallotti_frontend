@@ -16,7 +16,6 @@ import {
 } from "react-icons/hi";
 import BottleneckDetection from "../../components/BottleneckDetection";
 import DelayedJobsTracker from "../../components/DelayedJobsTracker";
-import DepartmentBreakdown from "../../components/DepartmentBreakdown";
 import LowStockAlerts from "../../components/LowStockAlerts";
 import OutstandingBalances from "../../components/OutstandingBalances";
 import { Card } from "../../components/ui";
@@ -230,17 +229,17 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Department / Stock / Balances */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <DepartmentBreakdown />
-        <LowStockAlerts />
-        <OutstandingBalances />
-      </div>
+    
 
       {/* Delayed + Bottleneck */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <DelayedJobsTracker />
         <BottleneckDetection />
+      </div>
+        {/* Department / Stock / Balances */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-6">
+        <LowStockAlerts />
+        <OutstandingBalances />
       </div>
 
       {/* Show More */}

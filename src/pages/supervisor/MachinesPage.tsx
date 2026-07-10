@@ -19,6 +19,7 @@ import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import {
   useAssignWorkerMutation,
   useCreateMachineMutation,
+  useDeleteMachineMutation,
   useGetMachineAssignmentsQuery,
   useGetMachinesQuery,
   useReassignWorkerMutation,
@@ -442,14 +443,65 @@ function AssignWorkerModal({
 
 // ─── Machine Card ─────────────────────────────────────────────────────────────
 
+function DeleteMachineModal({ machine, onClose }: { machine: Machine; onClose: () => void }) {
+  const [deleteMachine, { isLoading }] = useDeleteMachineMutation();
+
+  const handleDelete = async () => {
+    try {
+      await deleteMachine(machine.id).unwrap();
+      toast.success("Machine deactivated");
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to delete machine");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/60 z-60 flex items-center justify-center p-4">
+      <Card className="!p-6 max-w-sm w-full">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <HiOutlineTrash className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-secondary-100">Delete Machine</h3>
+            <p className="text-sm text-custom-700 mt-1">
+              Deactivate <span className="font-semibold text-secondary-100">{machine.name}</span>? Its status will be set to inactive.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors"
+          >
+            {isLoading ? <HiOutlineRefresh className="w-4 h-4 animate-spin" /> : <HiOutlineTrash className="w-4 h-4" />}
+            {isLoading ? "Deleting…" : "Yes, Delete"}
+          </button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function MachineCard({
   machine,
   onEdit,
   onManageWorkers,
+  onDelete,
 }: {
   machine: Machine;
   onEdit: (m: Machine) => void;
   onManageWorkers: (m: Machine) => void;
+  onDelete?: (m: Machine) => void;
 }) {
   const { data: assignments = [], isLoading: loadingAssignments } =
     useGetMachineAssignmentsQuery(machine.id);
@@ -521,6 +573,14 @@ function MachineCard({
         >
           <HiOutlinePencil className="w-4 h-4" /> Edit
         </button>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(machine)}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 text-red-500 text-xs font-semibold hover:bg-red-100 transition-colors"
+          >
+            <HiOutlineTrash className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </Card>
   );
@@ -537,13 +597,14 @@ export default function MachinesPage() {
   return <MachinesContent departmentId={myDeptId ?? undefined} deptName={myDept?.name} />;
 }
 
-export function MachinesContent({ departmentId, deptName }: { departmentId?: string; deptName?: string }) {
+export function MachinesContent({ departmentId, deptName, isAdmin }: { departmentId?: string; deptName?: string; isAdmin?: boolean }) {
   const [search, setSearch]           = useState("");
   const [statusFilter, setStatusFilter] = useState<MachineStatus | "">("");
   const [page, setPage]               = useState(1);
   const [showForm, setShowForm]       = useState(false);
   const [editMachine, setEditMachine] = useState<Machine | null>(null);
   const [workersMachine, setWorkersMachine] = useState<Machine | null>(null);
+  const [deletingMachine, setDeletingMachine] = useState<Machine | null>(null);
 
   const { data: machines = [], isLoading, refetch } = useGetMachinesQuery(
     departmentId ? { departmentId } : undefined
@@ -666,6 +727,7 @@ export function MachinesContent({ departmentId, deptName }: { departmentId?: str
                   machine={m}
                   onEdit={openEdit}
                   onManageWorkers={setWorkersMachine}
+                  onDelete={isAdmin ? setDeletingMachine : undefined}
                 />
               ))}
             </div>
@@ -717,6 +779,12 @@ export function MachinesContent({ departmentId, deptName }: { departmentId?: str
         <AssignWorkerModal
           machine={workersMachine}
           onClose={() => setWorkersMachine(null)}
+        />
+      )}
+      {deletingMachine && (
+        <DeleteMachineModal
+          machine={deletingMachine}
+          onClose={() => setDeletingMachine(null)}
         />
       )}
     </DashboardLayout>

@@ -3,7 +3,6 @@ import {
   HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineExclamationCircle,
-  HiOutlineTrendingUp,
   HiOutlineUsers,
   HiOutlineX,
   HiOutlineRefresh,
@@ -16,16 +15,7 @@ import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const IN_PRODUCTION_STATUSES = [
-  "in-composition",
-  "in-montage",
-  "in-printing",
-  "in-binding",
-  "in-packaging",
-  "quality-check",
-];
-
-const DONE_STATUSES = ["ready-for-delivery", "delivered", "completed"];
+const DONE_STATUSES = ["delivered", "completed", "rejected"];
 
 function isCompleted(job: Job): boolean {
   return DONE_STATUSES.includes(job.status);
@@ -58,18 +48,16 @@ export default function ProductionOverviewPage() {
   const deptStats = useMemo(() =>
     departments.map((dept, idx) => {
       const deptJobs = allJobs.filter((j) => j.departmentAssignedToId === dept.id);
-      const activeJobs = deptJobs.filter((j) => IN_PRODUCTION_STATUSES.includes(j.status)).length;
+      const activeJobs = deptJobs.filter((j) => !DONE_STATUSES.includes(j.status)).length;
       const completedJobs = deptJobs.filter(isCompleted).length;
       const workers = allEmployees.filter((e) => e.departmentId === dept.id && e.isActive).length;
       const total = deptJobs.length;
-      const efficiency = total > 0 ? Math.round((completedJobs / total) * 100) : 0;
       return {
         id: dept.id,
         name: dept.name,
         activeJobs,
         completedJobs,
         workers,
-        efficiency,
         color: DEPT_COLORS[idx % DEPT_COLORS.length],
         totalJobs: total,
       };
@@ -78,15 +66,13 @@ export default function ProductionOverviewPage() {
   );
 
   const overallStats = useMemo(() => {
-    const activeJobs = allJobs.filter((j) => IN_PRODUCTION_STATUSES.includes(j.status)).length;
+    const activeJobs = allJobs.filter((j) => !DONE_STATUSES.includes(j.status)).length;
     const completedJobs = allJobs.filter(isCompleted).length;
     const activeWorkers = allEmployees.filter((e) => e.isActive).length;
-    const total = allJobs.length;
-    const avgEfficiency = total > 0 ? Math.round((completedJobs / total) * 100) : 0;
-    return { activeJobs, completedJobs, activeWorkers, avgEfficiency };
+    return { activeJobs, completedJobs, activeWorkers };
   }, [allJobs, allEmployees]);
 
-  // Bottlenecks: departments queued with many active jobs
+  // Bottlenecks: departments with many active jobs
   const bottlenecks = useMemo(() =>
     deptStats
       .filter((d) => d.activeJobs >= 5)
@@ -103,10 +89,10 @@ export default function ProductionOverviewPage() {
     [deptStats]
   );
 
-  // Recent activity: last 6 jobs touched in production
+  // Recent activity: last 6 jobs touched
   const recentActivity = useMemo(() =>
     [...allJobs]
-      .filter((j) => IN_PRODUCTION_STATUSES.includes(j.status) || DONE_STATUSES.includes(j.status))
+      .filter((j) => j.departmentAssignedToId)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 6)
       .map((j) => {
@@ -145,12 +131,11 @@ export default function ProductionOverviewPage() {
         </div>
 
         {/* Overall Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {[
             { label: "Active Jobs", value: overallStats.activeJobs, icon: HiOutlineClock, bg: "bg-blue-100", fg: "text-blue-600" },
             { label: "Completed (All-Time)", value: overallStats.completedJobs, icon: HiOutlineCheckCircle, bg: "bg-green-100", fg: "text-green-600" },
             { label: "Active Workers", value: overallStats.activeWorkers, icon: HiOutlineUsers, bg: "bg-purple-100", fg: "text-purple-600" },
-            { label: "Completion Rate", value: `${overallStats.avgEfficiency}%`, icon: HiOutlineTrendingUp, bg: "bg-yellow-100", fg: "text-yellow-600" },
           ].map(({ label, value, icon: Icon, bg, fg }) => (
             <Card key={label} className="!p-4">
               <div className="flex items-center gap-3 mb-2">
@@ -206,7 +191,7 @@ export default function ProductionOverviewPage() {
               <table className="w-full">
                 <thead className="bg-custom-100 border-b border-custom-300">
                   <tr>
-                    {["Department", "Active Jobs", "Completed", "Workers", "Completion Rate", "Actions"].map((h) => (
+                    {["Department", "Active Jobs", "Completed", "Workers", "Actions"].map((h) => (
                       <th key={h} className={`px-4 py-3 text-xs font-bold text-secondary-100 uppercase ${h === "Actions" ? "text-right" : "text-left"}`}>{h}</th>
                     ))}
                   </tr>
@@ -230,16 +215,6 @@ export default function ProductionOverviewPage() {
                         <div className="flex items-center gap-2">
                           <HiOutlineUsers className="w-4 h-4 text-custom-700" />
                           <span className="text-sm text-secondary-100">{dept.workers}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 max-w-[120px]">
-                            <div className="w-full bg-custom-200 rounded-full h-2">
-                              <div className={`h-2 rounded-full bg-${dept.color}-500`} style={{ width: `${dept.efficiency}%` }} />
-                            </div>
-                          </div>
-                          <span className="text-sm font-bold text-primary-600 min-w-[40px]">{dept.efficiency}%</span>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-right">
@@ -317,17 +292,8 @@ export default function ProductionOverviewPage() {
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-bold text-secondary-100 uppercase tracking-wide mb-3">Completion Analysis</h4>
+                  <h4 className="text-sm font-bold text-secondary-100 uppercase tracking-wide mb-3">Workload</h4>
                   <div className="space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm text-secondary-100">Completion Rate (all-time)</span>
-                        <span className="text-sm font-bold text-primary-600">{selectedDept.efficiency}%</span>
-                      </div>
-                      <div className="w-full bg-custom-200 rounded-full h-3">
-                        <div className={`h-3 rounded-full bg-${selectedDept.color}-500`} style={{ width: `${selectedDept.efficiency}%` }} />
-                      </div>
-                    </div>
                     {selectedDept.workers > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-secondary-100">Active Jobs per Worker</span>
@@ -336,22 +302,24 @@ export default function ProductionOverviewPage() {
                         </span>
                       </div>
                     )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-secondary-100">Jobs Remaining</span>
+                      <span className="text-sm font-bold text-orange-600">{selectedDept.activeJobs}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className={`p-4 rounded-xl border ${selectedDept.efficiency >= 50 ? "bg-blue-50 border-blue-200" : "bg-yellow-50 border-yellow-200"}`}>
+                <div className={`p-4 rounded-xl border ${selectedDept.activeJobs === 0 ? "bg-green-50 border-green-200" : selectedDept.activeJobs >= 10 ? "bg-red-50 border-red-200" : "bg-blue-50 border-blue-200"}`}>
                   <div className="flex items-center gap-2">
-                    <HiOutlineCheckCircle className={`w-5 h-5 ${selectedDept.efficiency >= 50 ? "text-blue-600" : "text-yellow-600"}`} />
+                    <HiOutlineCheckCircle className={`w-5 h-5 ${selectedDept.activeJobs === 0 ? "text-green-600" : selectedDept.activeJobs >= 10 ? "text-red-600" : "text-blue-600"}`} />
                     <div>
-                      <p className={`text-sm font-bold ${selectedDept.efficiency >= 50 ? "text-blue-900" : "text-yellow-900"}`}>Department Status</p>
-                      <p className={`text-xs ${selectedDept.efficiency >= 50 ? "text-blue-700" : "text-yellow-700"}`}>
-                        {selectedDept.efficiency >= 75
-                          ? "High throughput — department is completing jobs efficiently"
-                          : selectedDept.efficiency >= 40
-                          ? "Normal operation — steady progress on active jobs"
-                          : selectedDept.activeJobs > 0
-                          ? "Jobs in progress — completions pending today"
-                          : "No active jobs assigned to this department"}
+                      <p className={`text-sm font-bold ${selectedDept.activeJobs === 0 ? "text-green-900" : selectedDept.activeJobs >= 10 ? "text-red-900" : "text-blue-900"}`}>Department Status</p>
+                      <p className={`text-xs ${selectedDept.activeJobs === 0 ? "text-green-700" : selectedDept.activeJobs >= 10 ? "text-red-700" : "text-blue-700"}`}>
+                        {selectedDept.activeJobs === 0
+                          ? "No active jobs — department queue is clear"
+                          : selectedDept.activeJobs >= 10
+                          ? "High load — consider redistributing jobs"
+                          : "Normal operation — steady progress on active jobs"}
                       </p>
                     </div>
                   </div>
