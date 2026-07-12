@@ -34,6 +34,7 @@ import { withdrawalsApi } from "./services/withdrawalsService";
 import { sheetsApi } from "./services/sheetsService";
 import { stockRequestsApi } from "./services/stockRequestsService";
 import { receptionRequestsApi } from "./services/receptionRequestsService";
+import { extraWorkersApi } from "./services/extraWorkersService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -74,6 +75,7 @@ export const store = configureStore({
     [sheetsApi.reducerPath]: sheetsApi.reducer,
     [stockRequestsApi.reducerPath]: stockRequestsApi.reducer,
     [receptionRequestsApi.reducerPath]: receptionRequestsApi.reducer,
+    [extraWorkersApi.reducerPath]: extraWorkersApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -111,7 +113,8 @@ export const store = configureStore({
       .concat(withdrawalsApi.middleware)
       .concat(sheetsApi.middleware)
       .concat(stockRequestsApi.middleware)
-      .concat(receptionRequestsApi.middleware),
+      .concat(receptionRequestsApi.middleware)
+      .concat(extraWorkersApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

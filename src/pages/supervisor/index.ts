@@ -11,4 +11,5 @@ export { default as SupervisorPage } from './SupervisorPage';
 export { default as SupervisorReviewReportsPage } from './SupervisorReviewReportsPage';
 export { default as MachinesPage } from './MachinesPage';
 export { default as SupervisorMaterialRequestPage } from './MaterialRequestPage';
+export { default as ExtraWorkersPage } from './ExtraWorkersPage';
 

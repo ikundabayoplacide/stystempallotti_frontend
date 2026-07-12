@@ -52,6 +52,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Users", path: "/admin/users", icon: HiOutlineUsers, permissionKey: "users.view" },
     { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers, permissionKey: "customers.view" },
     { label: "Casual Workers", path: "/admin/abanyabiraka", icon: HiOutlineUsers },
+    { label: "Extra Workers", path: "/admin/extra-workers", icon: HiOutlineUsers },
     { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "Departments", path: "/admin/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
     { label: "Production", path: "/admin/production", icon: HiOutlineCube, permissionKey: "production.view" },
@@ -150,6 +151,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     {label: "Payroll", path: "/finance/daf/payroll", icon: HiOutlineCurrencyDollar },
     // { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
+    { label: "Extra Workers", path: "/finance/daf/extra-workers", icon: HiOutlineUsers },
     {
       label: "Requests", path: "/finance/daf/requests", icon: HiOutlineClipboardList, children: [
         { label: "Stock Manager",   path: "/finance/daf/stock-requests",     icon: HiOutlineClipboardList },
@@ -184,6 +186,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Job Planning", path: "/production-manager/planning", icon: HiOutlineClipboardList, permissionKey: "jobs.view" },
     { label: "General Stock", path: "/production-manager/general-stock", icon: HiOutlineArchive },
     { label: "Binding Stock", path: "/production-manager/binding-stock", icon: HiOutlineArchive },
+    { label: "Extra Workers", path: "/production-manager/extra-workers", icon: HiOutlineUsers },
     { label: "Departments", path: "/production-manager/departments", icon: HiOutlineUsers, permissionKey: "departments.view" },
     {
       label: "Samples", path: "/production-manager/samples", icon: HiOutlineClipboardList, children: [
@@ -217,6 +220,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Machines", path: "/supervisor/machines", icon: HiOutlineCog },
     { label: "Samples", path: "/supervisor/samples", icon: HiOutlineDocumentText },
     { label: "Binding Stock", path: "/supervisor/binding-stock", icon: HiOutlineArchive, bindingOnly: true },
+    { label: "Extra Workers", path: "/supervisor/extra-workers", icon: HiOutlineUsers, bindingOnly: true },
     { label: "Material Requests", path: "/supervisor/materials", icon: HiOutlineCube },
     { label: "My Leave", path: "/supervisor/leave", icon: HiOutlineCalendar },
     {
@@ -298,7 +302,8 @@ export default function DashboardSidebar({
   const isBindingSupervisor =
     userRole === "supervisor" &&
     !!myDepartment &&
-    myDepartment.name.toLowerCase().includes("binding");
+    (myDepartment.name.toLowerCase().includes("binding") ||
+     myDepartment.name.toLowerCase().includes("finishing"));
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(() => {
     // Auto-open dropdowns whose children match the current path on mount
     const initial = new Set<string>();
