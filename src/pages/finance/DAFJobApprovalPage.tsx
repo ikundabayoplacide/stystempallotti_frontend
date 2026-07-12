@@ -84,7 +84,7 @@ function DAFSpecsTab({ specs, isLoading }: { specs: JobSpec[]; isLoading: boolea
                 <p className="text-xs font-semibold text-custom-700 mb-1.5">Attachments</p>
                 <div className="flex flex-wrap gap-2">
                   {spec.documents.map(doc => (
-                    <a key={doc.id} href={doc.fileUrl} download={doc.fileName}
+                    <a key={doc.id} href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary-50 border border-primary-200 text-xs font-semibold text-primary-600 hover:bg-primary-100 transition-colors">
                       📎 {doc.fileName}
                     </a>
@@ -315,9 +315,9 @@ function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => voi
                             <p className="text-sm font-semibold text-secondary-100 truncate">{doc.fileName}</p>
                             <p className="text-xs text-custom-700">{doc.mimeType}</p>
                           </div>
-                          <a href={doc.fileUrl} download={doc.fileName}
-                            className="p-1.5 rounded-lg hover:bg-primary-100 text-custom-700 hover:text-primary-600 transition-colors" title="Download">
-                            <HiOutlineDownload className="w-4 h-4" />
+                          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
+                            className="p-1.5 rounded-lg hover:bg-primary-100 text-custom-700 hover:text-primary-600 transition-colors" title="View">
+                            <HiOutlineEye className="w-4 h-4" />
                           </a>
                         </div>
                       ))}

@@ -391,10 +391,20 @@ export const boutiqueApi = createApi({
       },
     }),
 
-    // PUT /boutique/sales/:id — update a sale (e.g. pay remaining balance)
-    updateSale: builder.mutation<BoutiqueSale, { id: string; amountPaid: number }>({
-      query: ({ id, amountPaid }) => ({ url: `/sales/${id}`, method: "PUT", body: { amountPaid } }),
+    // PUT /boutique/sales/:id — update a sale
+    updateSale: builder.mutation<BoutiqueSale, { id: string; quantity?: number; amountPaid?: number; paymentMethod?: PaymentMethod; note?: string }>({
+      query: ({ id, ...body }) => ({ url: `/sales/${id}`, method: "PUT", body }),
       transformResponse: (res: ApiResponse<BoutiqueSale>) => res.data,
+      invalidatesTags: [{ type: "BoutiqueSale", id: "LIST" }],
+    }),
+
+    // DELETE /boutique/sales/:id — delete a sale (restores stock)
+    deleteSale: builder.mutation<void, string>({
+      query: (id) => ({ url: `/sales/${id}`, method: "DELETE" }),
+      invalidatesTags: [
+        { type: "BoutiqueSale", id: "LIST" },
+        { type: "BoutiqueProduct", id: "LIST" },
+      ],
     }),
 
     // GET /boutique/sales/summary
@@ -486,6 +496,7 @@ export const {
   useGetStockMovementsQuery,
   useRecordSaleMutation,
   useUpdateSaleMutation,
+  useDeleteSaleMutation,
   useGetSalesQuery,
   useGetSalesSummaryQuery,
   useCreateBoutiqueRequestMutation,

@@ -79,11 +79,17 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Visitor", path: "/reception/visitor", icon: HiOutlineClipboardList, permissionKey: "visitors.view" },
     { label: "Payments", path: "/reception/payments", icon: HiOutlineCurrencyDollar, permissionKey: "payments.view" },
     { label: "Deliveries", path: "/reception/deliveries", icon: HiOutlineArchive, permissionKey: "deliveries.view" },
-    { label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view" },
+    {
+      label: "Boutique", path: "/reception/boutique", icon: HiOutlineViewGrid, permissionKey: "boutique.view",
+      children: [
+        { label: "Trade Product",  path: "/reception/boutique",         icon: HiOutlineViewGrid },
+        { label: "Recently Trade", path: "/reception/boutique/recently", icon: HiOutlineClipboardList },
+      ]
+    },
     { label: "Boutique Stock", path: "/reception/boutique-stock", icon: HiOutlineArchive },
     { label: "Binding Stock", path: "/reception/binding-stock", icon: HiOutlineArchive },
+    { label: "Material Requests", path: "/reception/material-requests", icon: HiOutlineClipboardList },
     { label: "Sheets", path: "/reception/sheets", icon: HiOutlineDocumentText },
-    { label: "Material Requests", path: "/reception/materials", icon: HiOutlineArchive },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
@@ -144,7 +150,12 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     {label: "Payroll", path: "/finance/daf/payroll", icon: HiOutlineCurrencyDollar },
     // { label: "Quotations", path: "/finance/daf/quatation", icon: HiOutlineAdjustments, permissionKey: "finance.view" },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
-    { label: "Stock Requests", path: "/finance/daf/stock-requests", icon: HiOutlineClipboardList },
+    {
+      label: "Requests", path: "/finance/daf/requests", icon: HiOutlineClipboardList, children: [
+        { label: "Stock Manager",   path: "/finance/daf/stock-requests",     icon: HiOutlineClipboardList },
+        { label: "Receptionalist",  path: "/finance/daf/reception-requests", icon: HiOutlineClipboardList },
+      ]
+    },
     { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, permissionKey: "reports.view", children: [

@@ -215,15 +215,15 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
   const totalAmount    = job.amount ?? 0;
   const alreadyPaid    = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
   const remainingAmount = totalAmount - alreadyPaid;
-  const amountPaid     = paymentState === "FULL" ? remainingAmount : Number(partialAmount) || 0;
+  const amountPaid     = paymentState === "FULL" ? remainingAmount : (partialAmount === "" ? 0 : Number(partialAmount));
   const balance        = remainingAmount - amountPaid;
-  const partialValid   = paymentState === "PARTIAL" && amountPaid > 0 && amountPaid < remainingAmount;
+  const partialValid   = paymentState === "PARTIAL" && partialAmount !== "" && amountPaid >= 0 && amountPaid < remainingAmount;
   const canSubmit      = !!method && (paymentState === "FULL" || partialValid);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!method) { toast.error("Please select a payment method"); return; }
-    if (paymentState === "PARTIAL" && amountPaid <= 0) { toast.error("Enter a valid partial amount"); return; }
+    if (paymentState === "PARTIAL" && amountPaid < 0) { toast.error("Enter a valid partial amount"); return; }
     if (paymentState === "PARTIAL" && amountPaid >= remainingAmount) { toast.error("Partial amount must be less than the remaining balance"); return; }
 
     try {
@@ -394,7 +394,7 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
                 </label>
                 <input
                   type="number"
-                  min={1}
+                  min={0}
                   max={remainingAmount - 1}
                   placeholder={`Max ${(remainingAmount - 1).toLocaleString()} RWF`}
                   value={partialAmount}
@@ -402,7 +402,7 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
                   className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-white text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
-              {amountPaid > 0 && amountPaid < remainingAmount && (
+              {amountPaid >= 0 && amountPaid < remainingAmount && (
                 <div className="flex items-center justify-between text-sm pt-1 border-t border-orange-200">
                   <span className="text-orange-700 font-semibold">Remaining balance</span>
                   <span className="font-bold text-orange-700">{balance.toLocaleString()} RWF</span>

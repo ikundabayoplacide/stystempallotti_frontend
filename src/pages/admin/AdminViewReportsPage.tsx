@@ -7,6 +7,14 @@ import {
   HiOutlineInbox,
   HiOutlineRefresh,
 } from "react-icons/hi";
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api").replace(/\/api$/, "");
+
+function resolveUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("blob:") || url.startsWith("data:")) return url;
+  return `${API_ORIGIN}${url.startsWith("/") ? "" : "/"}${url}`;
+}
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import {
@@ -135,11 +143,13 @@ function ReportCard({
           {/* Attachment */}
           {report.attachmentUrl && (
             <a
-              href={report.attachmentUrl}
+              href={resolveUrl(report.attachmentUrl)}
               download
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-500 hover:text-primary-600 transition-colors"
             >
-              <HiOutlinePaperClip className="w-4 h-4" /> View Attachment
+              <HiOutlinePaperClip className="w-4 h-4" /> Download Attachment
             </a>
           )}
         </div>

@@ -2,6 +2,7 @@
 
 // Page Components (with Layout)
 export { default as BoutiquePage } from './Boutique';
+export { default as RecentlyTradePage } from './RecentlyTradePage';
 export { default as DeliveriesPage } from './DeliveriesPage';
 export { default as NewJobPage } from './NewJobPage';
 export { default as PaymentCollectionPage } from './PaymentCollectionPage';
