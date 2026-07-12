@@ -3,15 +3,69 @@ import {
   HiOutlineCheckCircle,
   HiOutlineClock,
   HiOutlineExclamationCircle,
+  HiOutlineSearch,
   HiOutlineUsers,
   HiOutlineX,
   HiOutlineRefresh,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
-import { useGetJobsQuery, type Job } from "../../store/services/jobsService";
+import { useGetJobsQuery, type Job, type JobState } from "../../store/services/jobsService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
+import { jobStatusConfig } from "../../types/JobStatus";
+
+// ─── State badge ──────────────────────────────────────────────────────────────
+
+const STATE_LABELS: Record<NonNullable<JobState>, string> = {
+  "in-composition":    "In Composition",
+  "in-montage":        "In Montage",
+  "in-printing":       "In Printing",
+  "in-binding":        "In Binding",
+  "in-packaging":      "In Packaging",
+  "quality-check":     "Quality Check",
+  "composition-done":  "Composition Done",
+  "montage-done":      "Montage Done",
+  "printing-done":     "Printing Done",
+  "binding-done":      "Binding Done",
+  "packaging-done":    "Packaging Done",
+  "qualitycheck-done": "Quality Check Done",
+};
+
+const STATE_COLORS: Record<NonNullable<JobState>, { bg: string; text: string }> = {
+  "in-composition":    { bg: "bg-orange-100",  text: "text-orange-700" },
+  "in-montage":        { bg: "bg-amber-100",   text: "text-amber-700" },
+  "in-printing":       { bg: "bg-pink-100",    text: "text-pink-700" },
+  "in-binding":        { bg: "bg-teal-100",    text: "text-teal-700" },
+  "in-packaging":      { bg: "bg-cyan-100",    text: "text-cyan-700" },
+  "quality-check":     { bg: "bg-purple-100",  text: "text-purple-700" },
+  "composition-done":  { bg: "bg-green-100",   text: "text-green-700" },
+  "montage-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "printing-done":     { bg: "bg-green-100",   text: "text-green-700" },
+  "binding-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "packaging-done":    { bg: "bg-green-100",   text: "text-green-700" },
+  "qualitycheck-done": { bg: "bg-green-100",   text: "text-green-700" },
+};
+
+function StateBadge({ state }: { state: JobState }) {
+  if (!state) return <span className="text-xs text-custom-500 italic">—</span>;
+  const label  = STATE_LABELS[state] ?? state;
+  const colors = STATE_COLORS[state] ?? { bg: "bg-gray-100", text: "text-gray-700" };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
+      {label}
+    </span>
+  );
+}
+
+const priorityColor: Record<string, string> = {
+  low:    "bg-green-100 text-green-700",
+  normal: "bg-blue-100 text-blue-700",
+  high:   "bg-orange-100 text-orange-700",
+  urgent: "bg-red-500 text-white",
+};
+
+const PAGE_SIZE = 10;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -25,7 +79,7 @@ const DEPT_COLORS = ["purple", "indigo", "cyan", "teal", "green", "blue", "orang
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ProductionOverviewPage() {
+export default function ProductionOverviewPage({ userRole = "admin" }: { userRole?: string }) {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
 
@@ -111,8 +165,30 @@ export default function ProductionOverviewPage() {
 
   const selectedDept = deptStats.find((d) => d.id === selectedDeptId) ?? null;
 
+  // Jobs table state
+  const [jobSearch, setJobSearch] = useState("");
+  const [jobPage, setJobPage]     = useState(1);
+
+  const deptMap = useMemo(
+    () => Object.fromEntries(departments.map((d) => [d.id, d.name])),
+    [departments]
+  );
+
+  const filteredJobs = useMemo(() => {
+    const q = jobSearch.toLowerCase();
+    return allJobs.filter(
+      (j) =>
+        j.jobNumber?.toLowerCase().includes(q) ||
+        j.title?.toLowerCase().includes(q) ||
+        j.customer?.name?.toLowerCase().includes(q)
+    );
+  }, [allJobs, jobSearch]);
+
+  const totalJobPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
+  const paginatedJobs = filteredJobs.slice((jobPage - 1) * PAGE_SIZE, jobPage * PAGE_SIZE);
+
   return (
-    <DashboardLayout userRole="admin" userName="Admin" notificationCount={0}>
+    <DashboardLayout userRole={userRole as any} userName={userRole === "daf" ? "DAF" : "Admin"} notificationCount={0}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}
@@ -133,18 +209,20 @@ export default function ProductionOverviewPage() {
         {/* Overall Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {[
-            { label: "Active Jobs", value: overallStats.activeJobs, icon: HiOutlineClock, bg: "bg-blue-100", fg: "text-blue-600" },
-            { label: "Completed (All-Time)", value: overallStats.completedJobs, icon: HiOutlineCheckCircle, bg: "bg-green-100", fg: "text-green-600" },
-            { label: "Active Workers", value: overallStats.activeWorkers, icon: HiOutlineUsers, bg: "bg-purple-100", fg: "text-purple-600" },
+            { label: "Active Jobs",        value: overallStats.activeJobs,    icon: HiOutlineClock,         bg: "bg-blue-100",   fg: "text-blue-600" },
+            { label: "Completed All-Time", value: overallStats.completedJobs, icon: HiOutlineCheckCircle,   bg: "bg-green-100",  fg: "text-green-600" },
+            { label: "Active Workers",     value: overallStats.activeWorkers, icon: HiOutlineUsers,         bg: "bg-purple-100", fg: "text-purple-600" },
           ].map(({ label, value, icon: Icon, bg, fg }) => (
             <Card key={label} className="!p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
                   <Icon className={`w-5 h-5 ${fg}`} />
                 </div>
+                <div>
+                  <p className="text-xs text-custom-700">{label}</p>
+                  <p className={`text-2xl font-bold ${fg}`}>{isLoading ? "—" : value}</p>
+                </div>
               </div>
-              <p className="text-2xl font-bold text-secondary-100">{isLoading ? "—" : value}</p>
-              <p className="text-xs text-custom-700">{label}</p>
             </Card>
           ))}
         </div>
@@ -232,6 +310,112 @@ export default function ProductionOverviewPage() {
             </div>
           </Card>
         )}
+
+        {/* Jobs Table */}
+        <Card className="!p-0 overflow-hidden">
+          <div className="p-4 bg-custom-100 border-b border-custom-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-lg font-bold text-secondary-100">All Jobs</h2>
+            <div className="relative w-full sm:w-64">
+              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+              <input
+                type="text"
+                placeholder="Search jobs…"
+                value={jobSearch}
+                onChange={(e) => { setJobSearch(e.target.value); setJobPage(1); }}
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-white text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400"
+              />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-custom-50 border-b border-custom-300">
+                <tr>
+                  {["Job", "Client", "Status", "Dept State", "Priority", "Department", "Due Date"].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-custom-200">
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-custom-700">
+                        <HiOutlineRefresh className="w-5 h-5 animate-spin" />
+                        <span className="text-sm">Loading jobs…</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedJobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-custom-700 text-sm">No jobs found</td>
+                  </tr>
+                ) : (
+                  paginatedJobs.map((job) => {
+                    const statusCfg = jobStatusConfig[job.status] ?? { label: job.status, bgColor: "bg-gray-100", color: "text-gray-700" };
+                    return (
+                      <tr key={job.id} className="hover:bg-custom-50 transition-colors">
+                        <td className="px-4 py-4">
+                          <span className="text-sm font-bold text-primary-600">{job.jobNumber}</span>
+                          <p className="text-xs text-custom-700 mt-0.5 max-w-[160px] truncate">{job.title}</p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-sm text-secondary-100">{job.customer?.name ?? "—"}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.bgColor} ${statusCfg.color}`}>
+                            {statusCfg.label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <StateBadge state={job.state ?? null} />
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${priorityColor[job.priority] ?? "bg-gray-100 text-gray-700"}`}>
+                            {job.priority}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-sm text-secondary-100">
+                            {job.departmentAssignedToId ? (deptMap[job.departmentAssignedToId] ?? "—") : (
+                              <span className="text-xs text-custom-500 italic">Unassigned</span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <span className="text-sm text-custom-700">{job.dueDate ? job.dueDate.split("T")[0] : "—"}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          {!isLoading && filteredJobs.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-custom-300">
+              <p className="text-xs text-custom-700">
+                {((jobPage - 1) * PAGE_SIZE) + 1}–{Math.min(jobPage * PAGE_SIZE, filteredJobs.length)} of {filteredJobs.length} jobs
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={jobPage <= 1}
+                  onClick={() => setJobPage((p) => p - 1)}
+                  className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm font-semibold disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                >
+                  Previous
+                </button>
+                <span className="text-xs text-custom-700 font-semibold">{jobPage} / {totalJobPages}</span>
+                <button
+                  disabled={jobPage >= totalJobPages}
+                  onClick={() => setJobPage((p) => p + 1)}
+                  className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm font-semibold disabled:opacity-40 hover:bg-custom-100 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* Recent Activity */}
         <Card className="!p-6">

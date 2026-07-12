@@ -9,7 +9,7 @@ import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineCheck,
-  HiOutlineBan,
+  HiOutlineClipboardList,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
@@ -21,8 +21,7 @@ import {
   useDeleteBoutiqueStockItemMutation,
   useCreateBoutiqueStockEntryMutation,
   useGetBoutiqueStockSortiesQuery,
-  useApproveBoutiqueStockSortieMutation,
-  useRejectBoutiqueStockSortieMutation,
+  useTakeBoutiqueStockSortieMutation,
   type BoutiqueStockItem,
   type BoutiqueStockSortie,
   type SortieStatus,
@@ -41,12 +40,6 @@ function getStockStatus(currentStock: number, alarmStock: number): string {
   if (currentStock > alarmStock) return "low";
   return "available";
 }
-
-const sortieStatusColors: Record<string, string> = {
-  pending:  "bg-yellow-100 text-yellow-700",
-  approved: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
-};
 
 const cls = "w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
 
@@ -423,114 +416,79 @@ function ItemsTab() {
   );
 }
 
-// ─── Reject Modal ────────────────────────────────────────────────────────────
+// ─── Sorties Tab (Stock role — mark approved sorties as taken) ───────────────
 
-function RejectModal({ sortie, onClose, onSuccess }: {
-  sortie: BoutiqueStockSortie;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [reason, setReason] = useState("");
-  const [reject, { isLoading }] = useRejectBoutiqueStockSortieMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reason.trim()) { toast.error("Please provide a reason"); return; }
-    try {
-      await reject({ id: sortie.id, notes: reason.trim() }).unwrap();
-      toast.success("Request rejected");
-      onSuccess();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to reject");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-sm w-full">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
-            <HiOutlineBan className="w-5 h-5 text-red-500" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-secondary-100">Reject Request</h3>
-            <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[200px]">{sortie.stockItem?.itemName ?? "Stock Item"}</p>
-          </div>
-          <button onClick={onClose} className="ml-auto text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-secondary-100 mb-1">Reason *</label>
-            <textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
-              placeholder="e.g. Insufficient stock available..."
-              className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none"
-            />
-          </div>
-          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={isLoading}
-              className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors">
-              {isLoading ? "Rejecting..." : "Reject"}
-            </button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
-}
-
-// ─── Sorties Tab ──────────────────────────────────────────────────────────────
+const sortieStatusColors: Record<string, string> = {
+  pending:  "bg-yellow-100 text-yellow-700",
+  approved: "bg-emerald-100 text-emerald-700",
+  taken:    "bg-blue-100 text-blue-700",
+  rejected: "bg-red-100 text-red-700",
+};
 
 function SortiesTab() {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
-  const [rejectTarget, setRejectTarget]   = useState<BoutiqueStockSortie | null>(null);
-  const [approveTarget, setApproveTarget] = useState<BoutiqueStockSortie | null>(null);
-  const [page, setPage]                   = useState(1);
+  const [search, setSearch]             = useState("");
+  const [takeTarget, setTakeTarget]     = useState<BoutiqueStockSortie | null>(null);
+  const [page, setPage]                 = useState(1);
 
   const { data, isLoading, refetch } = useGetBoutiqueStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
   );
-  const [approve, { isLoading: approving }] = useApproveBoutiqueStockSortieMutation();
+  const [take, { isLoading: taking }] = useTakeBoutiqueStockSortieMutation();
 
-  const allSorties: BoutiqueStockSortie[] = data?.data ?? [];
-  const pending  = allSorties.filter((s) => s.status === "pending").length;
-  const totalDeducted = allSorties
-    .filter((s) => s.status === "approved")
-    .reduce((sum, s) => sum + parseFloat(s.quantityOut), 0);
-  const sorties  = allSorties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const allSorties: BoutiqueStockSortie[] = (data?.data ?? []).filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.stockItem?.itemName?.toLowerCase().includes(q) ||
+      s.requester?.name?.toLowerCase().includes(q) ||
+      s.reason?.toLowerCase().includes(q) ||
+      s.notes?.toLowerCase().includes(q)
+    );
+  });
+  const approvedCount = allSorties.filter((s) => s.status === "approved").length;
+  const takenCount    = allSorties.filter((s) => s.status === "taken").length;
+  const sorties       = allSorties.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const handleApprove = async () => {
-    if (!approveTarget) return;
+  const handleTake = async () => {
+    if (!takeTarget) return;
     try {
-      console.log("[approve] calling approve for sortie id:", approveTarget.id);
-      const result = await approve(approveTarget.id).unwrap();
-      console.log("[approve] unwrap() succeeded, result:", result);
-      toast.success("Request approved");
-      setApproveTarget(null);
+      await take(takeTarget.id).unwrap();
+      toast.success("Marked as taken — stock deducted");
+      setTakeTarget(null);
+      refetch();
     } catch (err: any) {
-      console.error("[approve] unwrap() threw:", err);
-      console.error("[approve] err.data:", err?.data, "| err.status:", err?.status, "| err.message:", err?.message);
-      toast.error(err?.data?.message ?? "Failed to approve");
+      toast.error(err?.data?.message ?? "Failed to mark as taken");
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as SortieStatus | ""); setPage(1); }}
-          className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search item, requester..."
+          className="flex-1 min-w-48 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as SortieStatus | ""); setPage(1); }}
+          className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+        >
           <option value="">All Requests</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
+          <option value="taken">Taken</option>
           <option value="rejected">Rejected</option>
         </select>
         <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700">
           <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
         </button>
-        {pending > 0 && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-bold">
-            <HiOutlineExclamationCircle className="w-4 h-4" />
-            {pending} pending request{pending > 1 ? "s" : ""} need review
+        {approvedCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+            <HiOutlineClipboardList className="w-4 h-4" />
+            {approvedCount} approved — ready to hand out
           </span>
         )}
       </div>
@@ -541,13 +499,13 @@ function SortiesTab() {
           <p className="text-2xl font-bold text-secondary-100">{isLoading ? "—" : allSorties.length}</p>
         </Card>
         <Card className="!p-4 text-center">
-          <p className="text-xs text-custom-700 mb-1">Approved</p>
-          <p className="text-2xl font-bold text-emerald-600">{isLoading ? "—" : allSorties.filter((s) => s.status === "approved").length}</p>
+          <p className="text-xs text-custom-700 mb-1">Ready to Give</p>
+          <p className="text-2xl font-bold text-emerald-600">{isLoading ? "—" : approvedCount}</p>
         </Card>
         <Card className="!p-4 text-center col-span-2 sm:col-span-1">
-          <p className="text-xs text-custom-700 mb-1">Items Deducted</p>
-          <p className="text-2xl font-bold text-red-500">{isLoading ? "—" : totalDeducted.toLocaleString()}</p>
-          <p className="text-[10px] text-custom-400 mt-0.5">from approved requests</p>
+          <p className="text-xs text-custom-700 mb-1">Items Taken</p>
+          <p className="text-2xl font-bold text-blue-600">{isLoading ? "—" : takenCount}</p>
+          <p className="text-[10px] text-custom-400 mt-0.5">physically given to requester</p>
         </Card>
       </div>
 
@@ -562,8 +520,8 @@ function SortiesTab() {
         ) : sorties.length === 0 ? (
           <Card className="!p-10 text-center">
             <HiOutlineCheckCircle className="w-8 h-8 text-custom-400 mx-auto mb-2" />
-            <p className="text-sm text-secondary-100 font-semibold">No stock requests found</p>
-            <p className="text-xs text-custom-700 mt-1">Requests from the receptionist will appear here</p>
+            <p className="text-sm text-secondary-100 font-semibold">No requests found</p>
+            <p className="text-xs text-custom-700 mt-1">Approved requests ready for handout will appear here</p>
           </Card>
         ) : sorties.map((sortie) => (
           <Card key={sortie.id} className="!p-0 overflow-hidden">
@@ -582,67 +540,104 @@ function SortiesTab() {
                   {sortie.status}
                 </span>
               </div>
-              {sortie.status === "pending" && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setApproveTarget(sortie)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors">
-                    <HiOutlineCheck className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => setRejectTarget(sortie)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
-                    <HiOutlineBan className="w-3.5 h-3.5" /> Reject
-                  </button>
-                </div>
+              {sortie.status === "approved" && (
+                <button
+                  onClick={() => setTakeTarget(sortie)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-colors"
+                >
+                  <HiOutlineCheck className="w-3.5 h-3.5" /> Mark as Taken
+                </button>
               )}
             </div>
             <div className="px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
-              <span className="text-custom-700">Qty: <span className="font-bold text-secondary-100">{parseFloat(sortie.quantityOut)} {sortie.stockItem?.unit ?? ""}</span></span>
-              {sortie.reason && <span className="text-xs text-custom-700">Reason: <em>"{sortie.reason}"</em></span>}
-              {sortie.approvedBy && (
+              <span className="text-custom-700">
+                Qty: <span className="font-bold text-secondary-100">{parseFloat(sortie.quantityOut)} {sortie.stockItem?.unit ?? ""}</span>
+              </span>
+              {(sortie.reason || (sortie.status !== "rejected" && sortie.notes)) && (
+                <span className="text-xs text-custom-700">Reason: <em>"{sortie.reason ?? sortie.notes}"</em></span>
+              )}
+              {sortie.approvedBy && sortie.status !== "rejected" && (
                 <span className="text-xs text-custom-700">
-                  {sortie.status === "approved" ? "Approved" : "Reviewed"} by: <span className="font-medium">{sortie.approvedBy.name}</span>
+                  Approved by: <span className="font-medium">{sortie.approvedBy.name}</span>
+                </span>
+              )}
+              {sortie.status === "rejected" && sortie.notes && (
+                <span className="text-xs text-red-600">Rejection reason: <em>"{sortie.notes}"</em></span>
+              )}
+              {sortie.status === "rejected" && sortie.approvedBy && (
+                <span className="text-xs text-custom-700">
+                  Rejected by: <span className="font-medium">{sortie.approvedBy.name}</span>
+                </span>
+              )}
+              {sortie.status === "taken" && sortie.takenBy && (
+                <span className="text-xs text-custom-700">
+                  Given by: <span className="font-medium">{sortie.takenBy.name}</span>
+                  {sortie.takenAt && ` · ${new Date(sortie.takenAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short" })}`}
                 </span>
               )}
             </div>
+            {sortie.status === "taken" && sortie.stockBefore != null && sortie.stockAfter != null && (
+              <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 flex items-center gap-4 text-xs">
+                <span className="text-blue-700">Stock before: <span className="font-bold">{sortie.stockBefore}</span></span>
+                <span className="text-blue-700">→ Stock after: <span className="font-bold">{sortie.stockAfter}</span></span>
+                {sortie.stockAfter <= (sortie.stockItem?.alarmStock ?? 0) && (
+                  <span className="inline-flex items-center gap-1 text-yellow-700 font-semibold">
+                    <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> Low stock
+                  </span>
+                )}
+              </div>
+            )}
           </Card>
         ))}
       </div>
       <Pagination page={page} total={allSorties.length} onChange={setPage} />
-      {approveTarget && (
+
+      {takeTarget && (
         <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
           <Card className="!p-6 max-w-sm w-full">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                <HiOutlineCheck className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <HiOutlineCheck className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-secondary-100">Approve Request</h3>
-                <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[200px]">{approveTarget.stockItem?.itemName ?? "Stock Item"}</p>
+                <h3 className="text-base font-bold text-secondary-100">Mark as Taken</h3>
+                <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[200px]">
+                  {takeTarget.stockItem?.itemName ?? "Stock Item"}
+                </p>
               </div>
             </div>
-            <p className="text-sm text-secondary-100 mb-5">
-              Approve deduction of <span className="font-bold">{parseFloat(approveTarget.quantityOut)} {approveTarget.stockItem?.unit ?? ""}</span> from stock?
+            <p className="text-sm text-secondary-100 mb-2">
+              Confirm you have physically given{" "}
+              <span className="font-bold">{parseFloat(takeTarget.quantityOut)} {takeTarget.stockItem?.unit ?? ""}</span>{" "}
+              to <span className="font-bold">{takeTarget.requester?.name ?? "the requester"}</span>?
+            </p>
+            <p className="text-xs text-custom-700 mb-5">
+              This will deduct the quantity from current stock and cannot be undone.
             </p>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setApproveTarget(null)} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
-              <button onClick={handleApprove} disabled={approving}
-                className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
-                {approving ? "Approving..." : "Yes, Approve"}
+              <button
+                onClick={() => setTakeTarget(null)}
+                className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleTake}
+                disabled={taking}
+                className="px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 disabled:opacity-40 transition-colors"
+              >
+                {taking ? "Processing..." : "Yes, Mark Taken"}
               </button>
             </div>
           </Card>
         </div>
       )}
-      {rejectTarget && (
-        <RejectModal
-          sortie={rejectTarget}
-          onClose={() => setRejectTarget(null)}
-          onSuccess={() => { setRejectTarget(null); refetch(); }}
-        />
-      )}
+
     </div>
   );
 }
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -651,8 +646,8 @@ type Tab = "items" | "sorties";
 export default function BoutiqueStockPage() {
   const [tab, setTab] = useState<Tab>("items");
 
-  const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "pending", limit: 200 });
-  const pendingCount = sortiesData?.data?.length ?? 0;
+  const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "approved", limit: 200 });
+  const approvedCount = sortiesData?.data?.length ?? 0;
 
   return (
     <DashboardLayout>
@@ -673,7 +668,7 @@ export default function BoutiqueStockPage() {
         <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
           {([
             { id: "items",   label: "Items" },
-            { id: "sorties", label: "Requests", badge: pendingCount },
+            { id: "sorties", label: "Requests", badge: approvedCount },
           ] as { id: Tab; label: string; badge?: number }[]).map(({ id, label, badge }) => (
             <button key={id} onClick={() => setTab(id)}
               className={`relative flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${

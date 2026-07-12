@@ -6,6 +6,7 @@ import {
   HiOutlinePaperClip,
   HiOutlineInbox,
   HiOutlineRefresh,
+  HiOutlineTrash,
 } from "react-icons/hi";
 
 const API_ORIGIN = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api").replace(/\/api$/, "");
@@ -30,11 +31,13 @@ function ReportCard({
   report,
   expanded,
   onToggle,
+  onDismiss,
   showSender = false,
 }: {
   report: any;
   expanded: boolean;
   onToggle: () => void;
+  onDismiss: () => void;
   showSender?: boolean;
 }) {
   return (
@@ -72,6 +75,13 @@ function ReportCard({
               })}
             </p>
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+            className="p-1.5 rounded-lg text-custom-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+            title="Dismiss from view"
+          >
+            <HiOutlineTrash className="w-4 h-4" />
+          </button>
           {expanded
             ? <HiOutlineChevronUp className="w-4 h-4 text-custom-700" />
             : <HiOutlineChevronDown className="w-4 h-4 text-custom-700" />}
@@ -163,9 +173,10 @@ function ReportCard({
 function AssignedReports() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const { data, isLoading, refetch } = useGetAssignedReportsQuery({ page, limit: PAGE_SIZE });
-  const reports    = data?.reports    ?? [];
+  const reports    = (data?.reports ?? []).filter((r) => !dismissed.has(r.id));
   const total      = data?.total      ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
@@ -196,6 +207,7 @@ function AssignedReports() {
               report={r}
               expanded={expanded === r.id}
               onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+              onDismiss={() => setDismissed((prev) => new Set(prev).add(r.id))}
               showSender
             />
           ))}
@@ -226,9 +238,10 @@ function AssignedReports() {
 function AllReports() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const { data, isLoading, refetch } = useGetReportsQuery({ page, limit: 5 });
-  const reports    = data?.reports    ?? [];
+  const reports    = (data?.reports ?? []).filter((r) => !dismissed.has(r.id));
   const total      = data?.total      ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
@@ -259,6 +272,7 @@ function AllReports() {
               report={r}
               expanded={expanded === r.id}
               onToggle={() => setExpanded(expanded === r.id ? null : r.id)}
+              onDismiss={() => setDismissed((prev) => new Set(prev).add(r.id))}
               showSender
             />
           ))}

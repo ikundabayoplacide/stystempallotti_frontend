@@ -12,6 +12,48 @@ import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetDepartmentJobsQuery, useGetDepartmentByIdQuery, useGetDepartmentsQuery } from "../../store/services/departmentsService";
 import type { Department } from "../../store/services/departmentsService";
+import type { JobState } from "../../store/services/jobsService";
+
+const STATE_LABELS: Record<NonNullable<JobState>, string> = {
+  "in-composition":    "In Composition",
+  "in-montage":        "In Montage",
+  "in-printing":       "In Printing",
+  "in-binding":        "In Binding",
+  "in-packaging":      "In Packaging",
+  "quality-check":     "Quality Check",
+  "composition-done":  "Composition Done",
+  "montage-done":      "Montage Done",
+  "printing-done":     "Printing Done",
+  "binding-done":      "Binding Done",
+  "packaging-done":    "Packaging Done",
+  "qualitycheck-done": "Quality Check Done",
+};
+
+const STATE_COLORS: Record<NonNullable<JobState>, { bg: string; text: string }> = {
+  "in-composition":    { bg: "bg-orange-100",  text: "text-orange-700" },
+  "in-montage":        { bg: "bg-amber-100",   text: "text-amber-700" },
+  "in-printing":       { bg: "bg-pink-100",    text: "text-pink-700" },
+  "in-binding":        { bg: "bg-teal-100",    text: "text-teal-700" },
+  "in-packaging":      { bg: "bg-cyan-100",    text: "text-cyan-700" },
+  "quality-check":     { bg: "bg-purple-100",  text: "text-purple-700" },
+  "composition-done":  { bg: "bg-green-100",   text: "text-green-700" },
+  "montage-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "printing-done":     { bg: "bg-green-100",   text: "text-green-700" },
+  "binding-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "packaging-done":    { bg: "bg-green-100",   text: "text-green-700" },
+  "qualitycheck-done": { bg: "bg-green-100",   text: "text-green-700" },
+};
+
+function StateBadge({ state }: { state: JobState }) {
+  if (!state) return <span className="text-xs text-custom-500 italic">—</span>;
+  const label  = STATE_LABELS[state] ?? state;
+  const colors = STATE_COLORS[state] ?? { bg: "bg-gray-100", text: "text-gray-700" };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
+      {label}
+    </span>
+  );
+}
 
 // ─── Jobs Drawer ──────────────────────────────────────────────────────────────
 
@@ -172,11 +214,13 @@ function DepartmentDrawer({ dept, onClose }: { dept: Department; onClose: () => 
             ) : (
               <ul className="space-y-2">
                 {jobs.map((job) => (
-                  <li key={job.id} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
-                    <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
-                      <HiOutlineBriefcase className="w-4 h-4 text-primary-500" />
+                  <li key={job.id} className="px-4 py-3 rounded-xl border border-custom-200 hover:bg-custom-50 transition-colors">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-bold text-primary-500">{(job as any).jobNumber ?? "—"}</span>
+                      <StateBadge state={(job as any).state ?? null} />
                     </div>
-                    <span className="text-sm font-semibold text-secondary-100">{job.title}</span>
+                    <p className="text-sm font-semibold text-secondary-100">{job.title}</p>
+                    <p className="text-xs text-custom-500 mt-0.5">{(job as any).customer?.name ?? "—"}</p>
                   </li>
                 ))}
               </ul>

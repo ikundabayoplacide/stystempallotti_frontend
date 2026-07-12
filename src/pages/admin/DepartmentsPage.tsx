@@ -20,6 +20,48 @@ import {
   useUpdateDepartmentMutation,
 } from "../../store/services/departmentsService";
 import { useGetJobsQuery } from "../../store/services/jobsService";
+import type { JobState } from "../../store/services/jobsService";
+
+const STATE_LABELS: Record<NonNullable<JobState>, string> = {
+  "in-composition":    "In Composition",
+  "in-montage":        "In Montage",
+  "in-printing":       "In Printing",
+  "in-binding":        "In Binding",
+  "in-packaging":      "In Packaging",
+  "quality-check":     "Quality Check",
+  "composition-done":  "Composition Done",
+  "montage-done":      "Montage Done",
+  "printing-done":     "Printing Done",
+  "binding-done":      "Binding Done",
+  "packaging-done":    "Packaging Done",
+  "qualitycheck-done": "Quality Check Done",
+};
+
+const STATE_COLORS: Record<NonNullable<JobState>, { bg: string; text: string }> = {
+  "in-composition":    { bg: "bg-orange-100",  text: "text-orange-700" },
+  "in-montage":        { bg: "bg-amber-100",   text: "text-amber-700" },
+  "in-printing":       { bg: "bg-pink-100",    text: "text-pink-700" },
+  "in-binding":        { bg: "bg-teal-100",    text: "text-teal-700" },
+  "in-packaging":      { bg: "bg-cyan-100",    text: "text-cyan-700" },
+  "quality-check":     { bg: "bg-purple-100",  text: "text-purple-700" },
+  "composition-done":  { bg: "bg-green-100",   text: "text-green-700" },
+  "montage-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "printing-done":     { bg: "bg-green-100",   text: "text-green-700" },
+  "binding-done":      { bg: "bg-green-100",   text: "text-green-700" },
+  "packaging-done":    { bg: "bg-green-100",   text: "text-green-700" },
+  "qualitycheck-done": { bg: "bg-green-100",   text: "text-green-700" },
+};
+
+function StateBadge({ state }: { state: JobState }) {
+  if (!state) return <span className="text-xs text-custom-500 italic">—</span>;
+  const label  = STATE_LABELS[state] ?? state;
+  const colors = STATE_COLORS[state] ?? { bg: "bg-gray-100", text: "text-gray-700" };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colors.bg} ${colors.text}`}>
+      {label}
+    </span>
+  );
+}
 
 // ─── Jobs Drawer ──────────────────────────────────────────────────────────────
 
@@ -68,9 +110,10 @@ function JobsDrawer({ dept, jobs, onClose }: { dept: Department; jobs: any[]; on
                   </div>
                   <p className="text-sm text-secondary-100 font-medium">{j.title}</p>
                   <p className="text-xs text-custom-500 mt-0.5">{j.customer?.name ?? "—"}</p>
-                  {j.dueDate && (
-                    <p className="text-xs text-custom-400 mt-1">Due: {j.dueDate.slice(0, 10)}</p>
-                  )}
+                  <div className="flex items-center justify-between mt-1.5">
+                    {j.dueDate && <p className="text-xs text-custom-400">Due: {j.dueDate.slice(0, 10)}</p>}
+                    <StateBadge state={j.state ?? null} />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -412,7 +455,7 @@ function RowActions({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function AdminDepartmentsPage() {
+export default function AdminDepartmentsPage({ userRole = "admin" }: { userRole?: string }) {
   const [showCreate, setShowCreate] = useState(false);
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [deleteDept, setDeleteDept] = useState<Department | null>(null);
@@ -432,7 +475,7 @@ export default function AdminDepartmentsPage() {
   });
 
   return (
-    <DashboardLayout userRole="admin" userName="Admin" notificationCount={0}>
+    <DashboardLayout userRole={userRole as any} userName={userRole === "daf" ? "DAF" : "Admin"} notificationCount={0}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">

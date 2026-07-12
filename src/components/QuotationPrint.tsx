@@ -37,15 +37,7 @@ export function printQuotation(d: JobDetails, jobItems?: JobItem[]) {
   .page { width: 210mm; min-height: 297mm; margin: 0 auto; display: flex; flex-direction: column; }
 
   /* ── HEADER ── */
-  .header { border: 2px solid #00aeef; }
-  .header-top { display: flex; align-items: stretch; }
-  .header-logo { width: 80px; border-right: 2px solid #00aeef; display: flex; align-items: center; justify-content: center; padding: 8px; }
-  .header-logo img { width: 60px; height: 60px; object-fit: contain; }
-  .header-text { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px 0; }
-  .header-text .society { font-size: 13px; font-weight: bold; letter-spacing: 1px; color: #222; }
-  .header-text .society span { font-size: 16px; }
-  .header-text .company { font-size: 16px; font-weight: 900; color: #222; margin: 2px 0; }
-  .header-bar { background: #00aeef; text-align: center; padding: 5px 0; color: #fff; font-weight: bold; font-size: 12px; letter-spacing: 1px; }
+  .header img { width: 100%; display: block; }
 
   /* ── BODY ── */
   .body { flex: 1; padding: 24px 28px; }
@@ -86,16 +78,7 @@ export function printQuotation(d: JobDetails, jobItems?: JobItem[]) {
 
   <!-- HEADER -->
   <div class="header">
-    <div class="header-top">
-      <div class="header-logo">
-        <img src="/removedBgLogo.png" alt="Logo" />
-      </div>
-      <div class="header-text">
-        <div class="society">S<span>OCIETE DE L'</span>A<span>POSTOLAT</span> C<span>ATHOLIQUE</span></div>
-        <div class="company">PALLOTTI PRESSE LTD</div>
-      </div>
-    </div>
-    <div class="header-bar">Editions &nbsp;-&nbsp; Imprimerie</div>
+    <img src="/header.png" alt="Pallotti Presse Header" />
   </div>
 
   <!-- BODY -->

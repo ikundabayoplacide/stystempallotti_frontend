@@ -16,6 +16,7 @@ import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetSheetsQuery } from "../../store/services/sheetsService";
+import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,8 @@ export default function DAFDashboard() {
   const { data: rejectedData } =
     useGetJobsQuery({ status: "rejected", limit: 100 });
 
+  const { data: allJobsData } = useGetJobsQuery({ limit: 500 });
+
   const { data: paymentsData, isLoading: loadingPayments, refetch: refetchPayments } =
     useGetPaymentsQuery({ limit: 100 });
 
@@ -55,6 +58,7 @@ export default function DAFDashboard() {
   const pendingJobs   = pendingData?.jobs   ?? [];
   const confirmedJobs = confirmedData?.jobs ?? [];
   const rejectedJobs  = rejectedData?.jobs  ?? [];
+  const allJobs       = allJobsData?.jobs   ?? [];
   const payments      = paymentsData?.payments ?? [];
   const employees     = employeesData?.data ?? [];
 
@@ -66,6 +70,7 @@ export default function DAFDashboard() {
   );
 
   const { data: sheetsData, isLoading: loadingSheetsData } = useGetSheetsQuery({ limit: 500 });
+  const { data: departments = [], isLoading: loadingDepts } = useGetDepartmentsQuery();
   const sheets = sheetsData?.sheets ?? [];
   const totalSheetsQty    = sheets.reduce((s, r) => s + Number(r.qty), 0);
   const totalSheetsAmount = sheets.reduce((s, r) => s + Number(r.totalAmount), 0);
@@ -96,6 +101,16 @@ export default function DAFDashboard() {
         .slice(0, 5),
     [payments]
   );
+
+  // Active jobs per department
+  const activeJobsMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    allJobs.forEach((j) => {
+      if (j.departmentAssignedToId)
+        map[j.departmentAssignedToId] = (map[j.departmentAssignedToId] ?? 0) + 1;
+    });
+    return map;
+  }, [allJobs]);
 
   const isLoading = loadingPending || loadingConfirmed || loadingPayments || loadingEmployees;
 
@@ -502,6 +517,58 @@ export default function DAFDashboard() {
           </div>
         )}
       </Card>
+      {/* Departments Overview */}
+      <Card className="!p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <HiOutlineUsers className="w-5 h-5 text-primary-500" />
+            <h2 className="font-bold text-secondary-100">Departments</h2>
+          </div>
+          <button
+            onClick={() => navigate("/finance/daf/departments")}
+            className="text-xs font-semibold text-primary-500 hover:underline"
+          >
+            Manage →
+          </button>
+        </div>
+
+        {loadingDepts ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[1,2,3,4].map((i) => <div key={i} className="h-20 bg-custom-100 rounded-xl animate-pulse" />)}
+          </div>
+        ) : departments.length === 0 ? (
+          <div className="py-8 text-center">
+            <HiOutlineExclamationCircle className="w-8 h-8 text-custom-400 mx-auto mb-2" />
+            <p className="text-sm text-custom-700">No departments found</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {departments.map((dept) => {
+              const active = activeJobsMap[dept.id] ?? 0;
+              return (
+                <div
+                  key={dept.id}
+                  onClick={() => navigate("/finance/daf/departments")}
+                  className="p-4 rounded-xl bg-custom-50 border border-custom-200 hover:border-primary-400 hover:shadow-sm transition-all cursor-pointer"
+                >
+                  <h3 className="text-sm font-bold text-secondary-100 truncate mb-2" title={dept.name}>{dept.name}</h3>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      active > 0 ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-500"
+                    }`}>
+                      {active} job{active !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  {dept.description && (
+                    <p className="text-xs text-custom-500 mt-2 truncate">{dept.description}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+
     </div>
   );
 }

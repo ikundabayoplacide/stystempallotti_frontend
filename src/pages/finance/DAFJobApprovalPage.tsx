@@ -449,7 +449,7 @@ export default function DAFJobApprovalPage() {
     } catch { alert("Failed to verify job. Please try again."); }
   };
 
-  const totalPendingValue = pendingJobs.reduce((sum, j) => sum + (Number(j.amount) || 0), 0);
+  const totalPendingValue = allJobs.reduce((sum, j) => sum + (j.paymentStatus === "unpaid" ? (Number(j.amount) || 0) : 0), 0);
 
   return (
     <DashboardLayout>
@@ -459,7 +459,7 @@ export default function DAFJobApprovalPage() {
         <div>
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Job Financial Approval</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Job Approval</h1>
               <p className="text-sm text-custom-700 mt-1">Review and confirm pending jobs before production</p>
             </div>
             <button
@@ -513,7 +513,7 @@ export default function DAFJobApprovalPage() {
                 <HiOutlineCurrencyDollar className="w-5 h-5 text-primary-600" />
               </div>
               <div>
-                <p className="text-xs text-custom-700">Pending Value</p>
+                <p className="text-xs text-custom-700">Unpaid Value</p>
                 <p className="text-lg font-bold text-secondary-100">
                   {totalPendingValue.toLocaleString()} <span className="text-xs font-normal text-custom-700">RWF</span>
                 </p>

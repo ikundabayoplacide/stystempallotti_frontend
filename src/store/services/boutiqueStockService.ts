@@ -27,7 +27,7 @@ export interface BoutiqueStockEntry {
   createdAt: string;
 }
 
-export type SortieStatus = "pending" | "approved" | "rejected";
+export type SortieStatus = "pending" | "approved" | "taken" | "rejected";
 
 export interface BoutiqueStockSortieItem {
   id: string;
@@ -48,6 +48,11 @@ export interface BoutiqueStockSortie {
   sortieDate: string;
   requester?: { id: string; name: string; email: string; role: string };
   approvedBy?: { id: string; name: string; email: string; role: string } | null;
+  takenById?: string | null;
+  takenBy?: { id: string; name: string; email: string; role: string } | null;
+  takenAt?: string | null;
+  stockBefore?: number | null;
+  stockAfter?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -164,6 +169,16 @@ export const boutiqueStockApi = createApi({
       query: (id) => ({ url: `/sorties/${id}`, method: "DELETE" }),
       invalidatesTags: (_r, _e, id) => [{ type: "BSSortie", id }, { type: "BSSortie", id: "LIST" }, { type: "BSSortie", id: "MY" }],
     }),
+    takeBoutiqueStockSortie: builder.mutation<BoutiqueStockSortie, string>({
+      query: (id) => ({ url: `/sorties/${id}/take`, method: "PATCH" }),
+      transformResponse: (res: ApiResponse<BoutiqueStockSortie>) => res.data,
+      invalidatesTags: (_r, _e, id) => [
+        { type: "BSSortie", id },
+        { type: "BSSortie", id: "LIST" },
+        { type: "BSSortie", id: "MY" },
+        { type: "BSItem", id: "LIST" },
+      ],
+    }),
   }),
 });
 
@@ -181,4 +196,5 @@ export const {
   useRejectBoutiqueStockSortieMutation,
   useUpdateBoutiqueStockSortieMutation,
   useDeleteBoutiqueStockSortieMutation,
+  useTakeBoutiqueStockSortieMutation,
 } = boutiqueStockApi;

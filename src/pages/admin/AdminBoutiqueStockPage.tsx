@@ -39,6 +39,7 @@ const statusColors: Record<string, string> = {
 const sortieStatusColors: Record<string, string> = {
   pending:  "bg-yellow-100 text-yellow-700",
   approved: "bg-emerald-100 text-emerald-700",
+  taken:    "bg-blue-100 text-blue-700",
   rejected: "bg-red-100 text-red-700",
 };
 
@@ -436,24 +437,40 @@ function RejectModal({ sortie, onClose, onSuccess }: {
   );
 }
 
-// ─── Sorties Tab ──────────────────────────────────────────────────────────────
+// ─── Sorties Tab (Admin/DAF — approve & reject pending requests) ─────────────
 
 function SortiesTab() {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
+  const [search, setSearch]             = useState("");
   const [rejectTarget, setRejectTarget] = useState<BoutiqueStockSortie | null>(null);
+  const [approveTarget, setApproveTarget] = useState<BoutiqueStockSortie | null>(null);
 
   const { data, isLoading, refetch } = useGetBoutiqueStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
   );
-  const [approve] = useApproveBoutiqueStockSortieMutation();
+  const [approve, { isLoading: approving }] = useApproveBoutiqueStockSortieMutation();
 
-  const sorties: BoutiqueStockSortie[] = data?.data ?? [];
-  const pending  = sorties.filter((s) => s.status === "pending").length;
+  const sorties: BoutiqueStockSortie[] = (data?.data ?? []).filter((s) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.stockItem?.itemName?.toLowerCase().includes(q) ||
+      s.requester?.name?.toLowerCase().includes(q) ||
+      s.reason?.toLowerCase().includes(q) ||
+      s.notes?.toLowerCase().includes(q)
+    );
+  });
+  const pendingCount  = sorties.filter((s) => s.status === "pending").length;
+  const approvedCount = sorties.filter((s) => s.status === "approved").length;
+  const takenCount    = sorties.filter((s) => s.status === "taken").length;
+  const rejectedCount = sorties.filter((s) => s.status === "rejected").length;
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async () => {
+    if (!approveTarget) return;
     try {
-      await approve(id).unwrap();
-      toast.success("Request approved");
+      await approve(approveTarget.id).unwrap();
+      toast.success("Request approved — waiting for stock manager to give items");
+      setApproveTarget(null);
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to approve");
     }
@@ -462,22 +479,53 @@ function SortiesTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as SortieStatus | "")}
-          className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search item, requester..."
+          className="flex-1 min-w-48 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as SortieStatus | "")}
+          className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+        >
           <option value="">All Requests</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
+          <option value="taken">Taken</option>
           <option value="rejected">Rejected</option>
         </select>
         <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700">
           <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
         </button>
-        {pending > 0 && (
+        {pendingCount > 0 && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-bold">
             <HiOutlineExclamationCircle className="w-4 h-4" />
-            {pending} pending request{pending > 1 ? "s" : ""} need review
+            {pendingCount} pending request{pendingCount > 1 ? "s" : ""} need review
           </span>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="!p-4 text-center">
+          <p className="text-xs text-custom-700 mb-1">Pending</p>
+          <p className="text-2xl font-bold text-yellow-600">{isLoading ? "—" : pendingCount}</p>
+        </Card>
+        <Card className="!p-4 text-center">
+          <p className="text-xs text-custom-700 mb-1">Approved</p>
+          <p className="text-2xl font-bold text-emerald-600">{isLoading ? "—" : approvedCount}</p>
+          <p className="text-[10px] text-custom-400 mt-0.5">awaiting stock handout</p>
+        </Card>
+        <Card className="!p-4 text-center">
+          <p className="text-xs text-custom-700 mb-1">Taken</p>
+          <p className="text-2xl font-bold text-blue-600">{isLoading ? "—" : takenCount}</p>
+          <p className="text-[10px] text-custom-400 mt-0.5">stock deducted</p>
+        </Card>
+        <Card className="!p-4 text-center">
+          <p className="text-xs text-custom-700 mb-1">Rejected</p>
+          <p className="text-2xl font-bold text-red-600">{isLoading ? "—" : rejectedCount}</p>
+        </Card>
       </div>
 
       <div className="space-y-3">
@@ -497,7 +545,7 @@ function SortiesTab() {
         ) : sorties.map((sortie) => (
           <Card key={sortie.id} className="!p-0 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-custom-50 border-b border-custom-200">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <div>
                   <p className="text-sm font-semibold text-secondary-100">
                     {sortie.stockItem?.itemName ?? "Stock Item"}
@@ -512,30 +560,101 @@ function SortiesTab() {
                 </span>
               </div>
               {sortie.status === "pending" && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleApprove(sortie.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => setApproveTarget(sortie)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors"
+                  >
                     <HiOutlineCheck className="w-3.5 h-3.5" /> Approve
                   </button>
-                  <button onClick={() => setRejectTarget(sortie)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
+                  <button
+                    onClick={() => setRejectTarget(sortie)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors"
+                  >
                     <HiOutlineBan className="w-3.5 h-3.5" /> Reject
                   </button>
                 </div>
               )}
             </div>
             <div className="px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
-              <span className="text-custom-700">Qty: <span className="font-bold text-secondary-100">{parseFloat(sortie.quantityOut)} {sortie.stockItem?.unit ?? ""}</span></span>
+              <span className="text-custom-700">
+                Qty: <span className="font-bold text-secondary-100">{parseFloat(sortie.quantityOut)} {sortie.stockItem?.unit ?? ""}</span>
+              </span>
               {sortie.reason && <span className="text-xs text-custom-700">Reason: <em>"{sortie.reason}"</em></span>}
               {sortie.approvedBy && (
                 <span className="text-xs text-custom-700">
-                  {sortie.status === "approved" ? "Approved" : "Reviewed"} by: <span className="font-medium">{sortie.approvedBy.name}</span>
+                  Approved by: <span className="font-medium">{sortie.approvedBy.name}</span>
+                </span>
+              )}
+              {sortie.status === "taken" && sortie.takenBy && (
+                <span className="text-xs text-custom-700">
+                  Given by: <span className="font-medium">{sortie.takenBy.name}</span>
+                  {sortie.takenAt && ` · ${new Date(sortie.takenAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short" })}`}
                 </span>
               )}
             </div>
+            {sortie.status === "taken" && sortie.stockBefore != null && sortie.stockAfter != null && (
+              <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 flex items-center gap-4 text-xs">
+                <span className="text-blue-700">Stock before: <span className="font-bold">{sortie.stockBefore}</span></span>
+                <span className="text-blue-700">→ Stock after: <span className="font-bold">{sortie.stockAfter}</span></span>
+                {sortie.stockAfter <= (sortie.stockItem?.alarmStock ?? 0) && (
+                  <span className="inline-flex items-center gap-1 text-yellow-700 font-semibold">
+                    <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> Low stock alert sent
+                  </span>
+                )}
+              </div>
+            )}
+            {sortie.status === "rejected" && sortie.notes && (
+              <div className="px-4 py-2 bg-red-50 border-t border-red-100">
+                <p className="text-xs text-red-600 italic">Rejection reason: "{sortie.notes}"</p>
+              </div>
+            )}
           </Card>
         ))}
       </div>
+
+      {/* Approve confirm */}
+      {approveTarget && (
+        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+          <Card className="!p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                <HiOutlineCheck className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Approve Request</h3>
+                <p className="text-xs text-custom-700 mt-0.5 truncate max-w-[200px]">
+                  {approveTarget.stockItem?.itemName ?? "Stock Item"}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-secondary-100 mb-2">
+              Approve request for{" "}
+              <span className="font-bold">{parseFloat(approveTarget.quantityOut)} {approveTarget.stockItem?.unit ?? ""}</span>{" "}
+              by <span className="font-bold">{approveTarget.requester?.name ?? "requester"}</span>?
+            </p>
+            <p className="text-xs text-custom-700 mb-5">
+              Stock will not change yet. The stock manager will deduct it when they physically hand over the items.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setApproveTarget(null)}
+                className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={approving}
+                className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors"
+              >
+                {approving ? "Approving..." : "Yes, Approve"}
+              </button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {rejectTarget && (
         <RejectModal
           sortie={rejectTarget}

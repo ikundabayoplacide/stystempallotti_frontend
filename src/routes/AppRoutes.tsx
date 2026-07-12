@@ -105,6 +105,7 @@ import HobeTrade from "../pages/Hobe/Trade";
 import ProdurementPage from "../pages/finance/ProdurementPage";
 import Operations from "../pages/finance/Operations";
 import MyLeavePage from "../pages/shared/MyLeavePage";
+import MyOvertimePage from "../pages/shared/MyOvertimePage";
 import SupervisorLeavePage from "../pages/supervisor/SupervisorLeavePage";
 import HRLeaveManagementPage from "../pages/HR/LeaveManagementPage";
 import { AdminLeaveManagementPage } from "../pages/admin";
@@ -164,6 +165,7 @@ export default function AppRoutes() {
       <Route path="/reception/payments" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="payments"><PaymentCollectionPage /></ProtectedRoute>} />
       <Route path="/reception/boutique" element={<ProtectedRoute allowedRoles={["receptionist"]} pageId="boutique"><BoutiquePage /></ProtectedRoute>} />
       <Route path="/reception/leave" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/reception/overtime" element={<ProtectedRoute allowedRoles={["receptionist"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/reception/notifications" element={<ProtectedRoute allowedRoles={["receptionist"]}><NotificationsPage userRole="receptionist" userName="Receptionist" /></ProtectedRoute>} />
       <Route path="/reception/profile" element={<ProtectedRoute allowedRoles={["receptionist"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/reception/reports" element={<ProtectedRoute allowedRoles={["receptionist"]}><ReceptionReportsPage /></ProtectedRoute>} />
@@ -186,6 +188,7 @@ export default function AppRoutes() {
       <Route path="/sales/reports" element={<ProtectedRoute allowedRoles={["sales"]}><SalesReportsPage /></ProtectedRoute>} />
       <Route path="/sales/reports/my" element={<ProtectedRoute allowedRoles={["sales"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/sales/leave" element={<ProtectedRoute allowedRoles={["sales"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/sales/overtime" element={<ProtectedRoute allowedRoles={["sales"]}><MyOvertimePage /></ProtectedRoute>} />
 
 
 
@@ -202,11 +205,17 @@ export default function AppRoutes() {
       <Route path="/finance/daf/approvals" element={<ProtectedRoute allowedRoles={["daf", "hr"]}><DAFJobApprovalPage /></ProtectedRoute>} />
       <Route path="/finance/daf/notifications" element={<ProtectedRoute allowedRoles={["daf"]}><NotificationsPage userRole="daf" userName="DAF" /></ProtectedRoute>} />
       <Route path="/finance/daf/profile" element={<ProtectedRoute allowedRoles={["daf"]}><ProfilePage /></ProtectedRoute>} />
+      <Route path="/finance/daf/overtime" element={<ProtectedRoute allowedRoles={["daf"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/finance/daf/proforma" element={<ProtectedRoute allowedRoles={["daf"]}><ProformasPage /></ProtectedRoute>} />
       <Route path="/finance/daf/procurement" element={<ProtectedRoute allowedRoles={["daf", "hr"]}><ProdurementPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/stock/general" element={<ProtectedRoute allowedRoles={["daf"]}><AdminGeneralStockPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/stock/boutique" element={<ProtectedRoute allowedRoles={["daf"]}><AdminBoutiqueStockPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/stock/binding" element={<ProtectedRoute allowedRoles={["daf"]}><AdminBindingStockPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock-requests" element={<ProtectedRoute allowedRoles={["daf", "admin"]}><StockRequestsPage /></ProtectedRoute>} />
       <Route path="/finance/daf/reception-requests" element={<ProtectedRoute allowedRoles={["daf", "admin"]}><ReceptionMaterialRequestPage /></ProtectedRoute>} />
       <Route path="/finance/daf/extra-workers" element={<ProtectedRoute allowedRoles={["daf"]}><ExtraWorkersPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/departments" element={<ProtectedRoute allowedRoles={["daf"]}><AdminDepartmentsPage userRole="daf" /></ProtectedRoute>} />
+      <Route path="/finance/daf/production" element={<ProtectedRoute allowedRoles={["daf"]}><ProductionOverviewPage userRole="daf" /></ProtectedRoute>} />
 
       {/* Accountant Routes - Unified */}
       <Route path="/finance/accountant1" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant1Page /></ProtectedRoute>} />
@@ -217,6 +226,7 @@ export default function AppRoutes() {
       <Route path="/finance/accountant1/profile" element={<ProtectedRoute allowedRoles={["accountant"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/operations" element={<ProtectedRoute allowedRoles={["accountant"]}><Operations /></ProtectedRoute>} />
       <Route path="/finance/accountant1/leave" element={<ProtectedRoute allowedRoles={["accountant"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/overtime" element={<ProtectedRoute allowedRoles={["accountant"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/reports" element={<ProtectedRoute allowedRoles={["accountant"]}><AccountantReportsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/reports/my" element={<ProtectedRoute allowedRoles={["accountant"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant2Page /></ProtectedRoute>} />
@@ -236,6 +246,7 @@ export default function AppRoutes() {
       <Route path="/production-manager/reports" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProductionManagerReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/reports/my" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/production-manager/leave" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/production-manager/overtime" element={<ProtectedRoute allowedRoles={["production-manager"]}><MyOvertimePage /></ProtectedRoute>} />
       {/* <Route path="/production-manager/progress" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProgressPage /></ProtectedRoute>} /> */}
       <Route path="/production-manager/notifications" element={<ProtectedRoute allowedRoles={["production-manager"]}><NotificationsPage userRole="production-manager" userName="Production Manager" /></ProtectedRoute>} />
       <Route path="/production-manager/profile" element={<ProtectedRoute allowedRoles={["production-manager"]}><ProfilePage /></ProtectedRoute>} />
@@ -244,6 +255,7 @@ export default function AppRoutes() {
       <Route path="/stock" element={<ProtectedRoute allowedRoles={["stock"]}><StockPage /></ProtectedRoute>} />
       <Route path="/stock/suppliers" element={<ProtectedRoute allowedRoles={["stock"]}><SuppliersPage /></ProtectedRoute>} />
       <Route path="/stock/leave" element={<ProtectedRoute allowedRoles={["stock"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/stock/overtime" element={<ProtectedRoute allowedRoles={["stock"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/stock/notifications" element={<ProtectedRoute allowedRoles={["stock"]}><NotificationsPage userRole="stock" userName="Stock Manager" /></ProtectedRoute>} />
       <Route path="/stock/profile" element={<ProtectedRoute allowedRoles={["stock"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/stock/reports" element={<ProtectedRoute allowedRoles={["stock"]}><StockReportsPage /></ProtectedRoute>} />
@@ -262,6 +274,7 @@ export default function AppRoutes() {
       <Route path="/supervisor/reports/review" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorReviewReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/reports/my" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/supervisor/leave" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorLeavePage /></ProtectedRoute>} />
+      <Route path="/supervisor/overtime" element={<ProtectedRoute allowedRoles={["supervisor"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/supervisor/binding-stock" element={<ProtectedRoute allowedRoles={["supervisor"]}><BindingStockPage /></ProtectedRoute>} />
       <Route path="/supervisor/machines" element={<ProtectedRoute allowedRoles={["supervisor"]}><MachinesPage /></ProtectedRoute>} />
       <Route path="/supervisor/samples" element={<ProtectedRoute allowedRoles={["supervisor"]}><SupervisorSamplesPage /></ProtectedRoute>} />
@@ -279,6 +292,7 @@ export default function AppRoutes() {
       <Route path="/worker/reports/my" element={<ProtectedRoute allowedRoles={["worker"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/worker/materials" element={<ProtectedRoute allowedRoles={["worker"]} pageId="material-requests"><MaterialRequestPage /></ProtectedRoute>} />
       <Route path="/worker/leave" element={<ProtectedRoute allowedRoles={["worker"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/worker/overtime" element={<ProtectedRoute allowedRoles={["worker"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/worker/notifications" element={<ProtectedRoute allowedRoles={["worker"]}><NotificationsPage userRole="worker" userName="Worker" /></ProtectedRoute>} />
       <Route path="/worker/profile" element={<ProtectedRoute allowedRoles={["worker"]}><ProfilePage /></ProtectedRoute>} />
 
@@ -287,6 +301,7 @@ export default function AppRoutes() {
       <Route path="/hobe/requests" element={<ProtectedRoute allowedRoles={["hobe"]}><RequestsPage /></ProtectedRoute>} />
       <Route path="/hobe/jobs" element={<ProtectedRoute allowedRoles={["hobe"]}><JobPage /></ProtectedRoute>} />
       <Route path="/hobe/leave" element={<ProtectedRoute allowedRoles={["hobe"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/hobe/overtime" element={<ProtectedRoute allowedRoles={["hobe"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/hobe/trade" element={<ProtectedRoute allowedRoles={["hobe"]}><HobeTrade /></ProtectedRoute>} />
       <Route path="/hobe/report" element={<ProtectedRoute allowedRoles={["hobe"]}><ReportsPage /></ProtectedRoute>} />
       <Route path="/hobe/report/my-reports" element={<ProtectedRoute allowedRoles={["hobe"]}><MyReportsPage /></ProtectedRoute>} />
@@ -304,11 +319,13 @@ export default function AppRoutes() {
       <Route path="/cashier/profile" element={<ProtectedRoute allowedRoles={["cashier"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/cashier/guide" element={<ProtectedRoute allowedRoles={["cashier"]}><UserGuidesPage /></ProtectedRoute>} />
       <Route path="/cashier/leave" element={<ProtectedRoute allowedRoles={["cashier"]}><MyLeavePage /></ProtectedRoute>} />
+      <Route path="/cashier/overtime" element={<ProtectedRoute allowedRoles={["cashier"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/cashier/reports" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierReportsPage /></ProtectedRoute>} />
       <Route path="/cashier/reports/my" element={<ProtectedRoute allowedRoles={["cashier"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/hr" element={<ProtectedRoute allowedRoles={["hr"]}><HRPage /></ProtectedRoute>} />
       <Route path="/hr/employees" element={<ProtectedRoute allowedRoles={["hr"]}><EmployeesPage /></ProtectedRoute>} />
       <Route path="/hr/leave" element={<ProtectedRoute allowedRoles={["hr", "daf"]}><HRLeaveManagementPage /></ProtectedRoute>} />
+      <Route path="/hr/overtime" element={<ProtectedRoute allowedRoles={["hr"]}><MyOvertimePage /></ProtectedRoute>} />
       <Route path="/hr/notifications" element={<ProtectedRoute allowedRoles={["hr"]}><NotificationsPage userRole="hr" userName="HR" /></ProtectedRoute>} />
       <Route path="/hr/profile" element={<ProtectedRoute allowedRoles={["hr"]}><ProfilePage /></ProtectedRoute>} />
       <Route path="/hr/abanyabiraka" element={<ProtectedRoute allowedRoles={["hr"]}><Abanyabiraka /></ProtectedRoute>} />

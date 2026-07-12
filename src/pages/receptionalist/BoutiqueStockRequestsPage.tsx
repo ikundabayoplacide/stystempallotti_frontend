@@ -27,6 +27,7 @@ import {
 const sortieStatusColors: Record<string, string> = {
   pending:  "bg-yellow-100 text-yellow-700",
   approved: "bg-emerald-100 text-emerald-700",
+  taken:    "bg-blue-100 text-blue-700",
   rejected: "bg-red-100 text-red-700",
 };
 
@@ -219,6 +220,16 @@ export default function BoutiqueStockRequestsPage() {
 
   const mySorties     = sortiesData?.data ?? [];
   console.log("[MySorties] rejected →", mySorties.filter(s => s.status === "rejected").map(s => ({ id: s.id, notes: s.notes, reason: s.reason })));
+  const [requestSearch, setRequestSearch] = useState("");
+  const filteredSorties = mySorties.filter((s) => {
+    const q = requestSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      s.stockItem?.itemName?.toLowerCase().includes(q) ||
+      s.reason?.toLowerCase().includes(q) ||
+      s.notes?.toLowerCase().includes(q)
+    );
+  });
   const pendingCount  = mySorties.filter((s) => s.status === "pending").length;
   const approvedCount = mySorties.filter((s) => s.status === "approved").length;
   const rejectedCount = mySorties.filter((s) => s.status === "rejected").length;
@@ -346,7 +357,15 @@ export default function BoutiqueStockRequestsPage() {
 
           {/* My requests */}
           <div className="space-y-3">
-            <h2 className="text-sm font-bold text-secondary-100 uppercase tracking-wide">My Requests</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold text-secondary-100 uppercase tracking-wide">My Requests</h2>
+              <input
+                value={requestSearch}
+                onChange={(e) => setRequestSearch(e.target.value)}
+                placeholder="Search..."
+                className="w-40 px-3 py-1.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors"
+              />
+            </div>
 
             {sortiesLoading ? (
               <div className="space-y-2">
@@ -370,7 +389,7 @@ export default function BoutiqueStockRequestsPage() {
               </Card>
             ) : (
               <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-                {mySorties.map((sortie) => (
+                {filteredSorties.map((sortie) => (
                   <div key={sortie.id} className="rounded-xl border border-custom-300 overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-2.5 bg-custom-50 border-b border-custom-200">
                       <div className="flex items-center gap-2">
@@ -413,7 +432,13 @@ export default function BoutiqueStockRequestsPage() {
                     {sortie.status === "approved" && (
                       <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100 flex items-center gap-2">
                         <HiOutlineCheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <p className="text-xs font-semibold text-emerald-700">Approved — stock has been allocated</p>
+                        <p className="text-xs font-semibold text-emerald-700">Approved — waiting for stock manager to hand out</p>
+                      </div>
+                    )}
+                    {sortie.status === "taken" && (
+                      <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 flex items-center gap-2">
+                        <HiOutlineCheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <p className="text-xs font-semibold text-blue-700">Collected — items have been given to you from stock</p>
                       </div>
                     )}
                     {sortie.status === "rejected" && (

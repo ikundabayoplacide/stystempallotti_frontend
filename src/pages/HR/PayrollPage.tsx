@@ -48,7 +48,7 @@ export default function PayrollPage() {
   const [filterType, setFilterType] = useState<WorkerType | "">("");
   const [filterStatus, setFilterStatus] = useState<PayrollStatus | "">("");
   const [filterPeriod, setFilterPeriod] = useState("");
-  const [periodPreset, setPeriodPreset] = useState<"" | "day" | "week" | "month" | "year">("month");
+  const [periodPreset, setPeriodPreset] = useState<"" | "day" | "week" | "month" | "year">("day");
   const [showCreate, setShowCreate] = useState(false);
   const [editPayroll, setEditPayroll] = useState<Payroll | null>(null);
   const [deletePayroll, setDeletePayroll] = useState<Payroll | null>(null);

@@ -18,3 +18,6 @@ export { default as EditReportModal } from './EditReportModal';
 export { default as WorkflowRulesEngine } from './WorkflowRulesEngine';
 export { default as WorkflowValidator } from './WorkflowValidator';
 
+// Job Stats
+export { default as JobStatsWidget } from './JobStatsWidget';
+

@@ -99,6 +99,23 @@ export default function JobManagementPage() {
   };
 
   const { data, isLoading, isFetching, isError, refetch } = useGetJobsQuery(queryParams);
+  const { data: allJobsData } = useGetJobsQuery({ limit: 500 });
+
+  // Count-only queries (limit:1) — we only need `total` for system-wide stats
+  const { data: cPending }     = useGetJobsQuery({ page: 1, limit: 1, status: "pending" });
+  const { data: cConfirmed }   = useGetJobsQuery({ page: 1, limit: 1, status: "confirmed" });
+  const { data: cComposition } = useGetJobsQuery({ page: 1, limit: 1, status: "in-composition" });
+  const { data: cMontage }     = useGetJobsQuery({ page: 1, limit: 1, status: "in-montage" });
+  const { data: cPrinting }    = useGetJobsQuery({ page: 1, limit: 1, status: "in-printing" });
+  const { data: cBinding }     = useGetJobsQuery({ page: 1, limit: 1, status: "in-binding" });
+  const { data: cPackaging }   = useGetJobsQuery({ page: 1, limit: 1, status: "in-packaging" });
+  const { data: cQuality }     = useGetJobsQuery({ page: 1, limit: 1, status: "quality-check" });
+  const { data: cReady }       = useGetJobsQuery({ page: 1, limit: 1, status: "ready-for-delivery" });
+  const { data: cDelivered }   = useGetJobsQuery({ page: 1, limit: 1, status: "delivered" });
+  const { data: cPartial }     = useGetJobsQuery({ page: 1, limit: 1, status: "partial-delivered" });
+  const { data: cCompleted }   = useGetJobsQuery({ page: 1, limit: 1, status: "completed" });
+  const { data: cUrgent }      = useGetJobsQuery({ page: 1, limit: 1, priority: "urgent" });
+
   const [deleteJob,  { isLoading: isDeleting  }] = useDeleteJobMutation();
   const [approveJob, { isLoading: isApproving }] = useApproveJobMutation();
   const [rejectJob,  { isLoading: isRejecting  }] = useRejectJobMutation();
@@ -162,12 +179,23 @@ export default function JobManagementPage() {
     (filterStatus   !== "all" ? 1 : 0) +
     (filterPriority !== "all" ? 1 : 0);
 
-  // Stats derived from current page — for accurate totals the backend would
-  // need separate count endpoints; for now we use what we have.
-  const activeCount    = jobs.filter((j) => !["completed", "delivered"].includes(j.status)).length;
-  const delayedCount   = jobs.filter((j) => getDeadlineInfo(j.dueDate).isOverdue && !["completed", "delivered"].includes(j.status)).length;
-  const urgentCount    = jobs.filter((j) => j.priority === "urgent").length;
-  const completedCount = jobs.filter((j) => j.status === "completed").length;
+  const totalCount     = total;
+  const activeCount    =
+    (cPending?.total     ?? 0) + (cConfirmed?.total   ?? 0) +
+    (cComposition?.total ?? 0) + (cMontage?.total     ?? 0) +
+    (cPrinting?.total    ?? 0) + (cBinding?.total     ?? 0) +
+    (cPackaging?.total   ?? 0) + (cQuality?.total     ?? 0) +
+    (cReady?.total       ?? 0);
+  const deliveredCount = (cDelivered?.total ?? 0) + (cPartial?.total ?? 0);
+  const completedCount = cCompleted?.total ?? 0;
+  const urgentCount    = cUrgent?.total    ?? 0;
+  const delayedCount   = (allJobsData?.jobs ?? []).filter((j) =>
+    j.dueDate &&
+    new Date(j.dueDate) < new Date() &&
+    j.status !== "completed" &&
+    j.status !== "delivered" &&
+    j.status !== "rejected"
+  ).length;
 
   return (
     <DashboardLayout userRole="admin" userName="Admin" notificationCount={0}>
@@ -218,12 +246,13 @@ export default function JobManagementPage() {
         </div>
 
         {/* ── Stats ───────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Total Jobs</p><p className="text-2xl font-bold text-secondary-100">{total}</p></Card>
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-4">
+          <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Total Jobs</p><p className="text-2xl font-bold text-secondary-100">{totalCount}</p></Card>
           <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Active</p><p className="text-2xl font-bold text-blue-600">{activeCount}</p></Card>
+          <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Delivered</p><p className="text-2xl font-bold text-green-600">{deliveredCount}</p></Card>
+          <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Completed</p><p className="text-2xl font-bold text-emerald-600">{completedCount}</p></Card>
           <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Delayed</p><p className="text-2xl font-bold text-red-600">{delayedCount}</p></Card>
           <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Urgent</p><p className="text-2xl font-bold text-orange-600">{urgentCount}</p></Card>
-          <Card className="!p-4"><p className="text-xs text-custom-700 mb-1">Completed</p><p className="text-2xl font-bold text-green-600">{completedCount}</p></Card>
         </div>
 
         {/* ── Table ───────────────────────────────────────────────────────── */}
@@ -388,7 +417,6 @@ export default function JobManagementPage() {
               Showing {jobs.length === 0 ? 0 : (page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total} jobs
             </p>
             <div className="flex items-center gap-1 order-1 sm:order-2">
-              {/* Prev */}
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
@@ -397,7 +425,6 @@ export default function JobManagementPage() {
                 ←
               </button>
 
-              {/* Page numbers */}
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
                 .reduce<(number | "...")[]>((acc, p, idx, arr) => {
@@ -423,7 +450,6 @@ export default function JobManagementPage() {
                   )
                 )}
 
-              {/* Next */}
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
