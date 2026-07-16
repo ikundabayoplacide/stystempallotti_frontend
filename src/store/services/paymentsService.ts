@@ -4,7 +4,7 @@ import type { PaymentMethod } from "./jobsService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type PaymentState = "FULL" | "PARTIAL";
+export type PaymentState = "FULL" | "PARTIAL" | "ONCREDIT";
 
 export interface Payment {
   id: string;
@@ -19,7 +19,7 @@ export interface Payment {
   paymentState: PaymentState;
   paymentNote?: string;
   paidAt: string;
-  job?: { id: string; jobNumber: string; title: string; customer?: { id: string; name: string; phone?: string } };
+  job?: { id: string; jobNumber: string; title: string; status?: string; customer?: { id: string; name: string; phone?: string } };
   receivedBy?: { id: string; name: string };
 }
 
@@ -98,6 +98,7 @@ export const paymentsApi = createApi({
     getPayments: builder.query<PaginatedPayments, { page?: number; limit?: number; from?: string; to?: string; paymentMethod?: string } | void>({
       query: (params) => ({ url: "/payments", params: (params ?? {}) as Record<string, any> }),
       transformResponse: (res: any) => {
+        console.log("[paymentsService] raw GET /payments response:", JSON.stringify(res).slice(0, 500));
         const payments = Array.isArray(res.data) ? res.data : (res.data?.payments ?? []);
         const pagination = res.pagination ?? { total: payments.length, page: 1, limit: payments.length, totalPages: 1 };
         return { payments, ...pagination };

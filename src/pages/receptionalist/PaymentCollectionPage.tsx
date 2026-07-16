@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import {
   HiOutlineBadgeCheck,
   HiOutlineBriefcase,
   HiOutlineCash,
+  HiOutlineCheckCircle,
   HiOutlineChevronDoubleLeft,
   HiOutlineChevronDoubleRight,
   HiOutlineChevronLeft,
@@ -17,9 +18,11 @@ import {
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
-import { useGetJobsQuery, type Job, type PaymentMethod } from "../../store/services/jobsService";
+import { useGetJobsQuery, useGetJobByIdQuery, type Job, type PaymentMethod } from "../../store/services/jobsService";
 import {
   useRecordPaymentMutation,
+  useGetPaymentsQuery,
+  type Payment,
   type PaymentState,
 } from "../../store/services/paymentsService";
 import { useAuth } from "../../context/AuthContext";
@@ -59,6 +62,150 @@ const PAYMENT_METHODS: {
     color: "border-purple-400 bg-purple-50 text-purple-700",
   },
 ];
+
+// ─── Pending Balances Modal ───────────────────────────────────────────────────
+
+function PendingBalancesModal({
+  onClose,
+  onCollect,
+}: {
+  onClose: () => void;
+  onCollect: (job: Job) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [collectingId, setCollectingId] = useState<string | null>(null);
+  const { data, isLoading, refetch } = useGetPaymentsQuery({ limit: 200 });
+  const { data: fullJob } = useGetJobByIdQuery(collectingId ?? "", { skip: !collectingId });
+  const payments = data?.payments ?? [];
+
+  useEffect(() => {
+    if (fullJob && collectingId && fullJob.id === collectingId) {
+      setCollectingId(null);
+      onCollect(fullJob);
+      onClose();
+    }
+  }, [fullJob, collectingId]);
+
+  const jobBalanceMap = new Map<string, { payment: Payment; balance: number }>();
+  payments.forEach((p) => {
+    const bal = Number(p.balance);
+    if (bal > 0 && p.job && p.paymentState === "ONCREDIT") {
+      const existing = jobBalanceMap.get(p.jobId);
+      if (!existing || new Date(p.paidAt) > new Date(existing.payment.paidAt)) {
+        jobBalanceMap.set(p.jobId, { payment: p, balance: bal });
+      }
+    }
+  });
+
+  const allEntries = Array.from(jobBalanceMap.values()).sort(
+    (a, b) => new Date(b.payment.paidAt).getTime() - new Date(a.payment.paidAt).getTime()
+  );
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? allEntries.filter(({ payment }) =>
+        payment.job?.title?.toLowerCase().includes(q) ||
+        payment.job?.jobNumber?.toLowerCase().includes(q) ||
+        payment.job?.customer?.name?.toLowerCase().includes(q) ||
+        payment.job?.customer?.phone?.toLowerCase().includes(q)
+      )
+    : allEntries;
+
+  const totalPending = allEntries.reduce((s, e) => s + e.balance, 0);
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Pending Balances</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Delivered jobs on credit — collect payment due</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
+              <HiOutlineRefresh className="w-4 h-4 text-custom-700" />
+            </button>
+            <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
+              <HiOutlineX className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+          <input
+            type="text"
+            placeholder="Search by job title, number, or customer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
+          />
+        </div>
+
+        {totalPending > 0 && (
+          <div className="mb-4 px-4 py-2.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-between">
+            <span className="text-sm text-orange-700 font-semibold">Total outstanding</span>
+            <span className="text-base font-bold text-orange-700">{totalPending.toLocaleString()} RWF</span>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="py-12 text-center text-custom-700 text-sm">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="py-12 text-center">
+            <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+            <p className="text-sm text-custom-700">{q ? "No results found" : "No pending balances"}</p>
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+            {filtered.map(({ payment, balance }) => (
+              <div key={payment.jobId} className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-secondary-100">{payment.job?.title ?? "—"}</p>
+                      <span className="text-xs font-mono text-primary-500">#{payment.job?.jobNumber}</span>
+                    </div>
+                    {payment.job?.customer && (
+                      <p className="text-xs text-custom-700 mt-0.5">
+                        {payment.job.customer.name}
+                        {payment.job.customer.phone && ` · ${payment.job.customer.phone}`}
+                      </p>
+                    )}
+                    <div className="flex gap-4 mt-2 text-xs flex-wrap">
+                      <span className="text-custom-700">
+                        Paid: <span className="font-bold text-emerald-600">{Number(payment.amountPaid).toLocaleString()} RWF</span>
+                      </span>
+                      <span className="text-custom-700">
+                        Still owes: <span className="font-bold text-red-600">{balance.toLocaleString()} RWF</span>
+                      </span>
+                    </div>
+                    <p className="text-xs text-custom-400 mt-1">
+                      {new Date(payment.paidAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setCollectingId(payment.job!.id)}
+                    disabled={collectingId === payment.job?.id}
+                    className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors flex-shrink-0 disabled:opacity-60"
+                  >
+                    {collectingId === payment.job?.id ? "Loading..." : "Collect"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
+          >Close</button>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 const statusColors: Record<string, string> = {
   pending: "bg-gray-100 text-gray-700",
@@ -215,14 +362,15 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
   const totalAmount    = job.amount ?? 0;
   const alreadyPaid    = job.payments?.reduce((s, p) => s + Number(p.amountPaid), 0) ?? 0;
   const remainingAmount = totalAmount - alreadyPaid;
-  const amountPaid     = paymentState === "FULL" ? remainingAmount : (partialAmount === "" ? 0 : Number(partialAmount));
+  const isNone         = paymentState === "ONCREDIT";
+  const amountPaid     = isNone ? 0 : paymentState === "FULL" ? remainingAmount : (partialAmount === "" ? 0 : Number(partialAmount));
   const balance        = remainingAmount - amountPaid;
   const partialValid   = paymentState === "PARTIAL" && partialAmount !== "" && amountPaid >= 0 && amountPaid < remainingAmount;
-  const canSubmit      = !!method && (paymentState === "FULL" || partialValid);
+  const canSubmit      = isNone || (!!method && (paymentState === "FULL" || partialValid));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!method) { toast.error("Please select a payment method"); return; }
+    if (!isNone && !method) { toast.error("Please select a payment method"); return; }
     if (paymentState === "PARTIAL" && amountPaid < 0) { toast.error("Enter a valid partial amount"); return; }
     if (paymentState === "PARTIAL" && amountPaid >= remainingAmount) { toast.error("Partial amount must be less than the remaining balance"); return; }
 
@@ -231,7 +379,7 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
         jobId:         job.id,
         receivedById,
         amountPaid,
-        paymentMethod: method,
+        paymentMethod: isNone ? "ONCREDIT" : method!,
         paymentState,
         paymentNote:   paymentNote.trim() || undefined,
       }).unwrap();
@@ -283,13 +431,15 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
               <div className="flex justify-between text-sm">
                 <span className="text-custom-700">Method</span>
                 <span className="font-semibold text-secondary-100">
-                  {PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method}
+                  {isNone ? "On Credit" : PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-custom-700">Type</span>
-                <span className={`font-bold ${paymentState === "FULL" ? "text-emerald-600" : "text-orange-600"}`}>
-                  {paymentState === "FULL" ? "Full Payment" : "Partial Payment"}
+                <span className={`font-bold ${
+                  isNone ? "text-red-600" : paymentState === "FULL" ? "text-emerald-600" : "text-orange-600"
+                }`}>
+                  {isNone ? "On Credit" : paymentState === "FULL" ? "Full Payment" : "Partial Payment"}
                 </span>
               </div>
               <div className="pt-2 mt-1 border-t border-custom-300 flex justify-between items-center">
@@ -360,30 +510,39 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Payment type — Full / Partial */}
+          {/* Payment type — Full / Partial / None */}
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-3">
               Payment Type <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {(["FULL", "PARTIAL"] as PaymentState[]).map((type) => (
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { value: "FULL",    label: "Full Payment",    active: "border-emerald-500 bg-emerald-50 text-emerald-700" },
+                { value: "PARTIAL", label: "Partial Payment", active: "border-orange-400 bg-orange-50 text-orange-700" },
+                { value: "ONCREDIT", label: "On Credit",      active: "border-red-400 bg-red-50 text-red-700" },
+              ] as { value: PaymentState; label: string; active: string }[]).map(({ value, label, active }) => (
                 <button
-                  key={type}
+                  key={value}
                   type="button"
-                  onClick={() => { setPaymentState(type); setPartialAmount(""); }}
+                  onClick={() => { setPaymentState(value); setPartialAmount(""); if (value === "ONCREDIT") setMethod(null); }}
                   className={`py-3 px-4 rounded-xl border-2 font-semibold text-sm transition-all ${
-                    paymentState === type
-                      ? type === "FULL"
-                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm scale-[1.02]"
-                        : "border-orange-400 bg-orange-50 text-orange-700 shadow-sm scale-[1.02]"
+                    paymentState === value
+                      ? `${active} shadow-sm scale-[1.02]`
                       : "border-custom-300 text-custom-700 hover:border-primary-300 hover:bg-custom-100"
                   }`}
                 >
-                  {type === "FULL" ? "Full Payment" : "Partial Payment"}
+                  {label}
                 </button>
               ))}
             </div>
           </div>
+
+          {/* On Credit notice */}
+          {isNone && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-semibold">
+              Amount paid will be recorded as 0 RWF. The full balance ({remainingAmount.toLocaleString()} RWF) will appear as a pending balance.
+            </div>
+          )}
 
           {/* Partial amount input */}
           {paymentState === "PARTIAL" && (
@@ -393,12 +552,12 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
                   Amount to Pay (RWF) <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="number"
-                  min={0}
-                  max={remainingAmount - 1}
-                  placeholder={`Max ${(remainingAmount - 1).toLocaleString()} RWF`}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder={`Max ${remainingAmount.toLocaleString()} RWF`}
                   value={partialAmount}
-                  onChange={(e) => setPartialAmount(e.target.value)}
+                  onChange={(e) => setPartialAmount(e.target.value.replace(/[^0-9]/g, ""))}
                   className="w-full px-4 py-2.5 rounded-xl border border-custom-300 bg-white text-secondary-100 text-sm focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
@@ -411,29 +570,31 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
             </div>
           )}
 
-          {/* Payment method */}
-          <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-3">
-              Payment Method <span className="text-red-500">*</span>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {PAYMENT_METHODS.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => setMethod(m.value)}
-                  className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all font-semibold text-sm ${
-                    method === m.value
-                      ? m.color + " border-current shadow-sm scale-[1.02]"
-                      : "border-custom-300 text-custom-700 hover:border-primary-300 hover:bg-custom-100"
-                  }`}
-                >
-                  {m.icon}
-                  {m.label}
-                </button>
-              ))}
+          {/* Payment method — hidden when On Credit */}
+          {!isNone && (
+            <div>
+              <label className="block text-sm font-semibold text-secondary-100 mb-3">
+                Payment Method <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setMethod(m.value)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all font-semibold text-sm ${
+                      method === m.value
+                        ? m.color + " border-current shadow-sm scale-[1.02]"
+                        : "border-custom-300 text-custom-700 hover:border-primary-300 hover:bg-custom-100"
+                    }`}
+                  >
+                    {m.icon}
+                    {m.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Payment note */}
           <div>
@@ -471,6 +632,14 @@ export default function PaymentCollectionPage() {
   const [jobPage, setJobPage] = useState(1);
   const [jobPageSize, setJobPageSize] = useState(10);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showPendingBalances, setShowPendingBalances] = useState(false);
+
+  const { data: allPaymentsData } = useGetPaymentsQuery({ limit: 500 });
+  const pendingCount = new Set(
+    (allPaymentsData?.payments ?? [])
+      .filter((p) => Number(p.balance) > 0 && (p.paymentState === "ONCREDIT"))
+      .map((p) => p.jobId)
+  ).size;
 
   const {
     data: jobsData,
@@ -501,13 +670,27 @@ export default function PaymentCollectionPage() {
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
-            Payment Collection
-          </h1>
-          <p className="text-sm text-custom-700 mt-1">
-            Find the customer's job, select how they paid, and mark it as paid
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
+              Payment Collection
+            </h1>
+            <p className="text-sm text-custom-700 mt-1">
+              Find the customer's job, select how they paid, and mark it as paid
+            </p>
+          </div>
+          <button
+            onClick={() => setShowPendingBalances(true)}
+            className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors text-sm font-semibold flex-shrink-0"
+          >
+            <HiOutlineCash className="w-4 h-4" />
+            <span className="hidden sm:inline">Pending Balances</span>
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* ── Job Lookup ──────────────────────────────────────────────────── */}
@@ -732,6 +915,14 @@ export default function PaymentCollectionPage() {
           receivedById={userId}
           onClose={() => setSelectedJob(null)}
           onSuccess={handlePaymentSuccess}
+        />
+      )}
+
+      {/* ── Pending Balances Modal ───────────────────────────────────────── */}
+      {showPendingBalances && (
+        <PendingBalancesModal
+          onClose={() => setShowPendingBalances(false)}
+          onCollect={(job) => { setShowPendingBalances(false); setSelectedJob(job); }}
         />
       )}
     </DashboardLayout>

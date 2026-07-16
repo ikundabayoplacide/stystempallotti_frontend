@@ -52,8 +52,10 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Dashboard", path: "/admin", icon: HiOutlineHome },
     { label: "Users", path: "/admin/users", icon: HiOutlineUsers },
     { label: "Customers", path: "/admin/customers", icon: HiOutlineUsers },
+    {label: "Employees", path: "/admin/employees", icon: HiOutlineUsers},
     { label: "Casual Workers", path: "/admin/abanyabiraka", icon: HiOutlineUsers },
     { label: "Extra Workers", path: "/admin/extra-workers", icon: HiOutlineUsers },
+    { label: "Emp Overtime", path: "/admin/overtime", icon: HiOutlineClock },
     { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList},
     { label: "Departments", path: "/admin/departments", icon: HiOutlineUsers},
     { label: "Production", path: "/admin/production", icon: HiOutlineCube},
@@ -74,7 +76,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     // { label: "Workflow Config", path: "/admin/workflow", icon: HiOutlineAdjustments, permissionKey: "workflow_config.view" },
     { label: "Leave Management", path: "/admin/leave", icon: HiOutlineCalendar },
     { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText},
-    { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid},
+    // { label: "UI Permissions", path: "/admin/ui-permissions", icon: HiOutlineViewGrid},
   ],
   receptionist: [
     { label: "Dashboard", path: "/reception", icon: HiOutlineHome },
@@ -93,7 +95,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Material Requests", path: "/reception/material-requests", icon: HiOutlineClipboardList },
     { label: "Sheets", path: "/reception/sheets", icon: HiOutlineDocumentText },
     { label: "My Leave", path: "/reception/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/reception/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/reception/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/reception/reports", icon: HiOutlineChartBar },
@@ -108,7 +109,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Porforma Invoice", path: "/sales/proformas", icon: HiOutlineDocumentText},
     // { label: "Performa Invoice", path: "/sales/performaInvoice", icon: HiOutlineCurrencyDollar, permissionKey: "invoices.view" },
     { label: "My Leave", path: "/sales/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/sales/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/sales/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/sales/reports", icon: HiOutlineChartBar },
@@ -124,7 +124,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Casual Workers", path: "/hr/abanyabiraka", icon: HiOutlineUsers },
     { label: "Payroll", path: "/hr/payroll", icon: HiOutlineCurrencyDollar },
     { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/hr/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/hr/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/hr/reports", icon: HiOutlineChartBar },
@@ -139,7 +138,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     {label: "Job", path: "/hobe/jobs", icon: HiOutlineBriefcase },
     { label: "Requests", path: "/hobe/requests", icon: HiOutlineClipboardList },
     { label: "My Leave", path: "/hobe/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/hobe/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/hobe/report", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/hobe/report", icon: HiOutlineChartBar },
@@ -166,6 +164,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Production", path: "/finance/daf/production", icon: HiOutlineCube },
     { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
     { label: "Extra Workers", path: "/finance/daf/extra-workers", icon: HiOutlineUsers },
+    { label: "Emp Overtime", path: "/finance/daf/overtime-management", icon: HiOutlineClock },
     {
       label: "Requests", path: "/finance/daf/requests", icon: HiOutlineClipboardList, children: [
         { label: "Stock Manager",   path: "/finance/daf/stock-requests",     icon: HiOutlineClipboardList },
@@ -173,7 +172,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       ]
     },
     { label: "Leave Management", path: "/hr/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/finance/daf/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
@@ -189,7 +187,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Operations", path: "/finance/accountant1/operations", icon: HiOutlineClipboardList},
     { label: "Recovery", path: "/finance/accountant2/recovery", icon: HiOutlineCurrencyDollar },
     { label: "My Leave", path: "/finance/accountant1/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/finance/accountant1/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/finance/accountant1/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/finance/accountant1/reports", icon: HiOutlineChartBar },
@@ -210,7 +207,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
       ]
     },
     { label: "My Leave", path: "/production-manager/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/production-manager/overtime", icon: HiOutlineClock },
     { label: "Reports", path: "/production-manager/reports", icon: HiOutlineChartBar, children: [
       { label: "Generate Reports", path: "/production-manager/reports", icon: HiOutlineChartBar },
       { label: "My Reports", path: "/production-manager/reports/my", icon: HiOutlineDocumentText },
@@ -223,7 +219,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Stock Requests", path: "/stock/requests", icon: HiOutlineClipboardList },
     // { label: "Suppliers", path: "/stock/suppliers", icon: HiOutlineUsers, permissionKey: "suppliers.view" },
     { label: "My Leave", path: "/stock/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/stock/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/stock/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/stock/reports", icon: HiOutlineChartBar },
@@ -241,7 +236,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Extra Workers", path: "/supervisor/extra-workers", icon: HiOutlineUsers, bindingOnly: true },
     { label: "Material Requests", path: "/supervisor/materials", icon: HiOutlineCube },
     { label: "My Leave", path: "/supervisor/leave", icon: HiOutlineCalendar },
-    { label: "My Overtime", path: "/supervisor/overtime", icon: HiOutlineClock },
     {
       label: "Reports", path: "/supervisor/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/supervisor/reports", icon: HiOutlineChartBar },
@@ -251,12 +245,17 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   ],
   cashier: [
     { label: "Dashboard",      path: "/cashier",                icon: HiOutlineHome },
-    { label: "Payments",       path: "/cashier/payments",       icon: HiOutlineCurrencyDollar },
+    {
+      label: "Payments", path: "/cashier/payments", icon: HiOutlineCurrencyDollar,
+      children: [
+        { label: "Jobs",              path: "/cashier/payments/jobs",     icon: HiOutlineBriefcase },
+        { label: "Boutique Products", path: "/cashier/payments/boutique", icon: HiOutlineViewGrid },
+      ]
+    },
     {label: "Withdraws",      path: "/cashier/withdrows",       icon: HiOutlineCurrencyDollar},
     { label: "Expenses",       path: "/cashier/expenses",       icon: HiOutlineDocumentText },
     { label: "Casual Workers", path: "/cashier/casual-workers", icon: HiOutlineUsers },
     { label: "My Leave",       path: "/cashier/leave",          icon: HiOutlineCalendar },
-    { label: "My Overtime",    path: "/cashier/overtime",       icon: HiOutlineClock },
     {
       label: "Reports", path: "/cashier/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/cashier/reports",    icon: HiOutlineChartBar },

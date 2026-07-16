@@ -10,6 +10,7 @@ import {
   HiOutlineUser,
   HiOutlinePhone,
   HiOutlineX,
+  HiOutlineExclamationCircle,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
 import { Button, Card, PhoneInput } from "../../components/ui";
@@ -18,6 +19,7 @@ import {
   useDeliverJobMutation,
   type Job,
 } from "../../store/services/jobsService";
+import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetUnreadCountQuery } from "../../store/services/notificationsService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -211,46 +213,58 @@ export default function DeliveriesPage() {
   const [search, setSearch] = useState("");
   const [deliverJob, setDeliverJob] = useState<Job | null>(null);
 
-  // ready-for-delivery = production done; filter paid ones for handoff
-  const { data: readyData, isLoading: readyLoading, isFetching, refetch: refetchReady } =
-    useGetJobsQuery({
-      status: "ready-for-delivery",
-      limit: 200,
-      ...(search.trim() && { search: search.trim() }),
-    });
+  const { data: confirmedData, isLoading: confirmedLoading, isFetching, refetch: refetchConfirmed } =
+    useGetJobsQuery({ status: "confirmed", limit: 200, ...(search.trim() && { search: search.trim() }) });
 
-  const { data: completedData, isLoading: completedLoading, refetch: refetchCompleted } =
-    useGetJobsQuery({
-      status: "completed",
-      limit: 200,
-      ...(search.trim() && { search: search.trim() }),
-    });
+  const { data: completedAllData, isLoading: completedAllLoading, refetch: refetchCompletedAll } =
+    useGetJobsQuery({ status: "completed", limit: 200, ...(search.trim() && { search: search.trim() }) });
 
-  const { data: partialData, isLoading: partialLoading, refetch: refetchPartial } =
-    useGetJobsQuery({
-      status: "partial-delivered",
-      limit: 200,
-      ...(search.trim() && { search: search.trim() }),
-    });
+  const { data: partialDelivData, isLoading: partialDelivLoading, refetch: refetchPartialDeliv } =
+    useGetJobsQuery({ status: "partial-delivered", limit: 200, ...(search.trim() && { search: search.trim() }) });
 
   const { data: delivData, isLoading: delivLoading, refetch: refetchDeliv } =
     useGetJobsQuery({ status: "delivered", limit: 200 });
 
-  const isLoading = readyLoading || delivLoading || completedLoading || partialLoading;
-  const readyForDelivery = (readyData?.jobs ?? []).filter((j) => j.paymentStatus === "paid");
-  const completedAndPaid = (completedData?.jobs ?? []).filter((j) => j.paymentStatus === "paid");
-  const partialJobs      = (partialData?.jobs ?? []).filter((j) => j.paymentStatus === "paid");
-  const readyJobs = [...readyForDelivery, ...completedAndPaid, ...partialJobs];
-  const delivJobs = [...(delivData?.jobs ?? []), ...(partialData?.jobs ?? [])];
-  const readyTotal = readyData?.total ?? 0;
-  const delivTotal = (delivData?.total ?? 0) + (partialData?.total ?? 0);
+  const { data: paymentsData, refetch: refetchPayments } =
+    useGetPaymentsQuery({ limit: 500 });
+
+  const isLoading = confirmedLoading || completedAllLoading || partialDelivLoading || delivLoading;
+
+  const allConfirmedCompleted = [
+    ...(confirmedData?.jobs ?? []),
+    ...(completedAllData?.jobs ?? []),
+    ...(partialDelivData?.jobs ?? []),  // partial-delivered: still has remaining qty
+  ];
+
+  // 1. Ready for Delivery: confirmed|completed|partial-delivered + paid|oncredit|partial
+  const readyJobs = allConfirmedCompleted.filter((j) =>
+    j.paymentStatus === "paid" || j.paymentStatus === "oncredit" || j.paymentStatus === "partial"
+  );
+
+  // 2. Pending Balance: unique jobs from ONCREDIT payment records with balance > 0
+  const oncreditJobIds = new Set(
+    (paymentsData?.payments ?? [])
+      .filter((p) => (p.paymentState === "ONCREDIT") && Number(p.balance) > 0)
+      .map((p) => p.jobId)
+  );
+  const pendingBalanceJobs = allConfirmedCompleted.filter((j) => oncreditJobIds.has(j.id));
+
+  // 3. Already Delivered: partial-delivered (has some qty delivered) + delivered + completed
+  const delivJobs = [
+    ...(partialDelivData?.jobs ?? []),
+    ...(delivData?.jobs ?? []),
+    ...(completedAllData?.jobs ?? []),
+  ];
+
+  const delivTotal = delivJobs.length;
 
   const handleDeliveredSuccess = () => {
     setDeliverJob(null);
-    refetchReady();
-    refetchCompleted();
-    refetchPartial();
+    refetchConfirmed();
+    refetchCompletedAll();
+    refetchPartialDeliv();
     refetchDeliv();
+    refetchPayments();
   };
 
   return (
@@ -291,12 +305,12 @@ export default function DeliveriesPage() {
           </Card>
           <Card className="!p-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary-100">
-                <HiOutlineBadgeCheck className="w-5 h-5 text-primary-500" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-100">
+                <HiOutlineExclamationCircle className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <p className="text-xs text-custom-700">Total in Pipeline</p>
-                <p className="text-2xl font-bold text-secondary-100">{readyTotal + delivTotal}</p>
+                <p className="text-xs text-custom-700">Pending Balance</p>
+                <p className="text-2xl font-bold text-secondary-100">{pendingBalanceJobs.length}</p>
               </div>
             </div>
           </Card>
@@ -309,7 +323,7 @@ export default function DeliveriesPage() {
               <HiOutlineTruck className="w-5 h-5 text-emerald-500" />
               <h2 className="text-base font-bold text-secondary-100">Ready for Delivery</h2>
               <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
-                Ready-for-delivery & Paid
+                Paid · Partial · On Credit
               </span>
             </div>
             <div className="flex gap-2">
@@ -323,7 +337,7 @@ export default function DeliveriesPage() {
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
-              <button onClick={() => { refetchReady(); refetchCompleted(); refetchPartial(); refetchDeliv(); }} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
+              <button onClick={() => { refetchConfirmed(); refetchCompletedAll(); refetchPartialDeliv(); refetchDeliv(); refetchPayments(); }} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
                 <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isFetching ? "animate-spin" : ""}`} />
               </button>
             </div>
@@ -399,19 +413,42 @@ export default function DeliveriesPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {job.paymentStatus === "paid" ? (
+                        {job.paymentStatus === "paid" && (
                           <div className="flex flex-col gap-0.5">
                             <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
                               <HiOutlineBadgeCheck className="w-3.5 h-3.5" /> Paid
                             </span>
                             {job.payments?.map((p) => (
                               <span key={p.id} className="text-xs text-custom-700">
-                                {p.paymentMethod.replace(/_/g, " ")} ( {p.paymentState === "PARTIAL" ? "Partial" : "Full"})
+                                {p.paymentMethod.replace(/_/g, " ")}
                               </span>
                             ))}
                           </div>
-                        ) : (
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-600">Unpaid</span>
+                        )}
+                        {job.paymentStatus === "partial" && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                              <HiOutlineCurrencyDollar className="w-3.5 h-3.5" /> Partial
+                            </span>
+                            {job.payments?.map((p) => (
+                              <span key={p.id} className="text-xs text-custom-700">
+                                Paid: {Number(p.amountPaid ?? 0).toLocaleString()} RWF
+                              </span>
+                            ))}
+                            <span className="text-xs font-semibold text-red-500">
+                              Balance: {Number(job.payments?.find((p) => p.paymentState === "PARTIAL")?.balance ?? 0).toLocaleString()} RWF
+                            </span>
+                          </div>
+                        )}
+                        {job.paymentStatus === "oncredit" && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">
+                              <HiOutlineClock className="w-3.5 h-3.5" /> On Credit
+                            </span>
+                            <span className="text-xs font-semibold text-red-500">
+                              Owes: {Number(job.amount ?? 0).toLocaleString()} RWF
+                            </span>
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -438,6 +475,73 @@ export default function DeliveriesPage() {
           </div>
 
 
+        </Card>
+
+        {/* ── Pending Balance ──────────────────────────────────────────────── */}
+        <Card className="!p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-custom-200 flex items-center gap-2">
+            <HiOutlineExclamationCircle className="w-5 h-5 text-red-500" />
+            <h2 className="text-base font-bold text-secondary-100">Pending Balance</h2>
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">
+              Production done · Unpaid
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-custom-100 border-b border-custom-300">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Job #</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Customer</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-secondary-100 uppercase">Due Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-custom-200">
+                {isLoading ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading...</td></tr>
+                ) : pendingBalanceJobs.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No unpaid jobs pending</td></tr>
+                ) : (
+                  pendingBalanceJobs.map((job) => (
+                    <tr key={job.id} className="hover:bg-custom-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="text-sm font-mono font-semibold text-primary-500">#{job.jobNumber}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm font-semibold text-secondary-100">{job.title}</p>
+                        {job.jobType && <p className="text-xs text-custom-700">{job.jobType}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-secondary-100">{job.customer?.name ?? "—"}</p>
+                        {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-600">
+                          {job.status.replace(/-/g, " ")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {job.amount != null ? (
+                          <span className="text-sm font-bold text-red-600">
+                            {job.amount.toLocaleString()} RWF
+                          </span>
+                        ) : <span className="text-xs text-custom-400">Not set</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs text-custom-700">
+                          {job.dueDate
+                            ? new Date(job.dueDate).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })
+                            : "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </Card>
 
         {/* ── Already Delivered ────────────────────────────────────────────── */}
@@ -523,7 +627,7 @@ export default function DeliveriesPage() {
                           }`}>
                             {job.quantityRemaining ?? (job.quantity - (job.quantityDelivered ?? 0))}
                             {(job.quantityRemaining ?? 0) === 0 && (
-                              <span className="ml-1 text-xs font-normal">✓ Full</span>
+                              <span className="ml-1 text-xs  font-normal"></span>
                             )}
                           </span>
                         ) : <span className="text-custom-400 text-xs">—</span>}

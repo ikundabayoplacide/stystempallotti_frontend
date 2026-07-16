@@ -106,6 +106,7 @@ import ProdurementPage from "../pages/finance/ProdurementPage";
 import Operations from "../pages/finance/Operations";
 import MyLeavePage from "../pages/shared/MyLeavePage";
 import MyOvertimePage from "../pages/shared/MyOvertimePage";
+import OvertimeManagementPage from "../pages/admin/OvertimeManagementPage";
 import SupervisorLeavePage from "../pages/supervisor/SupervisorLeavePage";
 import HRLeaveManagementPage from "../pages/HR/LeaveManagementPage";
 import { AdminLeaveManagementPage } from "../pages/admin";
@@ -117,10 +118,12 @@ import JobPage from "../pages/Hobe/Job";
 import CashierDashboard from "../pages/cashier/CashierDashboard";
 import CashierPage from "../pages/cashier/CashierPage";
 import CashierPaymentsPage from "../pages/cashier/CashierPaymentsPage";
+import CashierBoutiquePaymentsPage from "../pages/cashier/CashierBoutiquePaymentsPage";
 import CashierExpensesPage from "../pages/cashier/CashierExpensesPage";
 import CashierCasualWorkersPage from "../pages/cashier/CashierCasualWorkersPage";
 import CashierReportsPage from "../pages/cashier/CashierReportsPage";
 import Withdraws from "../pages/cashier/Withdraws";
+import ErrorBoundary from "../components/ErrorBoundary";
 export default function AppRoutes() {
   return (
     <Routes>
@@ -137,7 +140,7 @@ export default function AppRoutes() {
       <Route path="/admin/jobs" element={<ProtectedRoute allowedRoles={["admin"]} pageId="jobs"><AdminJobManagementPage /></ProtectedRoute>} />
       <Route path="/admin/departments" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDepartmentsPage /></ProtectedRoute>} />
       <Route path="/admin/production" element={<ProtectedRoute allowedRoles={["admin"]}><ProductionOverviewPage /></ProtectedRoute>} />
-      <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><FinancePage /></ProtectedRoute>} />
+      <Route path="/admin/finance" element={<ProtectedRoute allowedRoles={["admin"]}><ErrorBoundary><FinancePage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/admin/sales" element={<ProtectedRoute allowedRoles={["admin"]}><AdminSalesPage /></ProtectedRoute>} />
       <Route path="/admin/stock" element={<ProtectedRoute allowedRoles={["admin"]}><AdminStockPage /></ProtectedRoute>} />
       <Route path="/admin/stock/general" element={<ProtectedRoute allowedRoles={["admin"]}><AdminGeneralStockPage /></ProtectedRoute>} />
@@ -154,6 +157,7 @@ export default function AppRoutes() {
       <Route path="/admin/machines" element={<ProtectedRoute allowedRoles={["admin"]}><AdminMachinesPage isAdmin /></ProtectedRoute>} />
       <Route path="/admin/abanyabiraka" element={<ProtectedRoute allowedRoles={["admin"]}><Abanyabiraka /></ProtectedRoute>} />
       <Route path="/admin/extra-workers" element={<ProtectedRoute allowedRoles={["admin"]}><ExtraWorkersPage /></ProtectedRoute>} />
+      <Route path="/admin/overtime" element={<ProtectedRoute allowedRoles={["admin"]}><OvertimeManagementPage /></ProtectedRoute>} />
       <Route path="/admin/proformas" element={<ProtectedRoute allowedRoles={["admin"]}><ProformasPage /></ProtectedRoute>} />
       <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={["admin"]}><NotificationsPage userRole="admin" userName="Admin" /></ProtectedRoute>} />
       <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><ProfilePage /></ProtectedRoute>} />
@@ -214,6 +218,7 @@ export default function AppRoutes() {
       <Route path="/finance/daf/stock-requests" element={<ProtectedRoute allowedRoles={["daf", "admin"]}><StockRequestsPage /></ProtectedRoute>} />
       <Route path="/finance/daf/reception-requests" element={<ProtectedRoute allowedRoles={["daf", "admin"]}><ReceptionMaterialRequestPage /></ProtectedRoute>} />
       <Route path="/finance/daf/extra-workers" element={<ProtectedRoute allowedRoles={["daf"]}><ExtraWorkersPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/overtime-management" element={<ProtectedRoute allowedRoles={["daf"]}><OvertimeManagementPage /></ProtectedRoute>} />
       <Route path="/finance/daf/departments" element={<ProtectedRoute allowedRoles={["daf"]}><AdminDepartmentsPage userRole="daf" /></ProtectedRoute>} />
       <Route path="/finance/daf/production" element={<ProtectedRoute allowedRoles={["daf"]}><ProductionOverviewPage userRole="daf" /></ProtectedRoute>} />
 
@@ -311,6 +316,8 @@ export default function AppRoutes() {
       {/* routes for Cashier */}
       <Route path="/cashier" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierDashboard /></ProtectedRoute>} />
       <Route path="/cashier/payments" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPaymentsPage /></ProtectedRoute>} />
+      <Route path="/cashier/payments/jobs" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPaymentsPage /></ProtectedRoute>} />
+      <Route path="/cashier/payments/boutique" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierBoutiquePaymentsPage /></ProtectedRoute>} />
       <Route path="/cashier/withdrows" element={<ProtectedRoute allowedRoles={["cashier"]}><Withdraws /></ProtectedRoute>} />
       <Route path="/cashier/expenses" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierExpensesPage /></ProtectedRoute>} />
       <Route path="/cashier/casual-workers" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierCasualWorkersPage /></ProtectedRoute>} />

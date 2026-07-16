@@ -36,9 +36,9 @@ export type JobState =
 
 export type JobPriority = "low" | "normal" | "high" | "urgent";
 
-export type PaymentMethod = "CASH" | "MOBILE_MONEY" | "BANK_TRANSFER" | "CARD";
+export type PaymentMethod = "CASH" | "MOBILE_MONEY" | "BANK_TRANSFER" | "CARD" | "ONCREDIT";
 
-export type PaymentStatus = "unpaid" | "paid";
+export type PaymentStatus = "unpaid" | "paid" | "oncredit" | "partial";
 
 export interface JobPayment {
   id: string;
@@ -198,6 +198,7 @@ export interface GetJobsParams {
   limit?: number;
   search?: string;
   status?: JobStatus;
+  paymentStatus?: PaymentStatus;
   priority?: JobPriority;
   customerId?: string;
   departmentAssignedToId?: string;
@@ -329,6 +330,7 @@ export const jobsApi = createApi({
     getJobs: builder.query<PaginatedJobs, GetJobsParams | void>({
       query: (params) => ({ url: "/jobs", params: (params ?? {}) as Record<string, any> }),
       transformResponse: (res: any) => {
+        console.log("[jobsService] raw GET /jobs response:", JSON.stringify(res).slice(0, 800));
         const pagination = res?.pagination ?? {};
         const jobs = Array.isArray(res?.data) ? res.data : (res?.data?.jobs ?? []);
         const total = pagination.total ?? res?.data?.total ?? jobs.length;

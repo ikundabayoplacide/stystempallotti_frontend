@@ -65,10 +65,11 @@ const paymentStatusColor: Record<string, string> = {
 };
 
 const methodLabel: Record<PaymentMethod, string> = {
-  cash:   "Cash",
-  mobile: "Mobile",
-  card:   "Card",
-  bank:   "Bank",
+  cash:     "Cash",
+  mobile:   "Mobile",
+  card:     "Card",
+  bank:     "Bank",
+  oncredit: "On Credit",
 };
 
 // ─── View Modal ───────────────────────────────────────────────────────────────

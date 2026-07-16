@@ -5,7 +5,6 @@ import {
   HiOutlinePlus,
   HiOutlineX,
   HiOutlinePencil,
-  HiOutlineTrash,
   HiOutlineDocumentText,
   HiOutlineCube,
   HiOutlineEye,
@@ -18,7 +17,6 @@ import {
   useGetSheetsQuery,
   useCreateSheetMutation,
   useUpdateSheetMutation,
-  useDeleteSheetMutation,
   type Sheet,
 } from "../../store/services/sheetsService";
 
@@ -303,71 +301,12 @@ function ViewModal({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) {
   );
 }
 
-// ─── Delete Confirm Modal ────────────────────────────────────────────────────
-function DeleteModal({ sheet, onClose }: { sheet: Sheet; onClose: () => void }) {
-  const [deleteSheet, { isLoading }] = useDeleteSheetMutation();
-
-  const handleDelete = async () => {
-    try {
-      await deleteSheet(sheet.id).unwrap();
-      toast.success("Sheet record deleted");
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to delete");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-md w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-secondary-100">
-            Delete Sheet Record
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-custom-700 hover:text-secondary-100"
-          >
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <p className="text-sm text-custom-700 mb-6">
-          Are you sure you want to delete the record for{" "}
-          <span className="font-bold text-secondary-100">
-            {sheet.name}
-          </span>
-          ? This action cannot be undone.
-        </p>
-
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={isLoading}
-            className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-40"
-          >
-            {isLoading ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export default function SheetsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [editSheet, setEditSheet] = useState<Sheet | null>(null);
-  const [deleteSheet, setDeleteSheet] = useState<Sheet | null>(null);
   const [viewSheet, setViewSheet] = useState<Sheet | null>(null);
 
   const { data, isLoading, isFetching, refetch } = useGetSheetsQuery({
@@ -376,22 +315,9 @@ export default function SheetsPage() {
     search: search || undefined,
   });
 
-  // Debug: Log the first sheet to see actual backend structure
-  if (data?.sheets?.[0]) {
-    console.log("First sheet from backend:", data.sheets[0]);
-  }
-
   const sheets = data?.sheets ?? [];
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 1;
-
-  const filteredSheets = sheets.filter((sheet) =>
-    search
-      ? sheet.name.toLowerCase().includes(search.toLowerCase()) ||
-        sheet.customerName?.toLowerCase().includes(search.toLowerCase()) ||
-        sheet.ref?.toLowerCase().includes(search.toLowerCase())
-      : true
-  );
 
 
   const fmt = (d: string) =>
@@ -474,7 +400,7 @@ export default function SheetsPage() {
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search by item name, customer, or ref..."
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
               />
@@ -498,7 +424,7 @@ export default function SheetsPage() {
             <div className="p-12 text-center text-custom-700">
               Loading sheets...
             </div>
-          ) : filteredSheets.length === 0 ? (
+          ) : sheets.length === 0 ? (
             <div className="p-12 text-center">
               <HiOutlineDocumentText className="w-12 h-12 text-custom-400 mx-auto mb-3" />
               <p className="text-custom-700">
@@ -539,7 +465,7 @@ export default function SheetsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom-200">
-                  {filteredSheets.map((sheet, idx) => (
+                  {sheets.map((sheet, idx) => (
                     <tr
                       key={sheet.id}
                       className="hover:bg-custom-50 transition-colors"
@@ -603,13 +529,7 @@ export default function SheetsPage() {
                           >
                             <HiOutlinePencil className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => setDeleteSheet(sheet)}
-                            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
+
                         </div>
                       </td>
                     </tr>
@@ -620,7 +540,6 @@ export default function SheetsPage() {
           )}
         </Card>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-custom-700">
@@ -654,9 +573,7 @@ export default function SheetsPage() {
       {viewSheet && (
         <ViewModal sheet={viewSheet} onClose={() => setViewSheet(null)} />
       )}
-      {deleteSheet && (
-        <DeleteModal sheet={deleteSheet} onClose={() => setDeleteSheet(null)} />
-      )}
+
     </DashboardLayout>
   );
 }

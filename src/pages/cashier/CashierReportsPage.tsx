@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   HiOutlineCash,
   HiOutlineClipboardList,
@@ -12,6 +12,9 @@ import {
   HiOutlineBan,
   HiOutlineTrash,
   HiOutlineCurrencyDollar,
+  HiOutlineShoppingBag,
+  HiOutlineBriefcase,
+  HiOutlineSearch,
 } from "react-icons/hi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -34,6 +37,9 @@ import {
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
+import {
+  useGetSalesQuery,
+} from "../../store/services/boutiqueService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -230,9 +236,313 @@ const pmColors: Record<string, string> = {
   CARD:          "bg-pink-100 text-pink-700",
 };
 
+// ─── Boutique helpers ─────────────────────────────────────────────────────────
+
+function fmtB(amount: string | number) {
+  const n = typeof amount === "string" ? parseFloat(amount) : amount;
+  return isNaN(n) ? "0" : n.toLocaleString("en-RW");
+}
+
+function toDateStrB(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+type BPeriod = "day" | "week" | "month" | "all";
+
+function getBRange(period: BPeriod): { from?: string; to?: string } {
+  const now = new Date();
+  if (period === "all") return {};
+  if (period === "day") { const s = toDateStrB(now); return { from: s, to: s }; }
+  if (period === "week") {
+    const day = now.getDay();
+    const mon = new Date(now); mon.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    return { from: toDateStrB(mon), to: toDateStrB(sun) };
+  }
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { from: toDateStrB(first), to: toDateStrB(last) };
+}
+
+const bSaleStatusColor: Record<string, string> = {
+  paid:     "bg-emerald-100 text-emerald-700",
+  partial:  "bg-yellow-100  text-yellow-700",
+  overpaid: "bg-blue-100    text-blue-700",
+};
+
+// ─── Boutique Cash Payments Report ───────────────────────────────────────────
+
+function BoutiquePaymentsReport() {
+  const [bPeriod, setBPeriod]   = useState<BPeriod>("day");
+  const [bSearch, setBSearch]   = useState("");
+  const [bPage,   setBPage]     = useState(1);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo,   setCustomTo]   = useState("");
+  const [useCustom,  setUseCustom]  = useState(false);
+
+  const range = useCustom && customFrom && customTo
+    ? { from: customFrom, to: customTo }
+    : getBRange(bPeriod);
+
+  const { data, isLoading, isFetching, refetch } = useGetSalesQuery(
+    { from: range.from, to: range.to },
+    { refetchOnMountOrArgChange: true }
+  );
+
+  const cashSales = useMemo(() => {
+    return (data?.sales ?? []).filter((s) => s.paymentMethod === "cash");
+  }, [data]);
+
+  const filtered = useMemo(() => {
+    if (!bSearch.trim()) return cashSales;
+    const q = bSearch.toLowerCase();
+    return cashSales.filter(
+      (s) =>
+        s.product?.name?.toLowerCase().includes(q) ||
+        s.product?.sku?.toLowerCase().includes(q)  ||
+        s.customer?.name?.toLowerCase().includes(q)
+    );
+  }, [cashSales, bSearch]);
+
+  const totalPages     = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated      = filtered.slice((bPage - 1) * PAGE_SIZE, bPage * PAGE_SIZE);
+  const totalCollected = filtered.reduce((s, x) => s + parseFloat(String(x.amountPaid)), 0);
+  const totalRevenue   = filtered.reduce((s, x) => s + parseFloat(String(x.totalPrice)),  0);
+  const totalBalance   = filtered.reduce((s, x) => s + parseFloat(String(x.balanceDue)),  0);
+
+  const bPeriodBtns: { label: string; value: BPeriod }[] = [
+    { label: "Today", value: "day"   },
+    { label: "Week",  value: "week"  },
+    { label: "Month", value: "month" },
+    { label: "All",   value: "all"   },
+  ];
+
+  const getExportData = () => ({
+    headers: ["Product", "SKU", "Qty", "Unit Price (RWF)", "Total (RWF)", "Paid (RWF)", "Balance (RWF)", "Status", "Customer", "Sold By", "Date"],
+    rows: filtered.map((s) => [
+      s.product?.name ?? "—",
+      s.product?.sku  ?? "—",
+      `${s.quantity} ${s.product?.unit ?? ""}`.trim(),
+      fmtB(s.unitPrice),
+      fmtB(s.totalPrice),
+      fmtB(s.amountPaid),
+      fmtB(s.balanceDue),
+      s.paymentStatus,
+      s.customer?.name ?? "—",
+      s.soldBy?.name   ?? "—",
+      new Date(s.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
+    ]),
+    summary: [
+      { label: `Transactions: ${filtered.length}`, value: "" },
+      { label: "Total Revenue",   value: `${fmtB(totalRevenue)} RWF` },
+      { label: "Outstanding",     value: `${fmtB(totalBalance)} RWF` },
+      { label: "TOTAL COLLECTED", value: `${fmtB(totalCollected)} RWF`, bold: true },
+    ] as SummaryRow[],
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-600">
+          <HiOutlineShoppingBag className="w-4 h-4" />
+        </div>
+        <h2 className="text-base font-bold text-secondary-100">Boutique Cash Payments</h2>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Period pills */}
+        <div className="flex gap-1 bg-custom-100 p-1 rounded-xl w-fit">
+          {bPeriodBtns.map((btn) => (
+            <button key={btn.value} onClick={() => { setBPeriod(btn.value); setUseCustom(false); setBPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                !useCustom && bPeriod === btn.value ? "bg-primary-500 text-white shadow-sm" : "text-custom-700 hover:text-secondary-100"
+              }`}>{btn.label}</button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          {/* Custom date range */}
+          <input type="date" value={customFrom}
+            onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setBPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          <span className="text-xs text-custom-700">to</span>
+          <input type="date" value={customTo} min={customFrom}
+            onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setBPage(1); }}
+            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
+          {useCustom && (
+            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setBPage(1); }}
+              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors">Clear</button>
+          )}
+
+          {/* Search */}
+          <div className="relative">
+            <HiOutlineSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-custom-400" />
+            <input value={bSearch} onChange={(e) => { setBSearch(e.target.value); setBPage(1); }}
+              placeholder="Search product…"
+              className="pl-7 pr-7 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors w-36" />
+            {bSearch && (
+              <button onClick={() => setBSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2">
+                <HiOutlineX className="w-3.5 h-3.5 text-custom-400" />
+              </button>
+            )}
+          </div>
+
+          <button onClick={() => refetch()}
+            className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isFetching ? "animate-spin" : ""}`} />
+          </button>
+          <PdfButtons title="Cashier Boutique Cash Report" getExportData={getExportData} />
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <StatCard label="Transactions"    value={filtered.length} />
+        <StatCard label="Total Collected" value={`${fmtB(totalCollected)} RWF`} color="text-emerald-600" />
+        <StatCard label="Outstanding"     value={`${fmtB(totalBalance)} RWF`}
+          color={totalBalance > 0 ? "text-orange-600" : "text-secondary-100"} />
+      </div>
+
+      {/* Table */}
+      <Card className="!p-0 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-custom-100 border-b border-custom-300">
+              <tr>
+                {["Product", "Qty", "Total", "Paid", "Balance", "Status", "Customer", "Date"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-custom-200">
+              {isLoading ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No cash boutique sales in this period</td></tr>
+              ) : paginated.map((s) => (
+                <tr key={s.id} className="hover:bg-custom-50 transition-colors">
+                  <td className="px-3 py-2.5">
+                    <p className="text-sm font-semibold text-secondary-100">{s.product?.name ?? "—"}</p>
+                    <p className="text-xs text-custom-700">{s.product?.sku ?? ""}</p>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100 whitespace-nowrap">
+                    {s.quantity} <span className="text-xs text-custom-500">{s.product?.unit}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100 whitespace-nowrap">{fmtB(s.totalPrice)} RWF</td>
+                  <td className="px-3 py-2.5 text-sm font-bold text-emerald-600 whitespace-nowrap">{fmtB(s.amountPaid)} RWF</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    {parseFloat(String(s.balanceDue)) > 0
+                      ? <span className="text-sm font-bold text-orange-600">{fmtB(s.balanceDue)} RWF</span>
+                      : <span className="text-xs text-custom-400">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${bSaleStatusColor[s.paymentStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                      {s.paymentStatus}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-sm text-secondary-100">{s.customer?.name ?? <span className="text-custom-400">—</span>}</td>
+                  <td className="px-3 py-2.5 text-xs text-custom-700 whitespace-nowrap">
+                    {new Date(s.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Summary */}
+      {filtered.length > 0 && (
+        <div className="flex justify-end">
+          <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
+            <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
+            {[
+              { label: "Total Revenue",   value: `${fmtB(totalRevenue)} RWF`,   cls: "text-secondary-100" },
+              { label: "Total Collected", value: `${fmtB(totalCollected)} RWF`, cls: "text-emerald-600" },
+              { label: "Outstanding",     value: `${fmtB(totalBalance)} RWF`,   cls: totalBalance > 0 ? "text-orange-600" : "text-secondary-100" },
+            ].map(({ label, value, cls }) => (
+              <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
+                <span className="text-custom-700 text-xs">{label}</span>
+                <span className={`font-bold text-xs ${cls}`}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-custom-700">
+            Showing {(bPage - 1) * PAGE_SIZE + 1}–{Math.min(bPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setBPage((p) => Math.max(1, p - 1))} disabled={bPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+              <button key={n} onClick={() => setBPage(n)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                  n === bPage ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+                }`}>{n}</button>
+            ))}
+            <button onClick={() => setBPage((p) => Math.min(totalPages, p + 1))} disabled={bPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tab 1: Payments Collected ────────────────────────────────────────────────
 
+type PaymentSubTab = "jobs" | "boutique";
+
 function PaymentsReport() {
+  const [subTab, setSubTab] = useState<PaymentSubTab>("jobs");
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-tab bar */}
+      <div className="flex gap-2 border-b border-custom-200 pb-1">
+        <button
+          onClick={() => setSubTab("jobs")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-semibold transition-colors border-b-2 ${
+            subTab === "jobs"
+              ? "border-primary-500 text-primary-500 bg-primary-50"
+              : "border-transparent text-custom-700 hover:text-secondary-100 hover:bg-custom-50"
+          }`}
+        >
+          <HiOutlineBriefcase className="w-4 h-4" />
+          Jobs
+        </button>
+        <button
+          onClick={() => setSubTab("boutique")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-xl text-sm font-semibold transition-colors border-b-2 ${
+            subTab === "boutique"
+              ? "border-primary-500 text-primary-500 bg-primary-50"
+              : "border-transparent text-custom-700 hover:text-secondary-100 hover:bg-custom-50"
+          }`}
+        >
+          <HiOutlineShoppingBag className="w-4 h-4" />
+          Boutique Products
+        </button>
+      </div>
+
+      {subTab === "jobs"     && <JobsPaymentsReport />}
+      {subTab === "boutique" && <BoutiquePaymentsReport />}
+    </div>
+  );
+}
+
+// ─── Tab 1a: Job Payments ─────────────────────────────────────────────────────
+
+function JobsPaymentsReport() {
   const [period, setPeriod]         = useState<Period>("month");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");

@@ -105,9 +105,9 @@ export interface UpdateStockPayload {
 
 // ─── Sales ────────────────────────────────────────────────────────────────────
 
-export type PaymentMethod = "cash" | "mobile" | "card" | "bank";
+export type PaymentMethod = "cash" | "mobile" | "card" | "bank" | "oncredit";
 
-export type SalePaymentStatus = "paid" | "partial" | "overpaid";
+export type SalePaymentStatus = "paid" | "partial" | "overpaid" | "oncredit";
 
 export interface BoutiqueSale {
   id: string;
@@ -164,7 +164,7 @@ export interface GetSalesParams {
   customerId?: string;
   from?: string;
   to?: string;
-  paymentStatus?: SalePaymentStatus;
+  paymentStatus?: SalePaymentStatus | "oncredit";
 }
 
 export interface PaginatedSales {

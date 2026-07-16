@@ -76,7 +76,7 @@ function ViewEmployeeModal({ employee: emp, onClose }: { employee: any; onClose:
 }
 
 export default function EmployeesPage() {
-  const { userName } = useAuth();
+  const { userName, userRole } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
@@ -92,7 +92,7 @@ export default function EmployeesPage() {
   const totalPages = Math.ceil(total / 10);
 
   return (
-    <DashboardLayout userRole="hr" userName={userName ?? "HR"} notificationCount={0}>
+    <DashboardLayout userRole={userRole ?? "hr"} userName={userName ?? "HR"} notificationCount={0}>
       <div className="space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>

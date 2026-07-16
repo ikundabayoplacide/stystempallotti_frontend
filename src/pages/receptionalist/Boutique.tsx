@@ -348,10 +348,11 @@ function AddProductModal({ categories, onClose, onSuccess }: {
 // ─── Product Detail / Sell Modal ─────────────────────────────────────────────
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: "cash",   label: "Cash" },
-  { value: "mobile", label: "Mobile Money" },
-  { value: "card",   label: "Card" },
-  { value: "bank",   label: "Bank Transfer" },
+  { value: "cash",     label: "Cash" },
+  { value: "mobile",   label: "Mobile Money" },
+  { value: "card",     label: "Card" },
+  { value: "bank",     label: "Bank Transfer" },
+  { value: "oncredit", label: "On Credit" },
 ];
 
 function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
@@ -376,11 +377,11 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
   const handleSell = async (e: React.FormEvent) => {
     e.preventDefault();
     const q    = parseInt(qty);
-    const paid = parseFloat(amountPaid);
-    if (!q || q <= 0)       { toast.error("Enter a valid quantity"); return; }
-    if (q > product.stock)  { toast.error(`Only ${product.stock} units available`); return; }
-    if (!paid || paid <= 0) { toast.error("Enter amount paid"); return; }
-    if (!customerId)        { toast.error("Please select a customer"); return; }
+    const paid = paymentMethod === "oncredit" ? 0 : parseFloat(amountPaid);
+    if (!q || q <= 0)                              { toast.error("Enter a valid quantity"); return; }
+    if (q > product.stock)                         { toast.error(`Only ${product.stock} units available`); return; }
+    if (paymentMethod !== "oncredit" && (!paid || paid <= 0)) { toast.error("Enter amount paid"); return; }
+    if (!customerId)                               { toast.error("Please select a customer"); return; }
     try {
       const result = await recordSale({
         id: product.id,
@@ -402,9 +403,10 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
   // Receipt screen
   if (receipt) {
     const sConf: Record<string, { label: string; color: string }> = {
-      paid:     { label: "Paid",     color: "bg-emerald-100 text-emerald-700" },
-      partial:  { label: "Partial",  color: "bg-orange-100 text-orange-700" },
-      overpaid: { label: "Overpaid", color: "bg-blue-100 text-blue-700" },
+      paid:     { label: "Paid",      color: "bg-emerald-100 text-emerald-700" },
+      partial:  { label: "Partial",   color: "bg-orange-100 text-orange-700" },
+      overpaid: { label: "Overpaid",  color: "bg-blue-100 text-blue-700" },
+      oncredit: { label: "On Credit", color: "bg-purple-100 text-purple-700" },
     };
     const sc = sConf[receipt.paymentStatus] ?? sConf.paid;
     return (
@@ -454,6 +456,11 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
           {receipt.paymentStatus === "partial" && (
             <div className="mt-3 px-4 py-3 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 text-sm font-semibold">
               Customer owes {Number(receipt.balanceDue).toLocaleString()} RWF
+            </div>
+          )}
+          {receipt.paymentStatus === "oncredit" && (
+            <div className="mt-3 px-4 py-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-sm font-semibold">
+              Full amount of {Number(receipt.totalPrice).toLocaleString()} RWF on credit
             </div>
           )}
           <button onClick={onClose}
@@ -525,8 +532,10 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Paid (RWF) *</label>
-                <input type="number" min={0} value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)}
-                  placeholder={totalExpected.toLocaleString()} className={inputCls} />
+                <input type="number" min={0} value={paymentMethod === "oncredit" ? "0" : amountPaid}
+                  onChange={(e) => setAmountPaid(e.target.value)}
+                  disabled={paymentMethod === "oncredit"}
+                  placeholder={totalExpected.toLocaleString()} className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`} />
               </div>
             </div>
 
@@ -598,16 +607,39 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<"partial" | "overpaid">("partial");
   const [payingId, setPayingId]   = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState("");
+  const [search, setSearch]       = useState("");
 
   const { data: partialData, isLoading: pLoading, refetch: refetchPartial } =
     useGetSalesQuery({ paymentStatus: "partial", limit: 100 });
+  const { data: oncreditData, isLoading: ocLoading, refetch: refetchOncredit } =
+    useGetSalesQuery({ paymentStatus: "oncredit", limit: 100 });
   const { data: overpaidData, isLoading: oLoading, refetch: refetchOverpaid } =
     useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
   const [updateSale, { isLoading: updating }] = useUpdateSaleMutation();
 
-  const partials  = partialData?.sales  ?? [];
-  const overpaid  = overpaidData?.sales ?? [];
-  const isLoading = pLoading || oLoading;
+  const allPartials = [...(partialData?.sales ?? []), ...(oncreditData?.sales ?? [])]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const allOverpaid = (overpaidData?.sales ?? [])
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const q = search.trim().toLowerCase();
+  const partials = q
+    ? allPartials.filter((s) =>
+        s.product.name.toLowerCase().includes(q) ||
+        s.product.sku.toLowerCase().includes(q) ||
+        s.customer?.name?.toLowerCase().includes(q) ||
+        s.customer?.phone?.toLowerCase().includes(q)
+      )
+    : allPartials;
+  const overpaid = q
+    ? allOverpaid.filter((s) =>
+        s.product.name.toLowerCase().includes(q) ||
+        s.product.sku.toLowerCase().includes(q) ||
+        s.customer?.name?.toLowerCase().includes(q) ||
+        s.customer?.phone?.toLowerCase().includes(q)
+      )
+    : allOverpaid;
+  const isLoading = pLoading || oLoading || ocLoading;
 
   const handlePayBalance = async (sale: BoutiqueSale) => {
     const amt = parseFloat(payAmount);
@@ -618,6 +650,7 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
       setPayingId(null);
       setPayAmount("");
       refetchPartial();
+      refetchOncredit();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to update payment");
     }
@@ -646,6 +679,18 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
             <HiOutlineX className="w-6 h-6" />
           </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+          <input
+            type="text"
+            placeholder="Search by product, SKU, or customer..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
+          />
         </div>
 
         {/* Tabs */}
@@ -686,10 +731,10 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
           partials.length === 0 ? (
             <div className="py-12 text-center">
               <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-              <p className="text-sm text-custom-700">No pending balances</p>
+              <p className="text-sm text-custom-700">{q ? "No results found" : "No pending balances"}</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
               {partials.map((sale) => (
                 <div key={sale.id} className="rounded-xl border border-orange-200 bg-orange-50 p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -746,10 +791,10 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
           overpaid.length === 0 ? (
             <div className="py-12 text-center">
               <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-              <p className="text-sm text-custom-700">No change to give back</p>
+              <p className="text-sm text-custom-700">{q ? "No results found" : "No change to give back"}</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
               {overpaid.map((sale) => (
                 <div key={sale.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -1045,8 +1090,9 @@ export default function BoutiquePage() {
   const { data: mySortiesData, refetch: refetchRequests } = useGetMySortiesQuery({ limit: 100 });
   const myRequests = mySortiesData?.data ?? [];
   const { data: partialData }  = useGetSalesQuery({ paymentStatus: "partial",  limit: 100 });
+  const { data: oncreditData } = useGetSalesQuery({ paymentStatus: "oncredit", limit: 100 });
   const { data: overpaidData } = useGetSalesQuery({ paymentStatus: "overpaid", limit: 100 });
-  const pendingCount = (partialData?.sales?.length ?? 0) + (overpaidData?.sales?.length ?? 0);
+  const pendingCount = (partialData?.sales?.length ?? 0) + (oncreditData?.sales?.length ?? 0) + (overpaidData?.sales?.length ?? 0);
 
   const _now = new Date();
   const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;

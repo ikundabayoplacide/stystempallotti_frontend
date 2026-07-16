@@ -219,6 +219,51 @@ function OvertimeFormModal({ record, onClose }: FormModalProps) {
   );
 }
 
+// ─── Delete Confirm Modal ─────────────────────────────────────────────────────
+
+function DeleteModal({ record, onClose, onConfirm, isLoading }: {
+  record: OvertimeRequest;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-style-600 border border-custom-200 rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <HiOutlineTrash className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-secondary-100">Delete Overtime Record</h3>
+            <p className="text-xs text-custom-700 mt-0.5">{fmtDate(record.date)} · {record.startTime} – {record.endTime}</p>
+          </div>
+        </div>
+        <p className="text-sm text-custom-700 mb-5">
+          This record will be permanently deleted. This action cannot be undone.
+        </p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40 transition-colors"
+          >
+            <HiOutlineTrash className="w-4 h-4" />
+            {isLoading ? "Deleting…" : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 
 function DetailModal({ record, onClose, onEdit }: {
@@ -321,9 +366,10 @@ export default function MyOvertimePage() {
   const userId = useAppSelector((s) => s.auth.user?.id);
 
   const [statusFilter, setStatusFilter] = useState<OvertimeStatus | "">("");
-  const [showForm,   setShowForm]   = useState(false);
-  const [editRecord, setEditRecord] = useState<OvertimeRequest | null>(null);
-  const [viewRecord, setViewRecord] = useState<OvertimeRequest | null>(null);
+  const [showForm,     setShowForm]     = useState(false);
+  const [editRecord,   setEditRecord]   = useState<OvertimeRequest | null>(null);
+  const [viewRecord,   setViewRecord]   = useState<OvertimeRequest | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OvertimeRequest | null>(null);
 
   const { data, isLoading, refetch } = useGetOvertimeRequestsQuery(
     { limit: 100, employeeId: userId, ...(statusFilter ? { status: statusFilter } : {}) },
@@ -338,11 +384,12 @@ export default function MyOvertimePage() {
   const approvedCount = records.filter((r) => r.status === "APPROVED").length;
   const rejectedCount = records.filter((r) => r.status === "REJECTED").length;
 
-  const handleDelete = async (record: OvertimeRequest) => {
-    if (!window.confirm(`Delete overtime record for ${fmtDate(record.date)}?`)) return;
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteReq(record.id).unwrap();
+      await deleteReq(deleteTarget.id).unwrap();
       toast.success("Record deleted");
+      setDeleteTarget(null);
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to delete");
     }
@@ -487,10 +534,9 @@ export default function MyOvertimePage() {
                           <HiOutlinePencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(r)}
-                          disabled={deleting}
+                          onClick={() => setDeleteTarget(r)}
                           title="Delete"
-                          className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 disabled:opacity-40 transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
                         >
                           <HiOutlineTrash className="w-4 h-4" />
                         </button>
@@ -534,6 +580,14 @@ export default function MyOvertimePage() {
           record={viewRecord}
           onClose={() => setViewRecord(null)}
           onEdit={() => setEditRecord(viewRecord)}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteModal
+          record={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteConfirm}
+          isLoading={deleting}
         />
       )}
     </DashboardLayout>

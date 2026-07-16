@@ -737,13 +737,14 @@ function PaymentsReport() {
     : getDateRange(period);
 
   const { data: paymentsData, isLoading, refetch } = useGetPaymentsQuery({ limit: 500, from: range.from, to: range.to });
-  const payments = (paymentsData?.payments ?? []).filter((p) => p.paymentMethod !== null && p.receiptNo !== null);
+  const payments = (paymentsData?.payments ?? []).filter((p) => p.paymentMethod !== null);
 
   const totalPages     = Math.max(1, Math.ceil(payments.length / PAGE_SIZE));
   const paginated      = payments.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalCollected = payments.reduce((s, p) => s + Number(p.amountPaid), 0);
   const fullCount      = payments.filter((p) => p.paymentState === "FULL").length;
   const partialCount   = payments.filter((p) => p.paymentState === "PARTIAL").length;
+  const oncreditCount  = payments.filter((p) => p.paymentState === "ONCREDIT").length;
 
   const byMethod: Record<string, number> = {};
   payments.forEach((p) => { byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] ?? 0) + Number(p.amountPaid); });
@@ -757,13 +758,14 @@ function PaymentsReport() {
       p.job?.customer?.phone ?? "",
       Number(p.amountPaid).toLocaleString(),
       p.paymentMethod.replace(/_/g, " "),
-      p.paymentState === "FULL" ? "Full" : "Partial",
+      p.paymentState === "FULL" ? "Full" : p.paymentState === "PARTIAL" ? "Partial" : "On Credit",
       new Date(p.paidAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
     ]),
     summary: [
       { label: "Total Payments",    value: String(payments.length) },
       { label: "Full Payments",     value: String(fullCount) },
       { label: "Partial Payments",  value: String(partialCount) },
+      { label: "On Credit",         value: String(oncreditCount) },
       { label: "TOTAL COLLECTED",   value: `${totalCollected.toLocaleString()} RWF`, bold: true },
     ] as SummaryRow[],
   });
@@ -798,11 +800,12 @@ function PaymentsReport() {
       </div>
 
       <div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <StatCard label="Total Payments"   value={payments.length} />
         <StatCard label="Total Collected"  value={`${totalCollected.toLocaleString()} RWF`} color="text-emerald-600" />
-        <StatCard label="Full Payments"    value={fullCount}    color="text-emerald-600" />
-        <StatCard label="Partial Payments" value={partialCount} color="text-orange-600" />
+        <StatCard label="Full Payments"    value={fullCount}     color="text-emerald-600" />
+        <StatCard label="Partial Payments" value={partialCount}  color="text-orange-600" />
+        <StatCard label="On Credit"        value={oncreditCount} color="text-purple-600" />
       </div>
 
       {Object.keys(byMethod).length > 0 && (
@@ -851,8 +854,12 @@ function PaymentsReport() {
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.paymentState === "FULL" ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"}`}>
-                      {p.paymentState === "FULL" ? "Full" : "Partial"}
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      p.paymentState === "FULL" ? "bg-emerald-100 text-emerald-700"
+                      : p.paymentState === "ONCREDIT" ? "bg-purple-100 text-purple-700"
+                      : "bg-orange-100 text-orange-700"
+                    }`}>
+                      {p.paymentState === "FULL" ? "Full" : p.paymentState === "ONCREDIT" ? "On Credit" : "Partial"}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-xs text-custom-700">
