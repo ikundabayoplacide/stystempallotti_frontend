@@ -159,6 +159,9 @@ export default function AppRoutes() {
       <Route path="/admin/extra-workers" element={<ProtectedRoute allowedRoles={["admin"]}><ExtraWorkersPage /></ProtectedRoute>} />
       <Route path="/admin/overtime" element={<ProtectedRoute allowedRoles={["admin"]}><OvertimeManagementPage /></ProtectedRoute>} />
       <Route path="/admin/proformas" element={<ProtectedRoute allowedRoles={["admin"]}><ProformasPage /></ProtectedRoute>} />
+      <Route path="/admin/job-approvals" element={<ProtectedRoute allowedRoles={["admin"]}><DAFJobApprovalPage /></ProtectedRoute>} />
+      <Route path="/admin/deliveries" element={<ProtectedRoute allowedRoles={["admin"]}><DeliveriesPage /></ProtectedRoute>} />
+      <Route path="/admin/procurement" element={<ProtectedRoute allowedRoles={["admin"]}><ProdurementPage /></ProtectedRoute>} />
       <Route path="/admin/notifications" element={<ProtectedRoute allowedRoles={["admin"]}><NotificationsPage userRole="admin" userName="Admin" /></ProtectedRoute>} />
       <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={["admin"]}><ProfilePage /></ProtectedRoute>} />
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { useAuth } from "../../context/AuthContext";
 import {
   HiOutlineBadgeCheck,
   HiOutlineClock,
@@ -209,6 +210,7 @@ function MarkDeliveredModal({ job, onClose, onSuccess }: MarkDeliveredModalProps
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DeliveriesPage() {
+  const { userRole, userName: authUserName } = useAuth();
   const { data: unreadCount = 0 } = useGetUnreadCountQuery();
   const [search, setSearch] = useState("");
   const [deliverJob, setDeliverJob] = useState<Job | null>(null);
@@ -222,18 +224,22 @@ export default function DeliveriesPage() {
   const { data: partialDelivData, isLoading: partialDelivLoading, refetch: refetchPartialDeliv } =
     useGetJobsQuery({ status: "partial-delivered", limit: 200, ...(search.trim() && { search: search.trim() }) });
 
+  const { data: readyForDelivData, isLoading: readyForDelivLoading, refetch: refetchReadyForDeliv } =
+    useGetJobsQuery({ status: "ready-for-delivery", limit: 200, ...(search.trim() && { search: search.trim() }) });
+
   const { data: delivData, isLoading: delivLoading, refetch: refetchDeliv } =
     useGetJobsQuery({ status: "delivered", limit: 200 });
 
   const { data: paymentsData, refetch: refetchPayments } =
     useGetPaymentsQuery({ limit: 500 });
 
-  const isLoading = confirmedLoading || completedAllLoading || partialDelivLoading || delivLoading;
+  const isLoading = confirmedLoading || completedAllLoading || partialDelivLoading || readyForDelivLoading || delivLoading;
 
   const allConfirmedCompleted = [
     ...(confirmedData?.jobs ?? []),
     ...(completedAllData?.jobs ?? []),
-    ...(partialDelivData?.jobs ?? []),  // partial-delivered: still has remaining qty
+    ...(partialDelivData?.jobs ?? []),
+    ...(readyForDelivData?.jobs ?? []),
   ];
 
   // 1. Ready for Delivery: confirmed|completed|partial-delivered + paid|oncredit|partial
@@ -263,12 +269,13 @@ export default function DeliveriesPage() {
     refetchConfirmed();
     refetchCompletedAll();
     refetchPartialDeliv();
+    refetchReadyForDeliv();
     refetchDeliv();
     refetchPayments();
   };
 
   return (
-    <DashboardLayout userRole="receptionist" userName="Reception Desk" notificationCount={unreadCount}>
+    <DashboardLayout userRole={userRole ?? "receptionist"} userName={authUserName ?? "Reception Desk"} notificationCount={unreadCount}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -337,7 +344,7 @@ export default function DeliveriesPage() {
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
                 />
               </div>
-              <button onClick={() => { refetchConfirmed(); refetchCompletedAll(); refetchPartialDeliv(); refetchDeliv(); refetchPayments(); }} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
+              <button onClick={() => { refetchConfirmed(); refetchCompletedAll(); refetchPartialDeliv(); refetchReadyForDeliv(); refetchDeliv(); refetchPayments(); }} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors" title="Refresh">
                 <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isFetching ? "animate-spin" : ""}`} />
               </button>
             </div>

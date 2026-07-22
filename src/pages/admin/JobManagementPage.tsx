@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 import { toast } from "react-toastify";
 import {
   HiOutlineBadgeCheck,
   HiOutlineCalendar,
   HiOutlineCheckCircle,
+  HiOutlineClipboardList,
+  HiOutlineDotsVertical,
   HiOutlineExclamationCircle,
   HiOutlineEye,
   HiOutlineFilter,
@@ -26,6 +29,9 @@ import {
   useApproveJobMutation,
   useRejectJobMutation,
   useVerifyJobMutation,
+  useAssignJobMutation,
+  useReassignJobMutation,
+  useCompleteJobMutation,
 } from "../../store/services/jobsService";
 import type { Job, JobStatus, JobPriority } from "../../store/services/jobsService";
 import { useGetDepartmentsQuery } from "../../store/services/departmentsService";
@@ -72,6 +78,108 @@ const priorityColors: Record<string, string> = {
   urgent: "bg-red-500 text-white",
 };
 
+// ─── Three-dot Action Menu ────────────────────────────────────────────────────
+
+type ActionMode = "approve" | "reject" | "verify" | "assign" | "complete";
+
+interface RowMenuProps {
+  job: Job;
+  onAction: (job: Job, mode: ActionMode) => void;
+  onView: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+function RowMenu({ job, onAction, onView, onEdit, onDelete }: RowMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos]   = useState<{ top: number; right: number } | null>(null);
+  const btnRef  = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const MENU_HEIGHT = 320; // approximate max menu height
+  const updatePos = () => {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const spaceBelow = window.innerHeight - r.bottom;
+    if (spaceBelow < MENU_HEIGHT) {
+      setPos({ top: r.top - MENU_HEIGHT, right: window.innerWidth - r.right });
+    } else {
+      setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    }
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
+  }, [open]);
+
+  const s = job.status;
+  const canApprove  = s === "pending" || s === "verified";
+  const canAssign   = s !== "rejected" && s !== "pending" && s !== "delivered";
+  const canReject   = s !== "rejected" && s !== "completed" && s !== "delivered";
+  const canVerify   = s === "completed";
+  const canComplete = s !== "completed" && s !== "delivered" && s !== "rejected" && s !== "pending" && s !== "verified";
+
+  type Item = { label: string; mode?: ActionMode; cls: string; icon: React.ReactNode; action?: () => void };
+  const items: Item[] = [
+    { label: "View",     cls: "text-secondary-100 hover:bg-custom-50",  icon: <HiOutlineEye className="w-4 h-4" />,           action: () => onView(job.id) },
+    { label: "Edit",     cls: "text-secondary-100 hover:bg-custom-50",  icon: <HiOutlinePencil className="w-4 h-4" />,        action: () => onEdit(job.id) },
+    ...(canApprove  ? [{ label: "Confirm",  mode: "approve"  as ActionMode, cls: "text-green-700 hover:bg-green-50",   icon: <HiOutlineCheckCircle className="w-4 h-4" /> }] : []),
+    ...(canAssign   ? [{ label: job.departmentAssignedToId ? "Reassign" : "Assign", mode: "assign" as ActionMode, cls: "text-primary-700 hover:bg-primary-50", icon: <HiOutlineClipboardList className="w-4 h-4" /> }] : []),
+    ...(canComplete ? [{ label: "Complete", mode: "complete" as ActionMode, cls: "text-blue-700 hover:bg-blue-50",    icon: <HiOutlineCheckCircle className="w-4 h-4" /> }] : []),
+    ...(canVerify   ? [{ label: "Verify",   mode: "verify"   as ActionMode, cls: "text-indigo-700 hover:bg-indigo-50", icon: <HiOutlineBadgeCheck className="w-4 h-4" /> }] : []),
+    ...(canReject   ? [{ label: "Reject",   mode: "reject"   as ActionMode, cls: "text-red-600 hover:bg-red-50",      icon: <HiOutlineXCircle className="w-4 h-4" /> }] : []),
+    { label: "Delete",   cls: "text-red-600 hover:bg-red-50",           icon: <HiOutlineTrash className="w-4 h-4" />,         action: () => onDelete(job.id) },
+  ];
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={(e) => { e.stopPropagation(); if (open) { setOpen(false); return; } updatePos(); setOpen(true); }}
+        className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-500 hover:text-secondary-100 transition-colors"
+        title="Actions"
+      >
+        <HiOutlineDotsVertical className="w-5 h-5" />
+      </button>
+      {open && pos && ReactDOM.createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: "fixed", top: pos.top, right: pos.right, zIndex: 9999 }}
+          className="w-44 bg-style-600 border border-custom-200 rounded-xl shadow-xl py-1 overflow-hidden"
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                if (item.action) item.action();
+                else if (item.mode) onAction(job, item.mode);
+              }}
+              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors ${item.cls}`}
+            >
+              {item.icon}{item.label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function JobManagementPage() {
@@ -84,8 +192,10 @@ export default function JobManagementPage() {
   const [editJobId, setEditJobId]               = useState<string | null>(null);
   const [deleteJobId, setDeleteJobId]           = useState<string | null>(null);
   const [approvalJob, setApprovalJob]           = useState<Job | null>(null);
-  const [approvalMode, setApprovalMode]         = useState<"approve" | "reject" | "verify">("approve");
+  const [approvalMode, setApprovalMode]         = useState<ActionMode>("approve");
   const [rejectReason, setRejectReason]         = useState("");
+  const [assignDeptId, setAssignDeptId]         = useState("");
+  const [assignError, setAssignError]           = useState("");
   const [page, setPage] = useState(1);
   const limit = 5;
 
@@ -116,20 +226,25 @@ export default function JobManagementPage() {
   const { data: cCompleted }   = useGetJobsQuery({ page: 1, limit: 1, status: "completed" });
   const { data: cUrgent }      = useGetJobsQuery({ page: 1, limit: 1, priority: "urgent" });
 
-  const [deleteJob,  { isLoading: isDeleting  }] = useDeleteJobMutation();
-  const [approveJob, { isLoading: isApproving }] = useApproveJobMutation();
-  const [rejectJob,  { isLoading: isRejecting  }] = useRejectJobMutation();
-  const [verifyJob,  { isLoading: isVerifying  }] = useVerifyJobMutation();
+  const [deleteJob,   { isLoading: isDeleting  }] = useDeleteJobMutation();
+  const [approveJob,  { isLoading: isApproving }] = useApproveJobMutation();
+  const [rejectJob,   { isLoading: isRejecting  }] = useRejectJobMutation();
+  const [verifyJob,   { isLoading: isVerifying  }] = useVerifyJobMutation();
+  const [assignJob,   { isLoading: isAssigning  }] = useAssignJobMutation();
+  const [reassignJob, { isLoading: isReassigning }] = useReassignJobMutation();
+  const [completeJob, { isLoading: isCompleting }] = useCompleteJobMutation();
   const { data: departments = [] } = useGetDepartmentsQuery();
 
   const jobs       = data?.jobs       ?? [];
   const total      = data?.total      ?? 0;
   const totalPages = data?.totalPages ?? 1;
 
-  const openApprovalModal = (job: Job, mode: "approve" | "reject" | "verify") => {
+  const openApprovalModal = (job: Job, mode: ActionMode) => {
     setApprovalJob(job);
     setApprovalMode(mode);
     setRejectReason("");
+    setAssignDeptId(job.departmentAssignedToId ?? "");
+    setAssignError("");
   };
 
   const handleApprove = async () => {
@@ -161,6 +276,31 @@ export default function JobManagementPage() {
       setApprovalJob(null);
       refetch();
     } catch (err: any) { toast.error(err?.data?.message ?? "Failed to verify job"); }
+  };
+
+  const handleAssign = async () => {
+    if (!approvalJob || !assignDeptId) { setAssignError("Please select a department"); return; }
+    try {
+      if (approvalJob.departmentAssignedToId) {
+        await reassignJob({ id: approvalJob.id, departmentAssignedToId: assignDeptId }).unwrap();
+        toast.success("Job reassigned");
+      } else {
+        await assignJob({ id: approvalJob.id, departmentAssignedToId: assignDeptId }).unwrap();
+        toast.success("Job assigned");
+      }
+      setApprovalJob(null);
+      refetch();
+    } catch (err: any) { setAssignError(err?.data?.message ?? "Failed to assign job"); }
+  };
+
+  const handleComplete = async () => {
+    if (!approvalJob) return;
+    try {
+      await completeJob(approvalJob.id).unwrap();
+      toast.success("Job marked as completed");
+      setApprovalJob(null);
+      refetch();
+    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to complete job"); }
   };
 
   const handleDeleteConfirm = async () => {
@@ -351,56 +491,15 @@ export default function JobManagementPage() {
                             <span className="text-xs text-custom-700">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              className="p-2 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors"
-                              title="View Details"
-                              onClick={() => setSelectedJobId(job.id)}
-                            >
-                              <HiOutlineEye className="w-4 h-4 text-custom-700" />
-                            </button>
-                            {job.status !== "confirmed" && job.status !== "rejected" && job.status !== "verified" && (
-                              <button
-                                className="p-2 rounded-lg border border-green-300 hover:bg-green-50 transition-colors"
-                                title="Confirm Job"
-                                onClick={() => openApprovalModal(job, "approve")}
-                              >
-                                <HiOutlineCheckCircle className="w-4 h-4 text-green-600" />
-                              </button>
-                            )}
-                            {job.status !== "rejected" && (
-                              <button
-                                className="p-2 rounded-lg border border-red-300 hover:bg-red-50 transition-colors"
-                                title="Reject Job"
-                                onClick={() => openApprovalModal(job, "reject")}
-                              >
-                                <HiOutlineXCircle className="w-4 h-4 text-red-600" />
-                              </button>
-                            )}
-                            {(job.status === "completed" || job.status === "verified") && (
-                              <button
-                                className="p-2 rounded-lg border border-blue-300 hover:bg-blue-50 transition-colors"
-                                title="Verify Job"
-                                onClick={() => openApprovalModal(job, "verify")}
-                              >
-                                <HiOutlineBadgeCheck className="w-4 h-4 text-blue-600" />
-                              </button>
-                            )}
-                            <button
-                              className="p-2 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors"
-                              title="Edit Job"
-                              onClick={() => setEditJobId(job.id)}
-                            >
-                              <HiOutlinePencil className="w-4 h-4 text-custom-700" />
-                            </button>
-                            <button
-                              className="p-2 rounded-lg border border-red-300 hover:bg-red-50 transition-colors"
-                              title="Delete Job"
-                              onClick={() => setDeleteJobId(job.id)}
-                            >
-                              <HiOutlineTrash className="w-4 h-4 text-red-600" />
-                            </button>
+                        <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end">
+                            <RowMenu
+                              job={job}
+                              onAction={openApprovalModal}
+                              onView={(id) => setSelectedJobId(id)}
+                              onEdit={(id) => setEditJobId(id)}
+                              onDelete={(id) => setDeleteJobId(id)}
+                            />
                           </div>
                         </td>
                       </tr>
@@ -554,7 +653,7 @@ export default function JobManagementPage() {
             <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-bold text-secondary-100 capitalize">
-                  {approvalMode === "approve" ? "Confirm Job" : approvalMode === "reject" ? "Reject Job" : "Verify Job"}
+                  {approvalMode === "approve" ? "Confirm Job" : approvalMode === "reject" ? "Reject Job" : approvalMode === "assign" ? (approvalJob?.departmentAssignedToId ? "Reassign Department" : "Assign to Department") : approvalMode === "complete" ? "Complete Job" : "Verify Job"}
                 </h3>
                 <button onClick={() => setApprovalJob(null)} className="text-custom-700 hover:text-secondary-100">
                   <HiOutlineX className="w-5 h-5" />
@@ -580,6 +679,36 @@ export default function JobManagementPage() {
               {approvalMode === "verify" && (
                 <p className="text-sm text-custom-700 mb-4">
                   This will mark the job as <span className="font-semibold text-secondary-100">verified</span>.
+                </p>
+              )}
+              {approvalMode === "assign" && (
+                <div className="mb-4 space-y-3">
+                  {approvalJob.departmentAssignedToId && (
+                    <p className="text-xs text-custom-700 bg-custom-50 px-3 py-2 rounded-lg">
+                      Currently: <span className="font-semibold">{departments.find((d) => d.id === approvalJob.departmentAssignedToId)?.name ?? "—"}</span>
+                    </p>
+                  )}
+                  <div>
+                    <label className="block text-sm font-semibold text-custom-700 mb-1">
+                      {approvalJob.departmentAssignedToId ? "New Department" : "Department"} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={assignDeptId}
+                      onChange={(e) => { setAssignDeptId(e.target.value); setAssignError(""); }}
+                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500"
+                    >
+                      <option value="">Select department…</option>
+                      {departments.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {assignError && <p className="text-xs text-red-600">{assignError}</p>}
+                </div>
+              )}
+              {approvalMode === "complete" && (
+                <p className="text-sm text-custom-700 mb-4">
+                  Mark <span className="font-semibold text-secondary-100">{approvalJob.jobNumber}</span> as <span className="font-semibold text-green-600">completed</span>? This cannot be undone.
                 </p>
               )}
               <div className="flex gap-3">
@@ -617,6 +746,26 @@ export default function JobManagementPage() {
                   >
                     <HiOutlineBadgeCheck className="w-4 h-4" />
                     {isVerifying ? "Verifying…" : "Verify Job"}
+                  </button>
+                )}
+                {approvalMode === "assign" && (
+                  <button
+                    onClick={handleAssign}
+                    disabled={isAssigning || isReassigning}
+                    className="flex-1 px-4 py-2 rounded-xl bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <HiOutlineClipboardList className="w-4 h-4" />
+                    {(isAssigning || isReassigning) ? "Saving…" : approvalJob?.departmentAssignedToId ? "Reassign" : "Assign"}
+                  </button>
+                )}
+                {approvalMode === "complete" && (
+                  <button
+                    onClick={handleComplete}
+                    disabled={isCompleting}
+                    className="flex-1 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    <HiOutlineCheckCircle className="w-4 h-4" />
+                    {isCompleting ? "Completing…" : "Confirm Complete"}
                   </button>
                 )}
               </div>
