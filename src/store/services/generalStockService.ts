@@ -87,7 +87,7 @@ export const generalStockApi = createApi({
       transformResponse: (res: ApiResponse<GeneralStockItem>) => res.data,
       invalidatesTags: [{ type: "GSItem", id: "LIST" }],
     }),
-    updateGeneralStockItem: builder.mutation<GeneralStockItem, { id: string; itemName?: string; description?: string; category?: string; unit?: string; alarmStock?: number; amountPerUnit?: number }>({
+    updateGeneralStockItem: builder.mutation<GeneralStockItem, { id: string; itemName?: string; description?: string; category?: string; unit?: string; currentStock?: number; alarmStock?: number; amountPerUnit?: number }>({
       query: ({ id, ...body }) => ({ url: `/items/${id}`, method: "PUT", body }),
       transformResponse: (res: ApiResponse<GeneralStockItem>) => res.data,
       invalidatesTags: (_r, _e, { id }) => [{ type: "GSItem", id }, { type: "GSItem", id: "LIST" }],

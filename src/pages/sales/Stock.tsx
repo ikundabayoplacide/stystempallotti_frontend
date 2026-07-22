@@ -1,440 +1,378 @@
 import { useState } from "react";
 import {
-  HiOutlineSearch,
   HiOutlineArchive,
-  HiOutlineExclamationCircle,
   HiOutlineCheckCircle,
-  HiOutlineFilter,
-  HiOutlineX,
+  HiOutlineClock,
+  HiOutlinePlus,
   HiOutlineRefresh,
-  HiOutlineInformationCircle,
+  HiOutlineX,
+  HiOutlineXCircle,
 } from "react-icons/hi";
+import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
-import { Card } from "../../components/ui";
+import { Button, Card } from "../../components/ui";
 import {
-  useGetStockItemsQuery,
-  type StockItem,
-} from "../../store/services/stockService";
+  useGetGeneralStockItemsQuery,
+  useGetMyGeneralStockSortiesQuery,
+  useCreateGeneralStockSortieMutation,
+  type GeneralStockSortie,
+  type SortieStatus,
+} from "../../store/services/generalStockService";
 
-// ─── Status config ────────────────────────────────────────────────────────────
-
-const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  // backend may return any of these variants
-  available:      { label: "Available",     color: "bg-emerald-100 text-emerald-700", icon: <HiOutlineCheckCircle className="w-3.5 h-3.5" /> },
-  "in-stock":     { label: "Available",     color: "bg-emerald-100 text-emerald-700", icon: <HiOutlineCheckCircle className="w-3.5 h-3.5" /> },
-  IN_STOCK:       { label: "Available",     color: "bg-emerald-100 text-emerald-700", icon: <HiOutlineCheckCircle className="w-3.5 h-3.5" /> },
-  AVAILABLE:      { label: "Available",     color: "bg-emerald-100 text-emerald-700", icon: <HiOutlineCheckCircle className="w-3.5 h-3.5" /> },
-  low:            { label: "Low Stock",     color: "bg-yellow-100 text-yellow-700",   icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
-  "low-stock":    { label: "Low Stock",     color: "bg-yellow-100 text-yellow-700",   icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
-  LOW_STOCK:      { label: "Low Stock",     color: "bg-yellow-100 text-yellow-700",   icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
-  LOW:            { label: "Low Stock",     color: "bg-yellow-100 text-yellow-700",   icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
-  "out-of-stock": { label: "Out of Stock",  color: "bg-red-100 text-red-600",         icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
-  OUT_OF_STOCK:   { label: "Out of Stock",  color: "bg-red-100 text-red-600",         icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
-  out:            { label: "Out of Stock",  color: "bg-red-100 text-red-600",         icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> },
+const statusConfig: Record<SortieStatus, { label: string; color: string; icon: any; bgColor: string }> = {
+  pending:  { label: "Pending",  color: "text-yellow-600", icon: HiOutlineClock,       bgColor: "bg-yellow-100" },
+  approved: { label: "Approved", color: "text-green-600",  icon: HiOutlineCheckCircle, bgColor: "bg-green-100"  },
+  rejected: { label: "Rejected", color: "text-red-600",    icon: HiOutlineXCircle,     bgColor: "bg-red-100"    },
 };
 
-const fallbackStatus = { label: "Unknown", color: "bg-custom-100 text-custom-700", icon: <HiOutlineExclamationCircle className="w-3.5 h-3.5" /> };
-
-function getStatus(stockStatus: string) {
-  return statusConfig[stockStatus] ?? statusConfig[stockStatus?.toLowerCase()] ?? fallbackStatus;
-}
-
-// Normalize to our internal StockStatus for conditional logic
-function isOutOfStock(s: string) {
-  return ["out-of-stock", "OUT_OF_STOCK", "out"].includes(s);
-}
-function isLow(s: string) {
-  return ["low", "low-stock", "LOW_STOCK", "LOW"].includes(s);
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
+const stockStatusColors: Record<string, string> = {
+  available:      "bg-emerald-100 text-emerald-700",
+  low:            "bg-yellow-100 text-yellow-700",
+  "out-of-stock": "bg-red-100 text-red-700",
+};
 
 export default function SalesStockPage() {
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | "all">("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<StockItem | null>(null);
+  const { data: itemsData,   isLoading: itemsLoading }                          = useGetGeneralStockItemsQuery({ limit: 200 });
+  const { data: sortiesData, isLoading: sortiesLoading, refetch }               = useGetMyGeneralStockSortiesQuery({ limit: 100 });
+  const [createSortie, { isLoading: isSubmitting }]                             = useCreateGeneralStockSortieMutation();
 
-  // ── Data fetching ──────────────────────────────────────────────────────────
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useGetStockItemsQuery({
-    category: selectedCategory !== "all" ? selectedCategory : undefined,
-    stockStatus: selectedStatus !== "all" ? (selectedStatus as any) : undefined,
-    search: search.trim() || undefined,
+  const items   = itemsData?.data   ?? [];
+  const sorties = sortiesData?.data ?? [];
+
+  const [tab,           setTab]           = useState<"browse" | "my-requests">("browse");
+  const [filter,        setFilter]        = useState<SortieStatus | "all">("all");
+  const [period,        setPeriod]        = useState<"all" | "week" | "year">("all");
+  const [itemSearch,    setItemSearch]    = useState("");
+  const [requestSearch, setRequestSearch] = useState("");
+  const [selectedSortie, setSelectedSortie] = useState<GeneralStockSortie | null>(null);
+
+  const now          = new Date();
+  const startOfWeek  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7), 0, 0, 0, 0);
+
+  const periodSorties = sorties.filter((s) => {
+    if (period === "all")  return true;
+    const d = new Date(s.createdAt);
+    if (period === "week") return d >= startOfWeek;
+    if (period === "year") return d.getFullYear() === now.getFullYear();
+    return true;
   });
 
-  const items = data?.data ?? [];
+  // Modal state
+  const [showModal,    setShowModal]    = useState(false);
+  const [selectedItem, setSelectedItem] = useState("");
+  const [quantity,     setQuantity]     = useState("");
+  const [reason,       setReason]       = useState("");
+  const [notes,        setNotes]        = useState("");
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-  const availableCount    = items.filter((i) => !isOutOfStock(i.stockStatus) && !isLow(i.stockStatus)).length;
-  const lowCount          = items.filter((i) => isLow(i.stockStatus)).length;
-  const outOfStockCount   = items.filter((i) => isOutOfStock(i.stockStatus)).length;
+  const q               = requestSearch.trim().toLowerCase();
+  const searchedSorties = q
+    ? periodSorties.filter((s) =>
+        s.stockItem?.itemName?.toLowerCase().includes(q) ||
+        s.stockItem?.category?.toLowerCase().includes(q)
+      )
+    : periodSorties;
+  const filteredSorties = filter === "all" ? searchedSorties : searchedSorties.filter((s) => s.status === filter);
 
-  // Unique categories from loaded items
-  const categories = Array.from(new Set(items.map((i) => i.category))).sort();
+  const iq            = itemSearch.trim().toLowerCase();
+  const filteredItems = iq
+    ? items.filter((i) => i.itemName.toLowerCase().includes(iq) || i.category?.toLowerCase().includes(iq))
+    : items;
 
-  const activeFilters =
-    (selectedCategory !== "all" ? 1 : 0) + (selectedStatus !== "all" ? 1 : 0);
+  const resetForm = () => {
+    setSelectedItem(""); setQuantity(""); setReason(""); setNotes("");
+    setShowModal(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const qty = parseFloat(quantity);
+    if (!selectedItem)       return toast.error("Select an item");
+    if (!qty || qty <= 0)    return toast.error("Enter a valid quantity");
+    if (!reason.trim())      return toast.error("Reason is required");
+    try {
+      await createSortie({ stockItemId: selectedItem, quantityOut: qty, reason: reason.trim(), notes: notes.trim() || undefined }).unwrap();
+      toast.success("Request submitted — stock manager will be notified");
+      resetForm();
+      refetch();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to submit request");
+    }
+  };
 
   return (
     <DashboardLayout notificationCount={0}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="flex items-start justify-between gap-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Stock</h1>
-            <p className="text-sm text-custom-700 mt-1">
-              View raw material availability — read-only reference for sales planning
-            </p>
+            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Stock Requests</h1>
+            <p className="text-sm text-custom-700 mt-1">Browse available items and submit stock requests</p>
           </div>
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 hover:text-secondary-100 text-sm"
-          >
-            <HiOutlineRefresh className="w-4 h-4" />
-            <span className="hidden sm:inline font-semibold">Refresh</span>
-          </button>
-        </div>
-
-        {/* ── Info banner ─────────────────────────────────────────────────── */}
-        <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm">
-          <HiOutlineInformationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-          <span>
-            This is a read-only view of raw materials and production supplies. For finished
-            products available for customer orders, see the <strong>Boutique</strong> page.
-          </span>
-        </div>
-
-        {/* ── Summary Cards ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <Card className="!p-4">
-            <p className="text-xs text-custom-700 mb-1">Total Items</p>
-            <p className="text-2xl font-bold text-secondary-100">
-              {isLoading ? "—" : items.length}
-            </p>
-          </Card>
-          <Card className="!p-4">
-            <p className="text-xs text-custom-700 mb-1">Available</p>
-            <p className="text-2xl font-bold text-emerald-600">
-              {isLoading ? "—" : availableCount}
-            </p>
-          </Card>
-          <Card className="!p-4">
-            <p className="text-xs text-custom-700 mb-1">Low Stock</p>
-            <p className="text-2xl font-bold text-yellow-600">
-              {isLoading ? "—" : lowCount}
-            </p>
-          </Card>
-          <Card className="!p-4">
-            <p className="text-xs text-custom-700 mb-1">Out of Stock</p>
-            <p className="text-2xl font-bold text-red-600">
-              {isLoading ? "—" : outOfStockCount}
-            </p>
-          </Card>
-        </div>
-
-        {/* ── Search & Filters ────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-custom-700" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or category..."
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 placeholder:text-custom-700 focus:outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-200 transition-colors"
-            />
-          </div>
-          <button
-            onClick={() => setShowFilters(true)}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-secondary-100"
-          >
-            <HiOutlineFilter className="w-4 h-4" />
-            <span className="text-sm font-semibold">Filters</span>
-            {activeFilters > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-primary-500 text-white text-xs flex items-center justify-center font-bold">
-                {activeFilters}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* ── Category Pills ───────────────────────────────────────────────── */}
-        {!isLoading && categories.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedCategory("all")}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                selectedCategory === "all"
-                  ? "bg-primary-500 text-white"
-                  : "bg-custom-100 text-custom-700 hover:bg-custom-200"
-              }`}
-            >
-              All Categories
+          <div className="flex items-center gap-2">
+            <button onClick={() => refetch()} disabled={sortiesLoading}
+              className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors disabled:opacity-50">
+              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${sortiesLoading ? "animate-spin" : ""}`} />
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat === selectedCategory ? "all" : cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  selectedCategory === cat
-                    ? "bg-primary-500 text-white"
-                    : "bg-custom-100 text-custom-700 hover:bg-custom-200"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
+            <button onClick={() => setShowModal(true)}
+              className="px-4 py-2 rounded-xl bg-primary-500 text-white font-semibold hover:bg-primary-600 transition-colors text-sm flex items-center gap-2">
+              <HiOutlinePlus className="w-4 h-4" /> New Request
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* ── Items Table ──────────────────────────────────────────────────── */}
-        {isLoading ? (
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
+          {([
+            { id: "browse",      label: "Browse Items",  badge: items.length },
+            { id: "my-requests", label: "My Requests",   badge: sorties.filter((s) => s.status === "pending").length },
+          ] as { id: "browse" | "my-requests"; label: string; badge?: number }[]).map(({ id, label, badge }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                tab === id ? "bg-style-500 text-secondary-100 shadow-sm" : "text-custom-700 hover:text-secondary-100"
+              }`}>
+              {label}
+              {badge != null && badge > 0 && (
+                <span className={`w-5 h-5 text-white text-[10px] font-bold rounded-full flex items-center justify-center ${id === "my-requests" ? "bg-yellow-500" : "bg-primary-500"}`}>
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Browse Items Tab ── */}
+        {tab === "browse" && (
           <Card className="!p-0 overflow-hidden">
-            <div className="animate-pulse">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-custom-200 last:border-0">
-                  <div className="h-4 w-48 bg-custom-200 rounded" />
-                  <div className="h-4 w-24 bg-custom-200 rounded" />
-                  <div className="ml-auto h-6 w-20 bg-custom-200 rounded-full" />
-                </div>
-              ))}
+            <div className="p-3 border-b border-custom-300">
+              <input
+                value={itemSearch} onChange={(e) => setItemSearch(e.target.value)}
+                placeholder="Search by name or category…"
+                className="w-full sm:w-72 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              />
             </div>
-          </Card>
-        ) : isError ? (
-          <Card className="!p-12 text-center">
-            <HiOutlineExclamationCircle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">Failed to load stock items</p>
-            <p className="text-sm text-custom-700 mt-1 mb-4">Check your connection and try again</p>
-            <button
-              onClick={() => refetch()}
-              className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
-            >
-              Retry
-            </button>
-          </Card>
-        ) : items.length === 0 ? (
-          <Card className="!p-12 text-center">
-            <HiOutlineArchive className="w-10 h-10 text-custom-700 mx-auto mb-3" />
-            <p className="text-secondary-100 font-semibold">No stock items found</p>
-            <p className="text-sm text-custom-700 mt-1">Try adjusting your search or filters</p>
-          </Card>
-        ) : (
-          <Card className="!p-0 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-custom-300 bg-custom-50">
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-custom-700 uppercase tracking-wide">
-                      Item
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-custom-700 uppercase tracking-wide">
-                      Category
-                    </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-custom-700 uppercase tracking-wide">
-                      Unit
-                    </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-custom-700 uppercase tracking-wide">
-                      Current Stock
-                    </th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-custom-700 uppercase tracking-wide">
-                      Min Stock
-                    </th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-custom-700 uppercase tracking-wide">
-                      Status
-                    </th>
-                    <th className="px-4 py-3" />
+              <table className="w-full">
+                <thead className="bg-custom-100 border-b border-custom-300">
+                  <tr>
+                    {["Item Name", "Category", "Unit", "Stock", "Status", "Action"].map((h) => (
+                      <th key={h} className={`px-3 py-2.5 text-xs font-bold text-secondary-100 uppercase ${h === "Action" ? "text-right" : "text-left"}`}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-custom-200">
-                  {items.map((item) => {
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-custom-50 transition-colors cursor-pointer"
-                        onClick={() => setSelectedItem(item)}
-                      >
-                        <td className="px-6 py-4">
-                          <p className="font-semibold text-secondary-100">{item.name}</p>
-                          {item.description && (
-                            <p className="text-xs text-custom-700 mt-0.5 line-clamp-1">
-                              {item.description}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-custom-100 text-custom-700">
-                            {item.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-custom-700 text-xs">{item.unit}</td>
-                        <td className="px-4 py-4 text-right">
-                          <span className={`font-bold text-sm ${
-                            isOutOfStock(item.stockStatus) ? "text-red-600" :
-                            isLow(item.stockStatus)        ? "text-yellow-600" :
-                                                             "text-emerald-600"
-                          }`}>
-                            {item.currentStock}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-right text-secondary-100 text-sm font-medium">
-                          {item.minStock}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${getStatus(item.stockStatus).color}`}>
-                            {getStatus(item.stockStatus).icon}
-                            {getStatus(item.stockStatus).label}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
-                            className="text-xs text-primary-500 hover:text-primary-600 font-semibold"
-                          >
-                            Details
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {itemsLoading ? (
+                    <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
+                  ) : filteredItems.length === 0 ? (
+                    <tr><td colSpan={6} className="px-4 py-10 text-center">
+                      <HiOutlineArchive className="w-8 h-8 text-custom-400 mx-auto mb-2" />
+                      <p className="text-sm text-secondary-100 font-semibold">No items found</p>
+                    </td></tr>
+                  ) : filteredItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-custom-50 transition-colors">
+                      <td className="px-3 py-2.5">
+                        <p className="text-sm font-semibold text-secondary-100">{item.itemName}</p>
+                        {item.description && <p className="text-xs text-custom-700 truncate max-w-[180px]">{item.description}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-sm text-secondary-100">{item.category}</td>
+                      <td className="px-3 py-2.5 text-sm text-secondary-100">{item.unit}</td>
+                      <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">{item.currentStock}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${stockStatusColors[item.stockStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                          {item.stockStatus.replace("-", " ")}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <button
+                          disabled={item.stockStatus === "out-of-stock"}
+                          onClick={() => { setSelectedItem(item.id); setShowModal(true); }}
+                          className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-semibold hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Request
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </Card>
         )}
+
+        {/* ── My Requests Tab ── */}
+        {tab === "my-requests" && (
+          <>
+            {/* Search + Period filter — horizontal row */}
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={requestSearch} onChange={(e) => setRequestSearch(e.target.value)}
+                placeholder="Search by item name or category…"
+                className="flex-1 min-w-[200px] sm:w-72 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+              />
+              <div className="flex gap-2">
+                {(["all", "week", "year"] as const).map((p) => (
+                  <button key={p} onClick={() => setPeriod(p)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                      period === p ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+                    }`}>
+                    {p === "all" ? "All Time" : p === "week" ? "This Week" : "This Year"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {(["all", "pending", "approved", "rejected"] as const).map((s) => {
+                const count = s === "all" ? periodSorties.length : periodSorties.filter((r) => r.status === s).length;
+                const cfg   = s === "all" ? null : statusConfig[s];
+                return (
+                  <Card key={s} className="!p-4 flex gap-2">
+                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center mb-2 ${cfg ? cfg.bgColor : "bg-primary-100"}`}>
+                      {cfg ? <cfg.icon className={`w-5 h-5 ${cfg.color}`} /> : <HiOutlineArchive className="w-5 h-5 text-primary-600" />}
+                    </div>
+                    <p className="text-2xl font-bold text-secondary-100">{sortiesLoading ? "—" : count}</p>
+                    <p className="text-xs text-custom-700 mt-1 capitalize">{s === "all" ? "Total" : cfg!.label}</p>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Filter tabs */}
+            <div className="flex gap-2 overflow-x-auto">
+              {(["all", "pending", "approved", "rejected"] as const).map((s) => {
+                const count = s === "all" ? periodSorties.length : periodSorties.filter((r) => r.status === s).length;
+                return (
+                  <button key={s} onClick={() => setFilter(s)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
+                      filter === s ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+                    }`}>
+                    {s === "all" ? "All" : statusConfig[s].label} ({count})
+                  </button>
+                );
+              })}
+            </div>
+
+            <Card className="!p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-custom-100 border-b border-custom-300">
+                    <tr>
+                      {["Item", "Qty", "Reason", "Status", "Date", ""].map((h) => (
+                        <th key={h} className="px-3 py-2.5 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-custom-200">
+                    {sortiesLoading ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">Loading…</td></tr>
+                    ) : filteredSorties.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-custom-700">No requests found</td></tr>
+                    ) : filteredSorties.map((s) => {
+                      const cfg  = statusConfig[s.status];
+                      const Icon = cfg.icon;
+                      return (
+                        <tr key={s.id} className="hover:bg-custom-50 transition-colors">
+                          <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">{s.stockItem?.itemName ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-sm text-secondary-100">{parseFloat(s.quantityOut)} {s.stockItem?.unit ?? ""}</td>
+                          <td className="px-3 py-2.5 text-xs text-custom-700 max-w-[160px] truncate">{s.reason ?? "—"}</td>
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-1.5">
+                              <Icon className={`w-4 h-4 ${cfg.color}`} />
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.bgColor} ${cfg.color}`}>{cfg.label}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-xs text-custom-700">{new Date(s.createdAt).toLocaleDateString()}</td>
+                          <td className="px-3 py-2.5">
+                            <button onClick={() => setSelectedSortie(s)}
+                              className="px-2.5 py-1 rounded-lg border border-custom-300 text-custom-700 hover:bg-custom-100 text-xs font-semibold transition-colors">
+                              Details
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </>
+        )}
+
+        {/* ── New Request Modal ── */}
+        {showModal && (
+          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+            <Card className="!p-6 max-w-lg w-full my-8">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-xl font-bold text-secondary-100">New Stock Request</h3>
+                <button onClick={resetForm} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Item *</label>
+                  <select value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)} required
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
+                    <option value="">Select an item</option>
+                    {items.filter((i) => i.stockStatus !== "out-of-stock").map((i) => (
+                      <option key={i.id} value={i.id}>{i.itemName} ({i.currentStock} {i.unit} available)</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Quantity *</label>
+                  <input type="number" min="0.01" step="0.01" value={quantity} onChange={(e) => setQuantity(e.target.value)} required
+                    placeholder="e.g. 5"
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Reason *</label>
+                  <input value={reason} onChange={(e) => setReason(e.target.value)} required
+                    placeholder="Why do you need this item?"
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Notes</label>
+                  <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+                    placeholder="Any additional information..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors resize-none" />
+                </div>
+                <div className="flex gap-3 justify-end pt-3 border-t border-custom-300">
+                  <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting…" : "Submit Request"}</Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        )}
+
+        {/* ── Details Modal ── */}
+        {selectedSortie && (
+          <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+            <Card className="!p-6 max-w-md w-full">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-secondary-100">{selectedSortie.stockItem?.itemName ?? "Stock Request"}</h3>
+                  <span className={`inline-block mt-1.5 text-xs font-bold px-3 py-1 rounded-full ${statusConfig[selectedSortie.status].bgColor} ${statusConfig[selectedSortie.status].color}`}>
+                    {statusConfig[selectedSortie.status].label}
+                  </span>
+                </div>
+                <button onClick={() => setSelectedSortie(null)} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
+              </div>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between"><span className="text-custom-700">Quantity</span><span className="font-semibold text-secondary-100">{parseFloat(selectedSortie.quantityOut)} {selectedSortie.stockItem?.unit ?? ""}</span></div>
+                {selectedSortie.reason    && <div className="flex justify-between gap-4"><span className="text-custom-700 shrink-0">Reason</span><span className="text-secondary-100 text-right">{selectedSortie.reason}</span></div>}
+                {selectedSortie.notes     && <div className="flex justify-between gap-4"><span className="text-custom-700 shrink-0">Notes</span><span className="text-secondary-100 text-right">{selectedSortie.notes}</span></div>}
+                {selectedSortie.approvedBy && <div className="flex justify-between"><span className="text-custom-700">{selectedSortie.status === "approved" ? "Approved by" : "Reviewed by"}</span><span className="font-semibold text-secondary-100">{selectedSortie.approvedBy.name}</span></div>}
+                <div className="flex justify-between"><span className="text-custom-700">Requested</span><span className="text-secondary-100">{new Date(selectedSortie.createdAt).toLocaleString()}</span></div>
+              </div>
+              <div className="flex justify-end mt-5 pt-4 border-t border-custom-300">
+                <Button variant="outline" onClick={() => setSelectedSortie(null)}>Close</Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
       </div>
-
-      {/* ── Filter Modal ─────────────────────────────────────────────────────── */}
-      {showFilters && (
-        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-          <Card className="!p-6 max-w-sm w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-secondary-100">Filter Stock</h3>
-              <button onClick={() => setShowFilters(false)} className="text-custom-700 hover:text-secondary-100">
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-secondary-100 mb-2">Category</label>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400"
-                >
-                  <option value="all">All Categories</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-secondary-100 mb-2">Stock Status</label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 focus:outline-none focus:border-primary-400"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="available">Available</option>
-                  <option value="low">Low Stock</option>
-                  <option value="out-of-stock">Out of Stock</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => { setSelectedCategory("all"); setSelectedStatus("all"); }}
-                className="flex-1 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"
-              >
-                Reset
-              </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-1 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
-              >
-                Apply
-              </button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ── Item Detail Modal ─────────────────────────────────────────────────── */}
-      {selectedItem && (
-        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-          <Card className="!p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-secondary-100">{selectedItem.name}</h3>
-              <button onClick={() => setSelectedItem(null)} className="text-custom-700 hover:text-secondary-100">
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex gap-2 mb-4">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-custom-100 text-custom-700">
-                {selectedItem.category}
-              </span>
-              <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${getStatus(selectedItem.stockStatus).color}`}>
-                {getStatus(selectedItem.stockStatus).icon}
-                {getStatus(selectedItem.stockStatus).label}
-              </span>
-            </div>
-
-            {selectedItem.description && (
-              <p className="text-sm text-custom-700 mb-4">{selectedItem.description}</p>
-            )}
-
-            <div className="rounded-xl bg-custom-100 border border-custom-300 p-4 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-custom-700">Current Stock</span>
-                <span className={`font-bold ${
-                  isOutOfStock(selectedItem.stockStatus) ? "text-red-600" :
-                  isLow(selectedItem.stockStatus)        ? "text-yellow-600" : "text-emerald-600"
-                }`}>
-                  {selectedItem.currentStock} {selectedItem.unit}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-custom-700">Minimum Stock</span>
-                <span className="font-semibold text-secondary-100">
-                  {selectedItem.minStock} {selectedItem.unit}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-custom-700">Unit</span>
-                <span className="font-semibold text-secondary-100">{selectedItem.unit}</span>
-              </div>
-            </div>
-
-            {isOutOfStock(selectedItem.stockStatus) && (
-              <div className="mt-4 flex items-start gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
-                <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>This material is out of stock. Production may be affected — contact the stock team.</span>
-              </div>
-            )}
-            {isLow(selectedItem.stockStatus) && (
-              <div className="mt-4 flex items-start gap-2 px-4 py-3 rounded-xl bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
-                <HiOutlineExclamationCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>Stock is running low. Factor this in when committing delivery timelines to customers.</span>
-              </div>
-            )}
-
-            <button
-              onClick={() => setSelectedItem(null)}
-              className="mt-4 w-full px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
-            >
-              Close
-            </button>
-          </Card>
-        </div>
-      )}
     </DashboardLayout>
   );
 }

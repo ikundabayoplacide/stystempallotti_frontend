@@ -57,6 +57,35 @@ export interface BoutiqueStockSortie {
   updatedAt: string;
 }
 
+export type PaymentMethod = "cash" | "mobile" | "bank" | "oncredit";
+export type PaymentStatus = "paid" | "partial" | "oncredit";
+
+export interface BoutiqueSale {
+  id: string;
+  stockItemId: string;
+  stockItem?: { id: string; itemName: string; unit: string; category: string };
+  quantity: number;
+  unitPrice: string;
+  totalPrice: number;
+  amountPaid: string;
+  balanceDue: number;
+  changeGiven: number;
+  paymentStatus: PaymentStatus;
+  paymentMethod: PaymentMethod;
+  soldBy?: { id: string; name: string };
+  customer?: { id: string; name: string } | null;
+  createdAt: string;
+}
+
+export interface BoutiqueSalesParams {
+  stockItemId?: string;
+  paymentStatus?: PaymentStatus | string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
 export interface Paginated<T> {
   data: T[];
   pagination: { total: number; page: number; limit: number; totalPages: number };
@@ -88,7 +117,7 @@ export const boutiqueStockApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["BSItem", "BSEntry", "BSSortie"],
+  tagTypes: ["BSItem", "BSEntry", "BSSortie", "BSSale"],
   endpoints: (builder) => ({
     // Items
     getBoutiqueStockItems: builder.query<Paginated<BoutiqueStockItem>, { search?: string; stockStatus?: string; limit?: number } | void>({
@@ -179,6 +208,31 @@ export const boutiqueStockApi = createApi({
         { type: "BSItem", id: "LIST" },
       ],
     }),
+    sellStockItem: builder.mutation<BoutiqueSale, { id: string; quantity: number; unitPrice: number; amountPaid: number; paymentMethod: PaymentMethod }>({
+      query: ({ id, ...body }) => ({ url: `/items/${id}/sell`, method: "PATCH", body }),
+      transformResponse: (res: ApiResponse<BoutiqueSale>) => res.data,
+      invalidatesTags: (_r, _e, { id }) => [{ type: "BSItem", id }, { type: "BSItem", id: "LIST" }, { type: "BSSale", id: "LIST" }],
+    }),
+    // Sales
+    getBoutiqueSales: builder.query<Paginated<BoutiqueSale>, BoutiqueSalesParams | void>({
+      query: (params) => ({ url: "/sales", params: { limit: 50, ...(params ?? {}) } as Record<string, unknown> }),
+      transformResponse: (res: ApiResponse<BoutiqueSale[]>) => toPaginated(res),
+      providesTags: [{ type: "BSSale", id: "LIST" }],
+    }),
+    updateBoutiqueSale: builder.mutation<BoutiqueSale, { id: string; quantity?: number; unitPrice?: number; amountPaid?: number; paymentMethod?: PaymentMethod; note?: string }>({
+      query: ({ id, ...body }) => ({ url: `/sales/${id}`, method: "PUT", body }),
+      transformResponse: (res: ApiResponse<BoutiqueSale>) => res.data,
+      invalidatesTags: [{ type: "BSSale", id: "LIST" }, { type: "BSItem", id: "LIST" }],
+    }),
+    deleteBoutiqueSale: builder.mutation<void, string>({
+      query: (id) => ({ url: `/sales/${id}`, method: "DELETE" }),
+      invalidatesTags: [{ type: "BSSale", id: "LIST" }, { type: "BSItem", id: "LIST" }],
+    }),
+    collectBoutiqueSalePayment: builder.mutation<BoutiqueSale, { id: string; amountCollected: number; paymentMethod?: PaymentMethod }>({
+      query: ({ id, ...body }) => ({ url: `/sales/${id}/collect`, method: "PATCH", body }),
+      transformResponse: (res: ApiResponse<BoutiqueSale>) => res.data,
+      invalidatesTags: [{ type: "BSSale", id: "LIST" }],
+    }),
   }),
 });
 
@@ -197,4 +251,9 @@ export const {
   useUpdateBoutiqueStockSortieMutation,
   useDeleteBoutiqueStockSortieMutation,
   useTakeBoutiqueStockSortieMutation,
+  useSellStockItemMutation,
+  useGetBoutiqueSalesQuery,
+  useUpdateBoutiqueSaleMutation,
+  useDeleteBoutiqueSaleMutation,
+  useCollectBoutiqueSalePaymentMutation,
 } = boutiqueStockApi;

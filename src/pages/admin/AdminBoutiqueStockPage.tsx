@@ -248,6 +248,29 @@ function RestockModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; o
   );
 }
 
+// ─── Pagination ──────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 10;
+
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-2 pt-2">
+      <button disabled={page === 1} onClick={() => onChange(page - 1)}
+        className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
+        ‹ Prev
+      </button>
+      <span className="text-sm text-custom-700">
+        Page <span className="font-semibold text-secondary-100">{page}</span> of {totalPages}
+      </span>
+      <button disabled={page === totalPages} onClick={() => onChange(page + 1)}
+        className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
+        Next ›
+      </button>
+    </div>
+  );
+}
+
 // ─── Items Tab ────────────────────────────────────────────────────────────────
 
 function ItemsTab() {
@@ -256,18 +279,22 @@ function ItemsTab() {
   const [restockItem, setRestockItem] = useState<BoutiqueStockItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BoutiqueStockItem | null>(null);
   const [search, setSearch]           = useState("");
+  const [page, setPage]               = useState(1);
 
   const { data, isLoading, refetch } = useGetBoutiqueStockItemsQuery({ limit: 200 });
 
-  const items = (data?.data ?? []).filter((i) => {
+  const filtered = (data?.data ?? []).filter((i) => {
     const q = search.trim().toLowerCase();
     return !q || i.itemName.toLowerCase().includes(q) || i.category.toLowerCase().includes(q);
   });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const items      = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search items..."
+        <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search items..."
           className="flex-1 min-w-48 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
         />
         <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700">
@@ -281,10 +308,10 @@ function ItemsTab() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Total Items",   value: items.length,                                               color: "text-secondary-100" },
-          { label: "Available",     value: items.filter((i) => i.stockStatus === "available").length,  color: "text-emerald-600" },
-          { label: "Low Stock",     value: items.filter((i) => i.stockStatus === "low").length,        color: "text-yellow-600" },
-          { label: "Out of Stock",  value: items.filter((i) => i.stockStatus === "out-of-stock").length, color: "text-red-600" },
+          { label: "Total Items",   value: filtered.length,                                               color: "text-secondary-100" },
+          { label: "Available",     value: filtered.filter((i) => i.stockStatus === "available").length,  color: "text-emerald-600" },
+          { label: "Low Stock",     value: filtered.filter((i) => i.stockStatus === "low").length,        color: "text-yellow-600" },
+          { label: "Out of Stock",  value: filtered.filter((i) => i.stockStatus === "out-of-stock").length, color: "text-red-600" },
         ].map(({ label, value, color }) => (
           <Card key={label} className="!p-4 text-center">
             <p className="text-xs text-custom-700 mb-1">{label}</p>
@@ -355,6 +382,7 @@ function ItemsTab() {
           </table>
         </div>
       </Card>
+      <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
 
       {showForm && (
         <ItemFormModal
@@ -445,12 +473,14 @@ function SortiesTab() {
   const [rejectTarget, setRejectTarget] = useState<BoutiqueStockSortie | null>(null);
   const [approveTarget, setApproveTarget] = useState<BoutiqueStockSortie | null>(null);
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading, refetch } = useGetBoutiqueStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
   );
   const [approve, { isLoading: approving }] = useApproveBoutiqueStockSortieMutation();
 
-  const sorties: BoutiqueStockSortie[] = (data?.data ?? []).filter((s) => {
+  const filtered: BoutiqueStockSortie[] = (data?.data ?? []).filter((s) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (
@@ -460,10 +490,13 @@ function SortiesTab() {
       s.notes?.toLowerCase().includes(q)
     );
   });
-  const pendingCount  = sorties.filter((s) => s.status === "pending").length;
-  const approvedCount = sorties.filter((s) => s.status === "approved").length;
-  const takenCount    = sorties.filter((s) => s.status === "taken").length;
-  const rejectedCount = sorties.filter((s) => s.status === "rejected").length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const sorties    = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pendingCount  = filtered.filter((s) => s.status === "pending").length;
+  const approvedCount = filtered.filter((s) => s.status === "approved").length;
+  const takenCount    = filtered.filter((s) => s.status === "taken").length;
+  const rejectedCount = filtered.filter((s) => s.status === "rejected").length;
 
   const handleApprove = async () => {
     if (!approveTarget) return;
@@ -481,7 +514,7 @@ function SortiesTab() {
       <div className="flex flex-wrap items-center gap-3">
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search item, requester..."
           className="flex-1 min-w-48 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
         />
@@ -612,6 +645,7 @@ function SortiesTab() {
           </Card>
         ))}
       </div>
+      <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
 
       {/* Approve confirm */}
       {approveTarget && (

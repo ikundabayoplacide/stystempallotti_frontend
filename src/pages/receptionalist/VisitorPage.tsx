@@ -5,6 +5,7 @@ import {
   HiOutlineChevronDoubleRight,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineExclamationCircle,
   HiOutlineHome,
   HiOutlineLocationMarker,
   HiOutlineLogin,
@@ -16,6 +17,7 @@ import {
   HiOutlinePlus,
   HiOutlineSearch,
   HiOutlineShoppingBag,
+  HiOutlineTrash,
   HiOutlineUserGroup,
   HiOutlineUsers,
   HiOutlineX,
@@ -26,10 +28,12 @@ import {
   useGetCustomersQuery,
   useCreateCustomerMutation,
   useUpdateCustomerMutation,
+  useDeleteCustomerMutation,
   type CustomerType,
   type Customer,
   type CreateCustomerPayload,
 } from "../../store/services/customersService";
+import { useGetJobsQuery } from "../../store/services/jobsService";
 import {
   useGetVisitsQuery,
   useCheckInMutation,
@@ -288,6 +292,9 @@ export default function VisitorPage() {
   const [formData, setFormData] = useState<FormData>(emptyForm);
   const [visitCustomer, setVisitCustomer] = useState<Customer | null>(null);
   const [duplicateEmail, setDuplicateEmail] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ── Data ────────────────────────────────────────────────────────────────────
   const { data: totalData } = useGetCustomersQuery({ limit: 1 });
@@ -327,6 +334,14 @@ export default function VisitorPage() {
 
   const [createCustomer, { isLoading: isCreating }] = useCreateCustomerMutation();
   const [updateCustomer, { isLoading: isUpdating }] = useUpdateCustomerMutation();
+  const [deleteCustomer] = useDeleteCustomerMutation();
+
+  // Fetch jobs for the delete-target customer to check if deletion is safe
+  const { data: targetJobsData } = useGetJobsQuery(
+    { customerId: deleteTarget?.id, limit: 1 },
+    { skip: !deleteTarget }
+  );
+  const targetHasJobs = (targetJobsData?.total ?? 0) > 0;
   const [getNotifStats] = useLazyGetNotificationStatsQuery();
 
   const customers = data?.customers ?? [];
@@ -454,6 +469,21 @@ export default function VisitorPage() {
   const closeModal = () => {
     setShowAddModal(false); setShowEditModal(false);
     setSelectedCustomer(null); setFormData(emptyForm); setDuplicateEmail(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteCustomer(deleteTarget.id).unwrap();
+      toast.success(`"${deleteTarget.name}" deleted successfully.`);
+      setDeleteTarget(null);
+      setDeleteConfirmName("");
+    } catch (e: any) {
+      toast.error(e?.data?.message ?? "Failed to delete customer.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const set = (field: keyof FormData, value: string) =>
@@ -635,6 +665,10 @@ export default function VisitorPage() {
                               className="p-2 rounded-lg hover:bg-primary-100 transition-colors" title="Edit">
                               <HiOutlinePencil className="w-4 h-4 text-primary-500" />
                             </button>
+                            <button onClick={() => setDeleteTarget(customer)}
+                              className="p-2 rounded-lg hover:bg-red-100 transition-colors" title="Delete">
+                              <HiOutlineTrash className="w-4 h-4 text-red-500" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -662,6 +696,51 @@ export default function VisitorPage() {
             if (checkedOutCustomerId) setCheckedOutIds((prev) => { const s = new Set(prev); s.delete(checkedOutCustomerId); return s; });
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
+          <Card className="!p-6 max-w-sm w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+                <HiOutlineExclamationCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-secondary-100">Delete Customer</h3>
+                <p className="text-xs text-custom-700">{deleteTarget.name}</p>
+              </div>
+            </div>
+            {targetHasJobs ? (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
+                This customer cannot be deleted — they are already assigned to a job.
+              </p>
+            ) : (
+              <div className="space-y-4 mb-5">
+                <p className="text-sm text-custom-700">
+                  Type <span className="font-semibold text-secondary-100">{deleteTarget.name}</span> to confirm deletion. This action cannot be undone.
+                </p>
+                <input
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={deleteTarget.name}
+                  className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-red-400 transition-colors"
+                />
+              </div>
+            )}
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteConfirmName(""); }}>Cancel</Button>
+              {!targetHasJobs && (
+                <Button
+                  onClick={handleDelete}
+                  disabled={isDeleting || deleteConfirmName !== deleteTarget.name}
+                  className="!bg-red-500 hover:!bg-red-600 disabled:opacity-40">
+                  {isDeleting ? "Deleting…" : "Delete"}
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
       )}
 
       {/* Add / Edit Modal */}

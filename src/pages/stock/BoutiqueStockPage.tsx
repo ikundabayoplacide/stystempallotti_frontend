@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   HiOutlineArchive,
   HiOutlinePlus,
@@ -10,7 +10,11 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineCheck,
   HiOutlineClipboardList,
+  HiOutlineCash,
+  HiOutlineChevronDown,
+  HiOutlineShoppingCart,
 } from "react-icons/hi";
+import TradedProductsTab from "./TradedProductsTab";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
@@ -22,9 +26,14 @@ import {
   useCreateBoutiqueStockEntryMutation,
   useGetBoutiqueStockSortiesQuery,
   useTakeBoutiqueStockSortieMutation,
+  useSellStockItemMutation,
+  useGetBoutiqueSalesQuery,
+  useUpdateBoutiqueSaleMutation,
   type BoutiqueStockItem,
   type BoutiqueStockSortie,
+  type BoutiqueSale,
   type SortieStatus,
+  type PaymentMethod,
 } from "../../store/services/boutiqueStockService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -154,6 +163,131 @@ function ItemFormModal({ item, onClose, onSuccess }: ItemFormProps) {
   );
 }
 
+// ─── Sell Modal ───────────────────────────────────────────────────────────────
+
+function SellModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; onClose: () => void; onSuccess: () => void }) {
+  const [sellStockItem, { isLoading }] = useSellStockItemMutation();
+  const [form, setForm] = useState({
+    quantity:      "1",
+    unitPrice:     item.unitCost?.toString() ?? "",
+    amountPaid:    "",
+    paymentMethod: "cash" as PaymentMethod,
+  });
+
+  const qty        = Number(form.quantity)  || 0;
+  const unitPrice  = Number(form.unitPrice) || 0;
+  const totalPrice = qty * unitPrice;
+  const isOnCredit = form.paymentMethod === "oncredit";
+  const amountPaid  = Number(form.amountPaid) || 0;
+  const changeToGive  = !isOnCredit && totalPrice > 0 && amountPaid > totalPrice ? amountPaid - totalPrice : 0;
+  const balanceStill  = !isOnCredit && totalPrice > 0 && amountPaid < totalPrice && amountPaid > 0 ? totalPrice - amountPaid : 0;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qty || qty <= 0)             { toast.error("Enter a valid quantity"); return; }
+    if (!unitPrice || unitPrice <= 0) { toast.error("Unit price is required"); return; }
+    if (!isOnCredit && form.amountPaid === "") { toast.error("Amount paid is required"); return; }
+    try {
+      const result = await sellStockItem({
+        id:            item.id,
+        quantity:      qty,
+        unitPrice,
+        amountPaid:    isOnCredit ? 0 : Number(form.amountPaid),
+        paymentMethod: form.paymentMethod,
+      }).unwrap();
+      if (result.changeGiven > 0) {
+        toast.success(`Sold ${qty} ${item.unit} — give back ${result.changeGiven.toLocaleString()} RWF change`, { autoClose: 6000 });
+      } else {
+        toast.success(`Sold ${qty} ${item.unit} — ${result.paymentStatus}`);
+      }
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Sale failed");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-xl font-bold text-secondary-100">Sell: {item.itemName}</h3>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Quantity *</label>
+              <input type="number" min={1} max={item.currentStock} value={form.quantity}
+                onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value }))} className={cls} />
+              <p className="text-xs text-custom-700 mt-1">In stock: <span className="font-bold text-secondary-100">{item.currentStock} {item.unit}</span></p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Unit Price (RWF) *</label>
+              <input type="number" min={0} step="0.01" value={form.unitPrice}
+                onChange={(e) => setForm((p) => ({ ...p, unitPrice: e.target.value }))} className={cls} />
+            </div>
+          </div>
+
+          {totalPrice > 0 && (
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-primary-50 border border-primary-200">
+              <span className="text-xs font-semibold text-primary-700">Total Price</span>
+              <span className="text-sm font-bold text-primary-600">{totalPrice.toLocaleString()} RWF</span>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-secondary-100 mb-1">Payment Method *</label>
+            <select value={form.paymentMethod}
+              onChange={(e) => setForm((p) => ({ ...p, paymentMethod: e.target.value as PaymentMethod, amountPaid: e.target.value === "oncredit" ? "0" : p.amountPaid }))}
+              className={cls}>
+              <option value="cash">Cash</option>
+              <option value="mobile">MoMo</option>
+              <option value="bank">Bank</option>
+              <option value="oncredit">On Credit</option>
+            </select>
+          </div>
+
+          {!isOnCredit && (
+            <div>
+              <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Paid (RWF) *</label>
+              <input type="number" min={0} value={form.amountPaid}
+                onChange={(e) => setForm((p) => ({ ...p, amountPaid: e.target.value }))} className={cls} />
+            </div>
+          )}
+
+          {isOnCredit && totalPrice > 0 && (
+            <div className="px-4 py-2.5 rounded-xl bg-yellow-50 border border-yellow-200 text-xs text-yellow-700 font-semibold">
+              On credit — full balance of {totalPrice.toLocaleString()} RWF will be owed
+            </div>
+          )}
+
+          {balanceStill > 0 && (
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-red-50 border border-red-200">
+              <span className="text-xs font-semibold text-red-700">Remaining balance</span>
+              <span className="text-sm font-bold text-red-600">{balanceStill.toLocaleString()} RWF</span>
+            </div>
+          )}
+
+          {changeToGive > 0 && (
+            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-blue-50 border-2 border-blue-400">
+              <span className="text-sm font-bold text-blue-700">💵 Change to give back</span>
+              <span className="text-xl font-extrabold text-blue-600">{changeToGive.toLocaleString()} RWF</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
+            <button type="submit" disabled={isLoading}
+              className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+              {isLoading ? "Processing..." : "Confirm Sale"}
+            </button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Delete Confirm Modal ────────────────────────────────────────────────────
 
 function DeleteModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; onClose: () => void; onSuccess: () => void }) {
@@ -246,6 +380,199 @@ function RestockModal({ item, onClose, onSuccess }: { item: BoutiqueStockItem; o
   );
 }
 
+// ─── Pending Balances Modal ──────────────────────────────────────────────────
+
+function PendingBalancesModal({ onClose }: { onClose: () => void }) {
+  const [activeTab, setActiveTab] = useState<"partial" | "overpaid">("partial");
+  const [payingId, setPayingId]   = useState<string | null>(null);
+  const [payAmount, setPayAmount] = useState("");
+
+  const { data: partialData,  isLoading: pLoading,  refetch: refetchPartial }  = useGetBoutiqueSalesQuery({ paymentStatus: "partial",  limit: 100 });
+  const { data: oncreditData, isLoading: ocLoading, refetch: refetchOncredit } = useGetBoutiqueSalesQuery({ paymentStatus: "oncredit", limit: 100 });
+  const { data: overpaidData, isLoading: oLoading,  refetch: refetchOverpaid } = useGetBoutiqueSalesQuery({ paymentStatus: "overpaid", limit: 100 });
+  const [updateSale, { isLoading: updating }] = useUpdateBoutiqueSaleMutation();
+
+  const allPartials = [...(partialData?.data ?? []), ...(oncreditData?.data ?? [])]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const allOverpaid = (overpaidData?.data ?? [])
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const isLoading = pLoading || ocLoading || oLoading;
+
+  const handlePayBalance = async (sale: BoutiqueSale) => {
+    const amt = parseFloat(payAmount);
+    if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    const newTotal = Number(sale.amountPaid) + amt;
+    const change   = newTotal - Number(sale.totalPrice);
+    try {
+      await updateSale({ id: sale.id, amountPaid: newTotal }).unwrap();
+      if (change > 0) {
+        toast.success(`Payment recorded — give back ${change.toLocaleString()} RWF change`, { autoClose: 6000 });
+      } else {
+        toast.success("Payment updated successfully");
+      }
+      setPayingId(null); setPayAmount("");
+      refetchPartial(); refetchOncredit(); refetchOverpaid();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to update payment");
+    }
+  };
+
+  const handleConfirmChange = async (sale: BoutiqueSale) => {
+    try {
+      await updateSale({ id: sale.id, amountPaid: Number(sale.totalPrice) }).unwrap();
+      toast.success("Change confirmed — sale marked as paid");
+      refetchOverpaid();
+    } catch (err: any) {
+      toast.error(err?.data?.message ?? "Failed to confirm");
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+      <Card className="!p-6 max-w-2xl w-full my-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h3 className="text-xl font-bold text-secondary-100">Pending Balances</h3>
+            <p className="text-sm text-custom-700 mt-0.5">Collect remaining dues or confirm change given</p>
+          </div>
+          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-6 h-6" /></button>
+        </div>
+
+        <div className="flex gap-2 mb-5">
+          <button onClick={() => setActiveTab("partial")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === "partial" ? "bg-orange-500 text-white" : "bg-custom-100 text-custom-700 hover:bg-custom-200"
+            }`}>
+            Balance Due
+            {allPartials.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-white/30 text-xs flex items-center justify-center font-bold">{allPartials.length}</span>
+            )}
+          </button>
+          <button onClick={() => setActiveTab("overpaid")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+              activeTab === "overpaid" ? "bg-blue-500 text-white" : "bg-custom-100 text-custom-700 hover:bg-custom-200"
+            }`}>
+            Change to Give
+            {allOverpaid.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-white/30 text-xs flex items-center justify-center font-bold">{allOverpaid.length}</span>
+            )}
+          </button>
+        </div>
+
+        {isLoading ? (
+          <div className="py-12 text-center text-custom-700 text-sm">Loading...</div>
+        ) : activeTab === "partial" ? (
+          allPartials.length === 0 ? (
+            <div className="py-12 text-center">
+              <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+              <p className="text-sm text-custom-700">No pending balances</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              {allPartials.map((sale) => (
+                <div key={sale.id} className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-secondary-100">{sale.stockItem?.itemName ?? "—"}</p>
+                      {sale.customer && <p className="text-xs text-custom-700 mt-0.5">{sale.customer.name}</p>}
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <span className="text-custom-700">Total: <span className="font-bold text-secondary-100">{Number(sale.totalPrice).toLocaleString()} RWF</span></span>
+                        <span className="text-custom-700">Paid: <span className="font-bold text-emerald-600">{Number(sale.amountPaid).toLocaleString()} RWF</span></span>
+                        <span className="text-custom-700">Owes: <span className="font-bold text-red-600">{Number(sale.balanceDue).toLocaleString()} RWF</span></span>
+                      </div>
+                      <p className="text-xs text-custom-400 mt-1">{new Date(sale.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                    </div>
+                    <button
+                      onClick={() => { setPayingId(payingId === sale.id ? null : sale.id); setPayAmount(String(Number(sale.balanceDue))); }}
+                      className="px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors flex-shrink-0"
+                    >Collect</button>
+                  </div>
+                  {payingId === sale.id && (() => {
+                    const received   = parseFloat(payAmount) || 0;
+                    const stillOwes  = Number(sale.balanceDue) - received;
+                    const changeBack = received - Number(sale.balanceDue);
+                    return (
+                      <div className="mt-3 pt-3 border-t border-orange-200 space-y-2">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <label className="block text-xs font-semibold text-secondary-100 mb-1">
+                              Amount Received (RWF) — owes {Number(sale.balanceDue).toLocaleString()} RWF
+                            </label>
+                            <input autoFocus type="number" min={1} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} className={cls} />
+                          </div>
+                          <button onClick={() => handlePayBalance(sale)} disabled={updating || !payAmount}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-40">
+                            {updating ? "Saving..." : "Confirm"}
+                          </button>
+                          <button onClick={() => { setPayingId(null); setPayAmount(""); }}
+                            className="px-3 py-2 rounded-xl border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 transition-colors">Cancel</button>
+                        </div>
+                        {received > 0 && stillOwes > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                            <span className="text-xs font-semibold text-red-700">Still owes after this payment</span>
+                            <span className="text-sm font-bold text-red-600">{stillOwes.toLocaleString()} RWF</span>
+                          </div>
+                        )}
+                        {received > 0 && changeBack > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-blue-50 border-2 border-blue-400">
+                            <span className="text-sm font-bold text-blue-700">💵 Change to give back</span>
+                            <span className="text-lg font-extrabold text-blue-600">{changeBack.toLocaleString()} RWF</span>
+                          </div>
+                        )}
+                        {received > 0 && stillOwes === 0 && changeBack === 0 && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                            <HiOutlineCheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs font-semibold text-emerald-700">Exact amount — fully paid</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          allOverpaid.length === 0 ? (
+            <div className="py-12 text-center">
+              <HiOutlineCheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+              <p className="text-sm text-custom-700">No change to give back</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              {allOverpaid.map((sale) => (
+                <div key={sale.id} className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-secondary-100">{sale.stockItem?.itemName ?? "—"}</p>
+                      {sale.customer && <p className="text-xs text-custom-700 mt-0.5">{sale.customer.name}</p>}
+                      <div className="flex gap-4 mt-2 text-xs">
+                        <span className="text-custom-700">Total: <span className="font-bold text-secondary-100">{Number(sale.totalPrice).toLocaleString()} RWF</span></span>
+                        <span className="text-custom-700">Paid: <span className="font-bold text-emerald-600">{Number(sale.amountPaid).toLocaleString()} RWF</span></span>
+                        <span className="font-bold text-blue-600">Return: {Number(sale.changeGiven).toLocaleString()} RWF</span>
+                      </div>
+                      <p className="text-xs text-custom-400 mt-1">{new Date(sale.createdAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                    </div>
+                    <button onClick={() => handleConfirmChange(sale)} disabled={updating}
+                      className="px-3 py-1.5 rounded-lg bg-blue-500 text-white text-xs font-semibold hover:bg-blue-600 transition-colors flex-shrink-0 disabled:opacity-40">
+                      Mark Returned
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+
+        <div className="mt-5 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">Close</button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Items Tab ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 7;
@@ -280,6 +607,7 @@ function ItemsTab() {
   const [editItem, setEditItem]       = useState<BoutiqueStockItem | null>(null);
   const [restockItem, setRestockItem] = useState<BoutiqueStockItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BoutiqueStockItem | null>(null);
+  const [sellItem, setSellItem]       = useState<BoutiqueStockItem | null>(null);
   const [search, setSearch]           = useState("");
   const [page, setPage]               = useState(1);
 
@@ -369,12 +697,16 @@ function ItemsTab() {
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-1">
+                      <button onClick={() => setSellItem(item)} title="Sell"
+                        className="p-1.5 rounded-lg bg-emerald-50 flex gap-1 text-emerald-600 hover:bg-emerald-100 transition-colors">
+                        <HiOutlineCash className="w-3 h-5.5" /> sell
+                      </button>
                       <button onClick={() => setRestockItem(item)} title="Restock"
-                        className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
+                        className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
                         <HiOutlinePlus className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => { setEditItem(item); setShowForm(true); }} title="Edit"
-                        className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                        className="p-1.5 rounded-lg bg-yellow-50 text-yellow-600 hover:bg-yellow-100 transition-colors">
                         <HiOutlinePencil className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => setDeleteTarget(item)} title="Delete"
@@ -410,6 +742,13 @@ function ItemsTab() {
           item={deleteTarget}
           onClose={() => setDeleteTarget(null)}
           onSuccess={() => { setDeleteTarget(null); refetch(); }}
+        />
+      )}
+      {sellItem && (
+        <SellModal
+          item={sellItem}
+          onClose={() => setSellItem(null)}
+          onSuccess={() => { setSellItem(null); refetch(); }}
         />
       )}
     </div>
@@ -639,55 +978,144 @@ function SortiesTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-type Tab = "items" | "sorties";
+type Section = "stock" | "traded";
+type StockTab = "items" | "sorties";
 
 export default function BoutiqueStockPage() {
-  const [tab, setTab] = useState<Tab>("items");
+  const [section,  setSection]  = useState<Section>("stock");
+  const [stockTab, setStockTab] = useState<StockTab>("items");
+  const [dropOpen, setDropOpen] = useState(false);
+  const [showPendingBalances, setShowPendingBalances] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
+
+  // close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
+        setDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "approved", limit: 200 });
   const approvedCount = sortiesData?.data?.length ?? 0;
+
+  const { data: partialSales }  = useGetBoutiqueSalesQuery({ paymentStatus: "partial",  limit: 100 });
+  const { data: oncreditSales } = useGetBoutiqueSalesQuery({ paymentStatus: "oncredit", limit: 100 });
+  const { data: overpaidSales } = useGetBoutiqueSalesQuery({ paymentStatus: "overpaid", limit: 100 });
+  const pendingCount = (partialSales?.data?.length ?? 0) + (oncreditSales?.data?.length ?? 0) + (overpaidSales?.data?.length ?? 0);
+
+  const sectionLabels: Record<Section, string> = {
+    stock:  "Stock Product",
+    traded: "Traded Product",
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
-            <HiOutlineArchive className="w-5 h-5 text-pink-600" />
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
+              <HiOutlineArchive className="w-5 h-5 text-pink-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Boutique Stock</h1>
+              <p className="text-sm text-custom-700 mt-0.5">Manage boutique stock items and process requests</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Boutique Stock</h1>
-            <p className="text-sm text-custom-700 mt-0.5">Manage boutique stock items and process requests</p>
-          </div>
+          <button
+            onClick={() => setShowPendingBalances(true)}
+            className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors text-sm font-semibold flex-shrink-0"
+          >
+            <HiOutlineCash className="w-4 h-4" />
+            <span className="hidden sm:inline">Pending Balances</span>
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-bold">
+                {pendingCount}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
-          {([
-            { id: "items",   label: "Items" },
-            { id: "sorties", label: "Requests", badge: approvedCount },
-          ] as { id: Tab; label: string; badge?: number }[]).map(({ id, label, badge }) => (
-            <button key={id} onClick={() => setTab(id)}
-              className={`relative flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                tab === id ? "bg-style-500 text-secondary-100 shadow-sm" : "text-custom-700 hover:text-secondary-100"
-              }`}
+        {/* ── Section Dropdown ── */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div ref={dropRef} className="relative">
+            <button
+              onClick={() => setDropOpen((o) => !o)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm font-semibold hover:bg-custom-100 transition-colors min-w-[180px] justify-between"
             >
-              {label}
-              {badge != null && badge > 0 && (
-                <span className="w-5 h-5 bg-yellow-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {badge > 9 ? "9+" : badge}
-                </span>
-              )}
+              <span className="flex items-center gap-2">
+                {section === "stock"
+                  ? <HiOutlineArchive className="w-4 h-4 text-pink-500" />
+                  : <HiOutlineShoppingCart className="w-4 h-4 text-indigo-500" />
+                }
+                {sectionLabels[section]}
+              </span>
+              <HiOutlineChevronDown className={`w-4 h-4 text-custom-700 transition-transform ${dropOpen ? "rotate-180" : ""}`} />
             </button>
-          ))}
+
+            {dropOpen && (
+              <div className="absolute left-0 top-full mt-1 z-30 bg-style-500 border border-custom-300 rounded-xl shadow-lg min-w-[180px] overflow-hidden">
+                {(["stock", "traded"] as Section[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setSection(s); setDropOpen(false); }}
+                    className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-custom-100 ${
+                      section === s ? "text-primary-500 bg-primary-50" : "text-secondary-100"
+                    }`}
+                  >
+                    {s === "stock"
+                      ? <HiOutlineArchive className="w-4 h-4 text-pink-500" />
+                      : <HiOutlineShoppingCart className="w-4 h-4 text-indigo-500" />
+                    }
+                    {sectionLabels[s]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sub-tabs only visible when on Stock Product section */}
+          {section === "stock" && (
+            <div className="flex gap-1 p-1 bg-custom-100 rounded-xl">
+              {([
+                { id: "items",   label: "Items" },
+                { id: "sorties", label: "Requests", badge: approvedCount },
+              ] as { id: StockTab; label: string; badge?: number }[]).map(({ id, label, badge }) => (
+                <button
+                  key={id}
+                  onClick={() => setStockTab(id)}
+                  className={`relative flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    stockTab === id
+                      ? "bg-style-500 text-secondary-100 shadow-sm"
+                      : "text-custom-700 hover:text-secondary-100"
+                  }`}
+                >
+                  {label}
+                  {badge != null && badge > 0 && (
+                    <span className="w-5 h-5 bg-yellow-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {badge > 9 ? "9+" : badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {tab === "items"   && <ItemsTab />}
-        {tab === "sorties" && <SortiesTab />}
+        {/* ── Content ── */}
+        {section === "stock" && stockTab === "items"   && <ItemsTab />}
+        {section === "stock" && stockTab === "sorties" && <SortiesTab />}
+        {section === "traded" && <TradedProductsTab />}
       </div>
+
+      {showPendingBalances && (
+        <PendingBalancesModal onClose={() => setShowPendingBalances(false)} />
+      )}
     </DashboardLayout>
   );
 }

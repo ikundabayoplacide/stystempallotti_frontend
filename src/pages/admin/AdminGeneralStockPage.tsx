@@ -8,8 +8,6 @@ import {
   HiOutlineX,
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
-  HiOutlineCheck,
-  HiOutlineBan,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
@@ -21,8 +19,6 @@ import {
   useDeleteGeneralStockItemMutation,
   useCreateGeneralStockEntryMutation,
   useGetGeneralStockSortiesQuery,
-  useApproveGeneralStockSortieMutation,
-  useRejectGeneralStockSortieMutation,
   type GeneralStockItem,
   type GeneralStockSortie,
   type SortieStatus,
@@ -334,43 +330,54 @@ function ItemsTab() {
 
 // ─── Sorties Tab ──────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 10;
+
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-center gap-2 pt-2">
+      <button disabled={page === 1} onClick={() => onChange(page - 1)}
+        className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
+        ‹ Prev
+      </button>
+      <span className="text-sm text-custom-700">
+        Page <span className="font-semibold text-secondary-100">{page}</span> of {totalPages}
+      </span>
+      <button disabled={page === totalPages} onClick={() => onChange(page + 1)}
+        className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
+        Next ›
+      </button>
+    </div>
+  );
+}
+
 function SortiesTab() {
   const [statusFilter, setStatusFilter] = useState<SortieStatus | "">("");
+  const [search, setSearch]             = useState("");
+  const [page, setPage]                 = useState(1);
 
   const { data, isLoading, refetch } = useGetGeneralStockSortiesQuery(
     statusFilter ? { status: statusFilter, limit: 200 } : { limit: 200 }
   );
-  const [approve] = useApproveGeneralStockSortieMutation();
-  const [reject]  = useRejectGeneralStockSortieMutation();
-
-  const sorties: GeneralStockSortie[] = data?.data ?? [];
-  const pending  = sorties.filter((s) => s.status === "pending").length;
-
-  const handleApprove = async (id: string) => {
-    try {
-      await approve(id).unwrap();
-      toast.success("Request approved");
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to approve");
-    }
-  };
-
-  const handleReject = async (id: string) => {
-    if (!confirm("Reject this stock request?")) return;
-    try {
-      await reject(id).unwrap();
-      toast.success("Request rejected");
-      refetch();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to reject");
-    }
-  };
+  const filtered: GeneralStockSortie[] = (data?.data ?? []).filter((s) => {
+    const q = search.trim().toLowerCase();
+    return !q || s.stockItem?.itemName.toLowerCase().includes(q) || s.requester?.name.toLowerCase().includes(q);
+  });
+  const pending    = filtered.filter((s) => s.status === "pending").length;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage   = Math.min(page, totalPages);
+  const sorties    = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as SortieStatus | "")}
+        <input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Search by item or requester..."
+          className="flex-1 min-w-48 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+        />
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as SortieStatus | ""); setPage(1); }}
           className="px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors">
           <option value="">All Requests</option>
           <option value="pending">Pending</option>
@@ -419,18 +426,7 @@ function SortiesTab() {
                   {sortie.status}
                 </span>
               </div>
-              {sortie.status === "pending" && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleApprove(sortie.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold hover:bg-emerald-600 transition-colors">
-                    <HiOutlineCheck className="w-3.5 h-3.5" /> Approve
-                  </button>
-                  <button onClick={() => handleReject(sortie.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition-colors">
-                    <HiOutlineBan className="w-3.5 h-3.5" /> Reject
-                  </button>
-                </div>
-              )}
+
             </div>
             <div className="px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
               <span className="text-custom-700">Qty: <span className="font-bold text-secondary-100">{parseFloat(sortie.quantityOut)} {sortie.stockItem?.unit ?? ""}</span></span>
@@ -444,6 +440,7 @@ function SortiesTab() {
           </Card>
         ))}
       </div>
+      <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
     </div>
   );
 }

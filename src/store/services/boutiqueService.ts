@@ -149,9 +149,10 @@ export interface SalesSummary {
 
 export interface RecordSalePayload {
   id: string;
-  quantity?: number;
+  quantity: number;
+  unitPrice: number;
   amountPaid: number;
-  paymentMethod?: PaymentMethod;
+  paymentMethod: PaymentMethod;
   customerId?: string;
   note?: string;
 }

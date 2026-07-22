@@ -386,6 +386,7 @@ function ProductDetailModal({ product, categoryColor, onClose, onSold }: {
       const result = await recordSale({
         id: product.id,
         quantity: q,
+        unitPrice: product.price,
         amountPaid: paid,
         paymentMethod,
         customerId: customerId || undefined,
@@ -644,13 +645,20 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
   const handlePayBalance = async (sale: BoutiqueSale) => {
     const amt = parseFloat(payAmount);
     if (!amt || amt <= 0) { toast.error("Enter a valid amount"); return; }
+    const newTotal = Number(sale.amountPaid) + amt;
+    const change   = newTotal - Number(sale.totalPrice);
     try {
-      await updateSale({ id: sale.id, amountPaid: Number(sale.amountPaid) + amt }).unwrap();
-      toast.success("Payment updated successfully");
+      await updateSale({ id: sale.id, amountPaid: newTotal }).unwrap();
+      if (change > 0) {
+        toast.success(`Payment recorded — give back ${change.toLocaleString()} RWF change`, { autoClose: 6000 });
+      } else {
+        toast.success("Payment updated successfully");
+      }
       setPayingId(null);
       setPayAmount("");
       refetchPartial();
       refetchOncredit();
+      refetchOverpaid();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to update payment");
     }
@@ -761,28 +769,56 @@ function PendingBalancesModal({ onClose }: { onClose: () => void }) {
                     </button>
                   </div>
 
-                  {payingId === sale.id && (
-                    <div className="mt-3 pt-3 border-t border-orange-200 flex gap-2 items-end">
-                      <div className="flex-1">
-                        <label className="block text-xs font-semibold text-secondary-100 mb-1">Amount Received (RWF)</label>
-                        <input
-                          type="number" min={1} max={Number(sale.balanceDue)}
-                          value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
-                          className={inputCls}
-                        />
+                  {payingId === sale.id && (() => {
+                    const received = parseFloat(payAmount) || 0;
+                    const stillOwes = Number(sale.balanceDue) - received;
+                    const changeBack = received - Number(sale.balanceDue);
+                    return (
+                      <div className="mt-3 pt-3 border-t border-orange-200 space-y-2">
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <label className="block text-xs font-semibold text-secondary-100 mb-1">
+                              Amount Received (RWF) — owes {Number(sale.balanceDue).toLocaleString()} RWF
+                            </label>
+                            <input
+                              autoFocus
+                              type="number" min={1}
+                              value={payAmount} onChange={(e) => setPayAmount(e.target.value)}
+                              className={inputCls}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handlePayBalance(sale)}
+                            disabled={updating || !payAmount}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-40"
+                          >
+                            {updating ? "Saving..." : "Confirm"}
+                          </button>
+                          <button onClick={() => { setPayingId(null); setPayAmount(""); }}
+                            className="px-3 py-2 rounded-xl border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 transition-colors"
+                          >Cancel</button>
+                        </div>
+                        {received > 0 && stillOwes > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                            <span className="text-xs font-semibold text-red-700">Still owes after this payment</span>
+                            <span className="text-sm font-bold text-red-600">{stillOwes.toLocaleString()} RWF</span>
+                          </div>
+                        )}
+                        {received > 0 && changeBack > 0 && (
+                          <div className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-blue-50 border-2 border-blue-400">
+                            <span className="text-sm font-bold text-blue-700">💵 Change to give back</span>
+                            <span className="text-lg font-extrabold text-blue-600">{changeBack.toLocaleString()} RWF</span>
+                          </div>
+                        )}
+                        {received > 0 && stillOwes === 0 && changeBack === 0 && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                            <HiOutlineCheckCircle className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs font-semibold text-emerald-700">Exact amount — fully paid</span>
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handlePayBalance(sale)}
-                        disabled={updating}
-                        className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors disabled:opacity-40"
-                      >
-                        {updating ? "Saving..." : "Confirm"}
-                      </button>
-                      <button onClick={() => setPayingId(null)}
-                        className="px-3 py-2 rounded-xl border border-custom-300 text-sm text-custom-700 hover:bg-custom-100 transition-colors"
-                      >Cancel</button>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               ))}
             </div>

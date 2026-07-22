@@ -206,25 +206,23 @@ export default function MaterialRequestPage() {
         {/* ── My Requests Tab ── */}
         {tab === "my-requests" && (
           <>
-            {/* Search */}
-            <div>
+            {/* Search + Period filter — horizontal row */}
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 value={requestSearch} onChange={(e) => setRequestSearch(e.target.value)}
                 placeholder="Search by item name or category…"
-                className="w-full sm:w-72 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
+                className="flex-1 min-w-[200px] sm:w-72 px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors"
               />
-            </div>
-
-            {/* Period filter */}
-            <div className="flex gap-2">
-              {(["all", "week", "year"] as const).map((p) => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-colors ${
-                    period === p ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-                  }`}>
-                  {p === "all" ? "All Time" : p === "week" ? "This Week" : "This Year"}
-                </button>
-              ))}
+              <div className="flex gap-2">
+                {(["all", "week", "year"] as const).map((p) => (
+                  <button key={p} onClick={() => setPeriod(p)}
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                      period === p ? "bg-primary-500 text-white" : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+                    }`}>
+                    {p === "all" ? "All Time" : p === "week" ? "This Week" : "This Year"}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Stats */}
