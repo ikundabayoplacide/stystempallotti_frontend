@@ -56,6 +56,7 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Casual Workers", path: "/admin/abanyabiraka", icon: HiOutlineUsers },
     { label: "Extra Workers", path: "/admin/extra-workers", icon: HiOutlineUsers },
     { label: "Emp Overtime", path: "/admin/overtime", icon: HiOutlineClock },
+    { label: "Payroll", path: "/admin/payroll", icon: HiOutlineCurrencyDollar },
     { label: "Jobs", path: "/admin/jobs", icon: HiOutlineClipboardList},
     { label: "Deliveries", path: "/admin/deliveries", icon: HiOutlineArchive },
     { label: "Procurement", path: "/admin/procurement", icon: HiOutlineArchive },

@@ -10,6 +10,7 @@ import {
   HiOutlineCash,
   HiOutlineFilter,
 } from "react-icons/hi";
+import { useAuth } from "../../context/AuthContext";
 import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
 import {
@@ -43,12 +44,13 @@ function currentPeriod() {
 }
 
 export default function PayrollPage() {
+  const { userRole, userName: authUserName } = useAuth();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [filterType, setFilterType] = useState<WorkerType | "">("");
   const [filterStatus, setFilterStatus] = useState<PayrollStatus | "">("");
   const [filterPeriod, setFilterPeriod] = useState("");
-  const [periodPreset, setPeriodPreset] = useState<"" | "day" | "week" | "month" | "year">("day");
+  const [periodPreset, setPeriodPreset] = useState<"" | "month" | "year">("month");
   const [showCreate, setShowCreate] = useState(false);
   const [editPayroll, setEditPayroll] = useState<Payroll | null>(null);
   const [deletePayroll, setDeletePayroll] = useState<Payroll | null>(null);
@@ -64,12 +66,10 @@ export default function PayrollPage() {
     ...(filterStatus ? { status: filterStatus } : {}),
     ...(filterPeriod ? { period: filterPeriod } : periodPreset ? (() => {
       const now = new Date();
-      const y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+      const y = now.getFullYear(), m = now.getMonth();
       const pad = (n: number) => String(n).padStart(2, "0");
-      if (periodPreset === "day")   return { dateFrom: `${y}-${pad(m+1)}-${pad(d)}`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` };
-      if (periodPreset === "week")  { const w = new Date(y, m, d - 6); return { dateFrom: `${w.getFullYear()}-${pad(w.getMonth()+1)}-${pad(w.getDate())}`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` }; }
-      if (periodPreset === "month") return { dateFrom: `${y}-${pad(m+1)}-01`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` };
-      if (periodPreset === "year")  return { dateFrom: `${y}-01-01`, dateTo: `${y}-${pad(m+1)}-${pad(d)}` };
+      if (periodPreset === "month") return { period: `${y}-${pad(m + 1)}` };
+      if (periodPreset === "year")  return { dateFrom: `${y}-01`, dateTo: `${y}-12` };
       return {};
     })() : {}),
     ...(search ? { search } : {}),
@@ -84,7 +84,7 @@ export default function PayrollPage() {
   const totalNetPaid = payrolls.filter(p => p.status === "paid").reduce((s, p) => s + Number(p.netSalary), 0);
 
   return (
-    <DashboardLayout>
+    <DashboardLayout userRole={userRole ?? "hr"} userName={authUserName ?? ""}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -113,14 +113,14 @@ export default function PayrollPage() {
 
         {/* Period preset tabs */}
         <div className="flex gap-1 p-1 bg-custom-100 rounded-xl w-fit">
-          {(["day", "week", "month", "year"] as const).map((p) => (
+          {(["month", "year"] as const).map((p) => (
             <button key={p} onClick={() => { setPeriodPreset(p); setFilterPeriod(""); setPage(1); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                 periodPreset === p && !filterPeriod
                   ? "bg-style-500 text-secondary-100 shadow-sm"
                   : "text-custom-700 hover:text-secondary-100"
               }`}>
-              {p === "day" ? "Today" : p === "week" ? "This Week" : p === "month" ? "This Month" : "This Year"}
+              {p === "month" ? "This Month" : "This Year"}
             </button>
           ))}
         </div>
