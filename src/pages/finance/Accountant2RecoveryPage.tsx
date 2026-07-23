@@ -39,8 +39,12 @@ const pmColor: Record<string, string> = {
 
 // ─── Record Recovery Modal ────────────────────────────────────────────────────
 
-function RecordModal({ onClose }: { onClose: () => void }) {
-  const { data: debts = [], isLoading: debtsLoading } = useGetDebtsQuery(undefined, { refetchOnMountOrArgChange: true });
+function RecordModal({ onClose, debts, debtsLoading, onRecorded }: {
+  onClose: () => void;
+  debts: DebtItem[];
+  debtsLoading: boolean;
+  onRecorded: () => void;
+}) {
 
   const [selectedDebt, setSelectedDebt] = useState<DebtItem | null>(null);
   const [debtSearch, setDebtSearch]     = useState("");
@@ -79,6 +83,7 @@ function RecordModal({ onClose }: { onClose: () => void }) {
         contactedAt,
       }).unwrap();
       toast.success("Recovery recorded successfully");
+      onRecorded();
       onClose();
     } catch (err: any) {
       toast.error(err?.data?.message ?? "Failed to record recovery");
@@ -89,7 +94,7 @@ function RecordModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-lg w-full my-8">
+      <Card className="!p-6 max-w-2xl w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold text-secondary-100">Record Recovery</h3>
@@ -248,8 +253,8 @@ export default function Accountant2RecoveryPage() {
   const [showModal, setShowModal] = useState(false);
   const [search, setSearch]       = useState("");
 
-  const { data: records = [], isLoading, refetch } = useGetRecoveryRecordsQuery(undefined, { refetchOnMountOrArgChange: true });
-  const { data: debts = [] } = useGetDebtsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: records = [], isLoading: recordsLoading, refetch } = useGetRecoveryRecordsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: debts = [], isLoading: debtsLoading, refetch: refetchDebts } = useGetDebtsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   // Stats — partial count comes from outstanding debts (jobs with partial prior payment)
   const totalRecovered  = records.reduce((s, r) => s + Number(r.amountRecovered), 0);
@@ -277,7 +282,7 @@ export default function Accountant2RecoveryPage() {
           <div className="flex items-center gap-2">
             <button onClick={() => refetch()}
               className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors">
-              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+              <HiOutlineRefresh className={`w-5 h-5 text-custom-700 ${recordsLoading ? "animate-spin" : ""}`} />
             </button>
             <button onClick={() => setShowModal(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">
@@ -357,7 +362,7 @@ export default function Accountant2RecoveryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-custom-200">
-                {isLoading ? (
+                {recordsLoading ? (
                   <tr><td colSpan={8} className="px-4 py-10 text-center text-custom-700 text-sm">Loading...</td></tr>
                 ) : filtered.length === 0 ? (
                   <tr>
@@ -421,7 +426,7 @@ export default function Accountant2RecoveryPage() {
         </Card>
       </div>
 
-      {showModal && <RecordModal onClose={() => setShowModal(false)} />}
+      {showModal && <RecordModal onClose={() => setShowModal(false)} debts={debts} debtsLoading={debtsLoading} onRecorded={refetchDebts} />}
     </DashboardLayout>
   );
 }

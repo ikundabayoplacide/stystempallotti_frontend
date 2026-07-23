@@ -140,7 +140,7 @@ function drawFooter(pdf: any, pageNum: number, totalPages: number) {
 
 type SummaryRow = { label: string; value: string; bold?: boolean };
 
-async function buildPdf(title: string, headers: string[], rows: string[][], summary: SummaryRow[]) {
+async function buildPdf(title: string, headers: string[], rows: (string | null)[][], summary: SummaryRow[]) {
   const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
   const subtitle = `Generated: ${new Date().toLocaleString("en-RW")}`;
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -204,7 +204,7 @@ function StatCard({ label, value, sub, color = "text-secondary-100" }: {
 
 function PdfButtons({ title, getExportData }: {
   title: string;
-  getExportData: () => { headers: string[]; rows: string[][]; summary: SummaryRow[] };
+  getExportData: () => { headers: string[]; rows: (string | null)[][]; summary: SummaryRow[] };
 }) {
   const [showModal, setShowModal] = useState(false);
   const handlePdf = () => {

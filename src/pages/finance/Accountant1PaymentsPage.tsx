@@ -9,7 +9,7 @@ import {
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineCreditCard,
-  HiOutlineDocumentText,
+  // HiOutlineDocumentText,
   HiOutlinePhone,
   HiOutlineRefresh,
   HiOutlineSearch,
@@ -20,11 +20,11 @@ import { DashboardLayout } from "../../components";
 import { Button, Card } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { useAppSelector } from "../../store/hooks";
-import type { CreateInvoicePayload } from "../../store/services/invoicesService";
-import {
-  useCreateInvoiceMutation,
-  useGetInvoicesByJobQuery,
-} from "../../store/services/invoicesService";
+// import type { CreateInvoicePayload } from "../../store/services/invoicesService";
+// import {
+//   useCreateInvoiceMutation,
+//   useGetInvoicesByJobQuery,
+// } from "../../store/services/invoicesService";
 import { useGetJobsQuery, type Job, type PaymentMethod } from "../../store/services/jobsService";
 import {
   useRecordPaymentMutation,
@@ -450,151 +450,151 @@ function PaymentModal({ job, receivedById, onClose, onSuccess }: PaymentModalPro
 }
 
 // ─── Generate Invoice Modal ───────────────────────────────────────────────────
-function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void }) {
-  // Amount paid = sum of all recorded payments
-  const amountPaid = (job.payments ?? []).reduce(
-    (sum, p) => sum + Number(p.amountPaid ?? 0),
-    0
-  );
-  const [notes, setNotes]     = useState("");
-  const _now = new Date();
-  const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
-  const [dueDate, setDueDate] = useState(todayStr);
+// function GenerateInvoiceModal({ job, onClose }: { job: Job; onClose: () => void }) {
+//   // Amount paid = sum of all recorded payments
+//   const amountPaid = (job.payments ?? []).reduce(
+//     (sum, p) => sum + Number(p.amountPaid ?? 0),
+//     0
+//   );
+//   const [notes, setNotes]     = useState("");
+//   const _now = new Date();
+//   const todayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, "0")}-${String(_now.getDate()).padStart(2, "0")}`;
+//   const [dueDate, setDueDate] = useState(todayStr);
 
-  const [createInvoice, { isLoading, error }] = useCreateInvoiceMutation();
+//   const [createInvoice, { isLoading, error }] = useCreateInvoiceMutation();
 
-  // No tax — total equals amount paid
-  const total = amountPaid;
+//   // No tax — total equals amount paid
+//   const total = amountPaid;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const payload: CreateInvoicePayload = {
-        jobId:      job.id,
-        customerId: job.customer?.id ?? job.customerId,
-        lineItems: [
-          {
-            name:      job.title,
-            quantity:  1,
-            unitPrice: amountPaid,
-          },
-        ],
-        discountType:  "PERCENTAGE",
-        discountValue: 0,
-        taxRate:       0,
-        notes:         notes.trim() || undefined,
-        dueDate:       dueDate || undefined,
-      };
-      await createInvoice(payload).unwrap();
-      toast.success(`Invoice generated for "${job.title}"`);
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to generate invoice");
-    }
-  }
+//   async function handleSubmit(e: React.FormEvent) {
+//     e.preventDefault();
+//     try {
+//       const payload: CreateInvoicePayload = {
+//         jobId:      job.id,
+//         customerId: job.customer?.id ?? job.customerId,
+//         lineItems: [
+//           {
+//             name:      job.title,
+//             quantity:  1,
+//             unitPrice: amountPaid,
+//           },
+//         ],
+//         discountType:  "PERCENTAGE",
+//         discountValue: 0,
+//         taxRate:       0,
+//         notes:         notes.trim() || undefined,
+//         dueDate:       dueDate || undefined,
+//       };
+//       await createInvoice(payload).unwrap();
+//       toast.success(`Invoice generated for "${job.title}"`);
+//       onClose();
+//     } catch (err: any) {
+//       toast.error(err?.data?.message ?? "Failed to generate invoice");
+//     }
+//   }
 
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-md w-full my-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 className="text-xl font-bold text-secondary-100">Generate Invoice</h3>
-            <p className="text-sm text-custom-700 mt-0.5">
-              Job <span className="font-semibold text-primary-600">#{job.jobNumber}</span> — {job.title}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100 transition-colors">
-            <HiOutlineX className="w-6 h-6" />
-          </button>
-        </div>
+//   return (
+//     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
+//       <Card className="!p-6 max-w-md w-full my-8">
+//         {/* Header */}
+//         <div className="flex items-center justify-between mb-5">
+//           <div>
+//             <h3 className="text-xl font-bold text-secondary-100">Generate Invoice</h3>
+//             <p className="text-sm text-custom-700 mt-0.5">
+//               Job <span className="font-semibold text-primary-600">#{job.jobNumber}</span> — {job.title}
+//             </p>
+//           </div>
+//           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100 transition-colors">
+//             <HiOutlineX className="w-6 h-6" />
+//           </button>
+//         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Customer info */}
-          <div className="rounded-xl bg-custom-50 border border-custom-200 px-4 py-3 flex items-center gap-3">
-            <HiOutlineUser className="w-5 h-5 text-custom-500 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-secondary-100">{job.customer?.name ?? "—"}</p>
-              {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
-            </div>
-          </div>
+//         <form onSubmit={handleSubmit} className="space-y-5">
+//           {/* Customer info */}
+//           <div className="rounded-xl bg-custom-50 border border-custom-200 px-4 py-3 flex items-center gap-3">
+//             <HiOutlineUser className="w-5 h-5 text-custom-500 shrink-0" />
+//             <div>
+//               <p className="text-sm font-semibold text-secondary-100">{job.customer?.name ?? "—"}</p>
+//               {job.customer?.phone && <p className="text-xs text-custom-700">{job.customer.phone}</p>}
+//             </div>
+//           </div>
 
-          {/* Amount paid (read-only) */}
-          <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-1.5 text-sm">
-            <div className="flex justify-between">
-              <span className="text-custom-700">Job</span>
-              <span className="font-semibold text-secondary-100 max-w-[60%] truncate text-right">{job.title}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-custom-200">
-              <span className="font-semibold text-custom-700">Amount Paid</span>
-              <span className="font-bold text-secondary-100">{amountPaid.toLocaleString()} RWF</span>
-            </div>
-          </div>
+//           {/* Amount paid (read-only) */}
+//           <div className="rounded-xl border border-custom-300 bg-custom-50 p-4 space-y-1.5 text-sm">
+//             <div className="flex justify-between">
+//               <span className="text-custom-700">Job</span>
+//               <span className="font-semibold text-secondary-100 max-w-[60%] truncate text-right">{job.title}</span>
+//             </div>
+//             <div className="flex justify-between pt-2 border-t border-custom-200">
+//               <span className="font-semibold text-custom-700">Amount Paid</span>
+//               <span className="font-bold text-secondary-100">{amountPaid.toLocaleString()} RWF</span>
+//             </div>
+//           </div>
 
-          {/* Due date */}
-          <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-1">Due Date</label>
-            <input
-              type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-custom-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
-            />
-          </div>
+//           {/* Due date */}
+//           <div>
+//             <label className="block text-sm font-semibold text-secondary-100 mb-1">Due Date</label>
+//             <input
+//               type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
+//               className="w-full px-3 py-2 rounded-lg border border-custom-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400"
+//             />
+//           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-semibold text-secondary-100 mb-1">
-              Notes <span className="text-xs font-normal text-custom-500">(optional)</span>
-            </label>
-            <textarea
-              value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-              placeholder="Payment terms, special instructions…"
-              className="w-full px-3 py-2 rounded-lg border border-custom-300 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
-            />
-          </div>
+//           {/* Notes */}
+//           <div>
+//             <label className="block text-sm font-semibold text-secondary-100 mb-1">
+//               Notes <span className="text-xs font-normal text-custom-500">(optional)</span>
+//             </label>
+//             <textarea
+//               value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+//               placeholder="Payment terms, special instructions…"
+//               className="w-full px-3 py-2 rounded-lg border border-custom-300 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary-400"
+//             />
+//           </div>
 
-          {/* Total */}
-          <div className="rounded-xl bg-custom-50 border border-custom-200 p-4 text-sm">
-            <div className="flex justify-between font-bold text-base">
-              <span className="text-secondary-100">Total</span>
-              <span className="text-primary-600">{total.toLocaleString()} RWF</span>
-            </div>
-          </div>
+//           {/* Total */}
+//           <div className="rounded-xl bg-custom-50 border border-custom-200 p-4 text-sm">
+//             <div className="flex justify-between font-bold text-base">
+//               <span className="text-secondary-100">Total</span>
+//               <span className="text-primary-600">{total.toLocaleString()} RWF</span>
+//             </div>
+//           </div>
 
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-              {(error as any)?.data?.message ?? "Failed to generate invoice"}
-            </p>
-          )}
+//           {error && (
+//             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+//               {(error as any)?.data?.message ?? "Failed to generate invoice"}
+//             </p>
+//           )}
 
-          <div className="flex gap-3 justify-end pt-2 border-t border-custom-200">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isLoading} className="flex items-center gap-2">
-              {isLoading && <HiOutlineRefresh className="h-4 w-4 animate-spin" />}
-              {isLoading ? "Generating…" : "Generate Invoice"}
-            </Button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
-}
+//           <div className="flex gap-3 justify-end pt-2 border-t border-custom-200">
+//             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+//             <Button type="submit" disabled={isLoading} className="flex items-center gap-2">
+//               {isLoading && <HiOutlineRefresh className="h-4 w-4 animate-spin" />}
+//               {isLoading ? "Generating…" : "Generate Invoice"}
+//             </Button>
+//           </div>
+//         </form>
+//       </Card>
+//     </div>
+//   );
+// }
 
 // ─── Generate Invoice Button (hidden once invoice exists for this job) ────────
 
-function GenerateInvoiceButton({ job, onClick }: { job: Job; onClick: () => void }) {
-  const { data: invoices = [], isLoading } = useGetInvoicesByJobQuery(job.id);
-  if (isLoading || invoices.length > 0) return null;
-  return (
-    <button
-      onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition-colors"
-      title="Generate invoice"
-    >
-      <HiOutlineDocumentText className="w-4 h-4" />
-      Invoice
-    </button>
-  );
-}
+// function GenerateInvoiceButton({ job, onClick }: { job: Job; onClick: () => void }) {
+//   const { data: invoices = [], isLoading } = useGetInvoicesByJobQuery(job.id);
+//   if (isLoading || invoices.length > 0) return null;
+//   return (
+//     <button
+//       onClick={onClick}
+//       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary-300 bg-primary-50 text-primary-700 text-xs font-semibold hover:bg-primary-100 transition-colors"
+//       title="Generate invoice"
+//     >
+//       <HiOutlineDocumentText className="w-4 h-4" />
+//       Invoice
+//     </button>
+//   );
+// }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -605,7 +605,7 @@ export default function PaymentCollectionPage() {
   const [jobPage, setJobPage] = useState(1);
   const [jobPageSize, setJobPageSize] = useState(10);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [invoiceJob, setInvoiceJob] = useState<Job | null>(null);
+  // const [invoiceJob, setInvoiceJob] = useState<Job | null>(null);
 
   const {
     data: jobsData,
@@ -825,9 +825,9 @@ export default function PaymentCollectionPage() {
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           {/* Generate invoice — only for paid jobs without an invoice */}
-                          {job.paymentStatus === "paid" && (
+                          {/* {job.paymentStatus === "paid" && (
                             <GenerateInvoiceButton job={job} onClick={() => setInvoiceJob(job)} />
-                          )}
+                          )} */}
                           {/* Collect payment — only for unpaid jobs */}
                           <button
                             onClick={() => setSelectedJob(job)}
@@ -871,12 +871,12 @@ export default function PaymentCollectionPage() {
       )}
 
       {/* ── Generate Invoice Modal ───────────────────────────────────────── */}
-      {invoiceJob && (
+      {/* {invoiceJob && (
         <GenerateInvoiceModal
           job={invoiceJob}
           onClose={() => setInvoiceJob(null)}
         />
-      )}
+      )} */}
 
 
     </DashboardLayout>

@@ -10,17 +10,19 @@ export interface Payment {
   id: string;
   jobId: string;
   recordedById: string;
-  receivedById: string;
-  verifiedById?: string;
-  receiptNo: string;
+  receivedById: string | null;
+  verifiedById?: string | null;
+  receiptNo: string | null;
   amountPaid: number;
   balance: number;
-  paymentMethod: PaymentMethod;
-  paymentState: PaymentState;
-  paymentNote?: string;
+  paymentMethod: PaymentMethod | null;
+  paymentState: PaymentState | null;
+  paymentNote?: string | null;
   paidAt: string;
-  job?: { id: string; jobNumber: string; title: string; status?: string; customer?: { id: string; name: string; phone?: string } };
-  receivedBy?: { id: string; name: string };
+  job?: { id: string; jobNumber: string; title: string; status?: string; customer?: { id: string; name: string; phone?: string } | null } | null;
+  receivedBy?: { id: string; name: string } | null;
+  recordedBy?: { id: string; name: string } | null;
+  verifiedBy?: { id: string; name: string } | null;
 }
 
 // POST /api/payments

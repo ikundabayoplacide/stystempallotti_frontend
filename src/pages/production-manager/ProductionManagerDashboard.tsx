@@ -38,10 +38,12 @@ export default function ProductionManagerDashboard() {
   // ── Derived ───────────────────────────────────────────────────────────────
   const allJobs = inProgressStatuses?.jobs ?? [];
   const confirmedJobs = confirmedData?.jobs ?? [];
+  const pendingAssignment = useMemo(() => confirmedJobs.filter((j) => !j.departmentAssignedToId), [confirmedJobs]);
   const completedJobs = completedData?.jobs ?? [];
   const employees = empData?.data ?? [];
 
   const productionStatuses = [
+    "confirmed",
     "in-composition", "in-montage", "in-printing",
     "in-binding", "in-packaging", "quality-check",
   ];
@@ -52,11 +54,11 @@ export default function ProductionManagerDashboard() {
   );
 
   // Today's completed
-  const _now = new Date();
+  const _todayStr = new Date().toDateString();
   const completedToday = useMemo(
     () => completedJobs.filter((j) => {
       const d = j.completedAt ?? j.updatedAt;
-      return !!d && new Date(d).toLocaleDateString() === _now.toLocaleDateString();
+      return !!d && new Date(d).toDateString() === _todayStr;
     }),
     [completedJobs]
   );
@@ -106,7 +108,7 @@ export default function ProductionManagerDashboard() {
     },
     {
       label:    "Pending Assignment",
-      value:    confirmedJobs.length,
+      value:    pendingAssignment.length,
       icon:     HiOutlineClock,
       color:    "text-yellow-600",
       bg:       "bg-yellow-100",
@@ -263,7 +265,7 @@ export default function ProductionManagerDashboard() {
               <div className="pt-3 border-t border-custom-200 space-y-2">
                 {[
                   { label: "In Production", value: jobsInProduction.length, cls: "text-primary-500" },
-                  { label: "Pending",        value: confirmedJobs.length,    cls: "text-yellow-600" },
+                  { label: "Pending",        value: pendingAssignment.length,    cls: "text-yellow-600" },
                   { label: "Delayed",        value: delayed.length,          cls: "text-red-500" },
                 ].map(({ label, value, cls }) => (
                   <div key={label} className="flex justify-between items-center">

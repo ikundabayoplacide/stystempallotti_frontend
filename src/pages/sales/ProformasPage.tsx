@@ -16,6 +16,7 @@ import {
   HiOutlineXCircle,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
+import { useAuth } from "../../context/AuthContext";
 import { Button, Card } from "../../components/ui";
 import type { Proforma, ProformaItem, ProformaPayload, ProformaStatus } from "../../store/services/proformasService";
 import {
@@ -808,6 +809,8 @@ function DetailModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ProformasPage() {
+  const { userRole } = useAuth();
+  const isReadOnly = userRole === "accountant";
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<ProformaStatus | "all">("all");
   const [page, setPage]                 = useState(1);
@@ -851,13 +854,15 @@ export default function ProformasPage() {
               <HiOutlineRefresh className="w-4 h-4" />
               <span className="font-semibold hidden sm:inline">Refresh</span>
             </button>
-            <button
-              onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 transition-colors text-white text-sm font-semibold"
-            >
-              <HiOutlinePlus className="w-4 h-4" />
-              New Proforma
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => setCreating(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 hover:bg-primary-600 transition-colors text-white text-sm font-semibold"
+              >
+                <HiOutlinePlus className="w-4 h-4" />
+                New Proforma
+              </button>
+            )}
           </div>
         </div>
 
@@ -938,10 +943,12 @@ export default function ProformasPage() {
             <HiOutlineDocumentText className="w-10 h-10 text-custom-400 mx-auto mb-3" />
             <p className="text-secondary-100 font-semibold">No proformas found</p>
             <p className="text-sm text-custom-700 mt-1 mb-4">Create your first standalone proforma invoice</p>
-            <button onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">
-              <HiOutlinePlus className="w-4 h-4" /> New Proforma
-            </button>
+            {!isReadOnly && (
+              <button onClick={() => setCreating(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">
+                <HiOutlinePlus className="w-4 h-4" /> New Proforma
+              </button>
+            )}
           </Card>
         ) : (
           <Card className="!p-0 overflow-hidden">

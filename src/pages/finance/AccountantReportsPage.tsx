@@ -12,7 +12,7 @@ import autoTable from "jspdf-autotable";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
-import { useGetInvoicesQuery } from "../../store/services/invoicesService";
+// import { useGetInvoicesQuery } from "../../store/services/invoicesService";
 import { useGetRecoveryRecordsQuery, useGetDebtsQuery } from "../../store/services/recoveryService";
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
@@ -109,7 +109,7 @@ const BOTTOM_MARGIN = FOOTER_TOP + 6;
 
 type SummaryRow = { label: string; value: string; bold?: boolean };
 
-async function buildPdf(title: string, headers: string[], rows: string[][], summary: SummaryRow[]) {
+async function buildPdf(title: string, headers: string[], rows: (string | null)[][], summary: SummaryRow[]) {
   const headerBase64 = await loadImageAsBase64("/header.png").catch(() => null);
   const subtitle     = `Generated: ${new Date().toLocaleString("en-RW")}`;
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -151,7 +151,7 @@ const PAGE_SIZE = 10;
 
 function PdfButtons({ title, getExportData }: {
   title: string;
-  getExportData: () => { headers: string[]; rows: string[][]; summary: SummaryRow[] };
+  getExportData: () => { headers: string[]; rows: (string | null)[][]; summary: SummaryRow[] };
 }) {
   const [showModal, setShowModal] = useState(false);
   const handlePdf = () => {
@@ -437,139 +437,139 @@ function PaymentsReport() {
 
 // ─── Invoices Report ──────────────────────────────────────────────────────────
 
-function InvoicesReport() {
-  const [page, setPage]           = useState(1);
-  const [statusFilter, setStatusFilter] = useState<"" | "paid" | "cancelled" | "draft" | "issued">("");
+// function InvoicesReport() {
+//   const [page, setPage]           = useState(1);
+//   const [statusFilter, setStatusFilter] = useState<"" | "paid" | "cancelled" | "draft" | "issued">("");
 
-  const { data, isLoading, refetch } = useGetInvoicesQuery(
-    statusFilter ? { status: statusFilter as any, limit: 500 } : { limit: 500 }
-  );
-  const invoices = data?.invoices ?? [];
+//   const { data, isLoading, refetch } = useGetInvoicesQuery(
+//     statusFilter ? { status: statusFilter as any, limit: 500 } : { limit: 500 }
+//   );
+//   const invoices = data?.invoices ?? [];
 
-  const totalPages = Math.max(1, Math.ceil(invoices.length / PAGE_SIZE));
-  const paginated  = invoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+//   const totalPages = Math.max(1, Math.ceil(invoices.length / PAGE_SIZE));
+//   const paginated  = invoices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const totalAmount = invoices.reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
-  const paidCount   = invoices.filter((i) => i.status === "paid").length;
-  const cancelCount = invoices.filter((i) => i.status === "cancelled").length;
+//   const totalAmount = invoices.reduce((s, i) => s + Number(i.totalAmount ?? 0), 0);
+//   const paidCount   = invoices.filter((i) => i.status === "paid").length;
+//   const cancelCount = invoices.filter((i) => i.status === "cancelled").length;
 
-  const statusBadge: Record<string, string> = {
-    paid:      "bg-emerald-100 text-emerald-700",
-    cancelled: "bg-red-100 text-red-700",
-    draft:     "bg-gray-100 text-gray-600",
-    issued:    "bg-blue-100 text-blue-700",
-  };
+//   const statusBadge: Record<string, string> = {
+//     paid:      "bg-emerald-100 text-emerald-700",
+//     cancelled: "bg-red-100 text-red-700",
+//     draft:     "bg-gray-100 text-gray-600",
+//     issued:    "bg-blue-100 text-blue-700",
+//   };
 
-  const getExportData = () => ({
-    headers: ["Invoice #", "Job #", "Customer", "Total (RWF)", "Status", "Due Date", "Created"],
-    rows: invoices.map((i) => [
-      i.invoiceNo,
-      i.job?.jobNumber ?? "—",
-      i.job?.customer?.name ?? i.customer?.name ?? "—",
-      Number(i.totalAmount ?? 0).toLocaleString(),
-      i.status,
-      i.dueDate?.slice(0, 10) ?? "—",
-      i.createdAt.slice(0, 10),
-    ]),
-    summary: [
-      { label: `Total Invoices: ${invoices.length}`, value: "" },
-      { label: "Paid",      value: String(paidCount) },
-      { label: "Cancelled", value: String(cancelCount) },
-      { label: "TOTAL AMOUNT", value: `${totalAmount.toLocaleString()} RWF`, bold: true },
-    ] as SummaryRow[],
-  });
+//   const getExportData = () => ({
+//     headers: ["Invoice #", "Job #", "Customer", "Total (RWF)", "Status", "Due Date", "Created"],
+//     rows: invoices.map((i) => [
+//       i.invoiceNo,
+//       i.job?.jobNumber ?? "—",
+//       i.job?.customer?.name ?? i.customer?.name ?? "—",
+//       Number(i.totalAmount ?? 0).toLocaleString(),
+//       i.status,
+//       i.dueDate?.slice(0, 10) ?? "—",
+//       i.createdAt.slice(0, 10),
+//     ]),
+//     summary: [
+//       { label: `Total Invoices: ${invoices.length}`, value: "" },
+//       { label: "Paid",      value: String(paidCount) },
+//       { label: "Cancelled", value: String(cancelCount) },
+//       { label: "TOTAL AMOUNT", value: `${totalAmount.toLocaleString()} RWF`, bold: true },
+//     ] as SummaryRow[],
+//   });
 
-  return (
-    <Section icon={HiOutlineDocumentText} title="Invoices" color="bg-blue-100 text-blue-600">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }}
-            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors">
-            <option value="">All statuses</option>
-            <option value="paid">Paid</option>
-            <option value="issued">Issued</option>
-            <option value="draft">Draft</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-          <PdfButtons title="Accountant Invoices Report" getExportData={getExportData} />
-        </div>
-      </div>
+//   return (
+//     <Section icon={HiOutlineDocumentText} title="Invoices" color="bg-blue-100 text-blue-600">
+//       <div className="flex flex-wrap items-center gap-3">
+//         <div className="flex items-center gap-2 ml-auto flex-wrap">
+//           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setPage(1); }}
+//             className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors">
+//             <option value="">All statuses</option>
+//             <option value="paid">Paid</option>
+//             <option value="issued">Issued</option>
+//             <option value="draft">Draft</option>
+//             <option value="cancelled">Cancelled</option>
+//           </select>
+//           <button onClick={() => refetch()} className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
+//             <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
+//           </button>
+//           <PdfButtons title="Accountant Invoices Report" getExportData={getExportData} />
+//         </div>
+//       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Invoices" value={invoices.length} />
-        <StatCard label="Paid"           value={paidCount}   color="text-emerald-600" />
-        <StatCard label="Cancelled"      value={cancelCount} color="text-red-600" />
-        <StatCard label="Total Amount"   value={`${totalAmount.toLocaleString()} RWF`} color="text-primary-600" />
-      </div>
+//       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+//         <StatCard label="Total Invoices" value={invoices.length} />
+//         <StatCard label="Paid"           value={paidCount}   color="text-emerald-600" />
+//         <StatCard label="Cancelled"      value={cancelCount} color="text-red-600" />
+//         <StatCard label="Total Amount"   value={`${totalAmount.toLocaleString()} RWF`} color="text-primary-600" />
+//       </div>
 
-      <Card className="!p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-custom-100 border-b border-custom-300">
-              <tr>
-                {["Invoice #", "Job #", "Customer", "Total", "Status", "Due Date", "Created"].map((h) => (
-                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-custom-200">
-              {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
-              ) : invoices.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No invoices found</td></tr>
-              ) : paginated.map((i) => (
-                <tr key={i.id} className="hover:bg-custom-50 transition-colors">
-                  <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-600">{i.invoiceNo}</td>
-                  <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">{i.job?.jobNumber ?? "—"}</td>
-                  <td className="px-3 py-2.5">
-                    <p className="text-sm font-semibold text-secondary-100">{i.job?.customer?.name ?? i.customer?.name ?? "—"}</p>
-                    {(i.job?.customer?.phone ?? i.customer?.phone) && (
-                      <p className="text-xs text-custom-700">{i.job?.customer?.phone ?? i.customer?.phone}</p>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">
-                    {Number(i.totalAmount ?? 0).toLocaleString()} RWF
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[i.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {i.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-custom-700">{i.dueDate?.slice(0, 10) ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-xs text-custom-700">{i.createdAt.slice(0, 10)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+//       <Card className="!p-0 overflow-hidden">
+//         <div className="overflow-x-auto">
+//           <table className="w-full">
+//             <thead className="bg-custom-100 border-b border-custom-300">
+//               <tr>
+//                 {["Invoice #", "Job #", "Customer", "Total", "Status", "Due Date", "Created"].map((h) => (
+//                   <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
+//                 ))}
+//               </tr>
+//             </thead>
+//             <tbody className="divide-y divide-custom-200">
+//               {isLoading ? (
+//                 <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
+//               ) : invoices.length === 0 ? (
+//                 <tr><td colSpan={7} className="px-4 py-8 text-center text-custom-700 text-sm">No invoices found</td></tr>
+//               ) : paginated.map((i) => (
+//                 <tr key={i.id} className="hover:bg-custom-50 transition-colors">
+//                   <td className="px-3 py-2.5 text-xs font-mono font-bold text-primary-600">{i.invoiceNo}</td>
+//                   <td className="px-3 py-2.5 text-sm font-semibold text-secondary-100">{i.job?.jobNumber ?? "—"}</td>
+//                   <td className="px-3 py-2.5">
+//                     <p className="text-sm font-semibold text-secondary-100">{i.job?.customer?.name ?? i.customer?.name ?? "—"}</p>
+//                     {(i.job?.customer?.phone ?? i.customer?.phone) && (
+//                       <p className="text-xs text-custom-700">{i.job?.customer?.phone ?? i.customer?.phone}</p>
+//                     )}
+//                   </td>
+//                   <td className="px-3 py-2.5 text-sm font-bold text-secondary-100">
+//                     {Number(i.totalAmount ?? 0).toLocaleString()} RWF
+//                   </td>
+//                   <td className="px-3 py-2.5">
+//                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[i.status] ?? "bg-gray-100 text-gray-600"}`}>
+//                       {i.status}
+//                     </span>
+//                   </td>
+//                   <td className="px-3 py-2.5 text-xs text-custom-700">{i.dueDate?.slice(0, 10) ?? "—"}</td>
+//                   <td className="px-3 py-2.5 text-xs text-custom-700">{i.createdAt.slice(0, 10)}</td>
+//                 </tr>
+//               ))}
+//             </tbody>
+//           </table>
+//         </div>
+//       </Card>
 
-      {invoices.length > 0 && (
-        <div className="flex justify-end mt-1">
-          <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
-            <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
-            {[
-              { label: "Total Invoices", value: String(invoices.length), cls: "text-secondary-100" },
-              { label: "Paid",           value: String(paidCount),       cls: "text-emerald-600" },
-              { label: "Cancelled",      value: String(cancelCount),     cls: "text-red-500" },
-              { label: "Total Amount",   value: `${totalAmount.toLocaleString()} RWF`, cls: "text-primary-600" },
-            ].map(({ label, value, cls }) => (
-              <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
-                <span className="text-custom-700 text-xs">{label}</span>
-                <span className={`font-bold text-xs ${cls}`}>{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+//       {invoices.length > 0 && (
+//         <div className="flex justify-end mt-1">
+//           <div className="border border-custom-300 rounded-xl overflow-hidden text-sm w-72">
+//             <div className="bg-custom-100 px-4 py-2 font-bold text-secondary-100 text-xs uppercase">Summary</div>
+//             {[
+//               { label: "Total Invoices", value: String(invoices.length), cls: "text-secondary-100" },
+//               { label: "Paid",           value: String(paidCount),       cls: "text-emerald-600" },
+//               { label: "Cancelled",      value: String(cancelCount),     cls: "text-red-500" },
+//               { label: "Total Amount",   value: `${totalAmount.toLocaleString()} RWF`, cls: "text-primary-600" },
+//             ].map(({ label, value, cls }) => (
+//               <div key={label} className="flex justify-between px-4 py-2 border-t border-custom-200">
+//                 <span className="text-custom-700 text-xs">{label}</span>
+//                 <span className={`font-bold text-xs ${cls}`}>{value}</span>
+//               </div>
+//             ))}
+//           </div>
+//         </div>
+//       )}
 
-      <Paginator page={page} totalPages={totalPages} total={invoices.length} onPage={setPage} />
-    </Section>
-  );
-}
+//       <Paginator page={page} totalPages={totalPages} total={invoices.length} onPage={setPage} />
+//     </Section>
+//   );
+// }
 
 // ─── Debt Recovery Report ─────────────────────────────────────────────────────
 
@@ -715,7 +715,7 @@ type Tab = "payments" | "invoices" | "recovery";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
   { value: "payments",  label: "Payments",      icon: HiOutlineCash },
-  { value: "invoices",  label: "Invoices",      icon: HiOutlineDocumentText },
+  // { value: "invoices",  label: "Invoices",      icon: HiOutlineDocumentText },
   { value: "recovery",  label: "Debt Recovery", icon: HiOutlineCurrencyDollar },
 ];
 
@@ -746,7 +746,7 @@ export default function AccountantReportsPage() {
         </div>
 
         {tab === "payments" && <PaymentsReport />}
-        {tab === "invoices" && <InvoicesReport />}
+        {/* {tab === "invoices" && <InvoicesReport />} */}
         {tab === "recovery" && <DebtRecoveryReport />}
       </div>
     </DashboardLayout>

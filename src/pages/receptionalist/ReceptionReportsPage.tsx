@@ -747,7 +747,7 @@ function PaymentsReport() {
   const oncreditCount  = payments.filter((p) => p.paymentState === "ONCREDIT").length;
 
   const byMethod: Record<string, number> = {};
-  payments.forEach((p) => { byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] ?? 0) + Number(p.amountPaid); });
+  payments.forEach((p) => { if (p.paymentMethod) { byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] ?? 0) + Number(p.amountPaid); } });
 
   const getExportData = () => ({
     headers: ["Receipt", "Job #", "Customer", "Phone", "Amount (RWF)", "Method", "Type", "Date"],
@@ -757,7 +757,7 @@ function PaymentsReport() {
       p.job?.customer?.name ?? "",
       p.job?.customer?.phone ?? "",
       Number(p.amountPaid).toLocaleString(),
-      p.paymentMethod.replace(/_/g, " "),
+      p.paymentMethod?.replace(/_/g, " ") ?? "",
       p.paymentState === "FULL" ? "Full" : p.paymentState === "PARTIAL" ? "Partial" : "On Credit",
       new Date(p.paidAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
     ]),
@@ -849,8 +849,8 @@ function PaymentsReport() {
                   </td>
                   <td className="px-3 py-2.5 text-sm font-bold text-emerald-600">{Number(p.amountPaid).toLocaleString()} RWF</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pmColors[p.paymentMethod] ?? "bg-gray-100 text-gray-700"}`}>
-                      {p.paymentMethod.replace(/_/g, " ")}
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pmColors[p.paymentMethod ?? ""] ?? "bg-gray-100 text-gray-700"}`}>
+                      {p.paymentMethod?.replace(/_/g, " ") ?? "—"}
                     </span>
                   </td>
                   <td className="px-3 py-2.5">

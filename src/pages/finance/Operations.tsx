@@ -222,7 +222,7 @@ const pmColors: Record<string, string> = {
 // ─── Boutique Sales Tab ───────────────────────────────────────────────────────
 
 function BoutiqueSalesTab() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -250,7 +250,7 @@ function BoutiqueSalesTab() {
   const getExportData = () => ({
     headers: ["Product", "SKU", "Qty", "Total (RWF)", "Paid (RWF)", "Due (RWF)", "Return (RWF)", "Status", "Method", "Customer", "Date"],
     rows: sales.map((s) => [
-      s.product.name, s.product.sku, String(s.quantity),
+      s.product?.name ?? "—", s.product?.sku ?? "—", String(s.quantity),
       Number(s.totalPrice ?? s.quantity * Number(s.unitPrice)).toLocaleString(),
       Number(s.amountPaid).toLocaleString(),
       Number(s.balanceDue ?? 0).toLocaleString(),
@@ -338,8 +338,8 @@ function BoutiqueSalesTab() {
               ) : paginated.map((s) => (
                 <tr key={s.id} className="hover:bg-custom-50 transition-colors">
                   <td className="px-3 py-2.5">
-                    <p className="text-sm font-semibold text-secondary-100">{s.product.name}</p>
-                    <p className="text-xs font-mono text-custom-700">{s.product.sku}</p>
+                    <p className="text-sm font-semibold text-secondary-100">{s.product?.name ?? "—"}</p>
+                    <p className="text-xs font-mono text-custom-700">{s.product?.sku ?? ""}</p>
                   </td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">{s.quantity}</td>
                   <td className="px-3 py-2.5 text-sm text-secondary-100">
@@ -401,7 +401,7 @@ function BoutiqueSalesTab() {
 // ─── Payments Collected Tab ───────────────────────────────────────────────────
 
 function PaymentsCollectedTab() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -412,7 +412,7 @@ function PaymentsCollectedTab() {
     : getDateRange(period);
 
   const { data: paymentsData, isLoading, refetch } = useGetPaymentsQuery({ limit: 500, from: range.from, to: range.to });
-  const payments = (paymentsData?.payments ?? []).filter((p) => p.paymentMethod !== null && p.receiptNo !== null);
+  const payments = (paymentsData?.payments ?? []).filter((p) => p.paymentMethod != null && p.receiptNo != null);
 
   const totalPages     = Math.max(1, Math.ceil(payments.length / PAGE_SIZE));
   const paginated      = payments.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -421,7 +421,7 @@ function PaymentsCollectedTab() {
   const partialCount   = payments.filter((p) => p.paymentState === "PARTIAL").length;
 
   const byMethod: Record<string, number> = {};
-  payments.forEach((p) => { byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] ?? 0) + Number(p.amountPaid); });
+  payments.forEach((p) => { if (p.paymentMethod) byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] ?? 0) + Number(p.amountPaid); });
 
   const getExportData = () => ({
     headers: ["Receipt", "Job #", "Customer", "Phone", "Amount (RWF)", "Method", "Type", "Date"],
@@ -431,7 +431,7 @@ function PaymentsCollectedTab() {
       p.job?.customer?.name ?? "",
       p.job?.customer?.phone ?? "",
       Number(p.amountPaid).toLocaleString(),
-      p.paymentMethod.replace(/_/g, " "),
+      (p.paymentMethod ?? "").replace(/_/g, " "),
       p.paymentState === "FULL" ? "Full" : "Partial",
       new Date(p.paidAt).toLocaleDateString("en-RW", { day: "2-digit", month: "short", year: "numeric" }),
     ]),
@@ -513,8 +513,8 @@ function PaymentsCollectedTab() {
                   </td>
                   <td className="px-3 py-2.5 text-sm font-bold text-emerald-600">{Number(p.amountPaid).toLocaleString()} RWF</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pmColors[p.paymentMethod] ?? "bg-gray-100 text-gray-700"}`}>
-                      {p.paymentMethod.replace(/_/g, " ")}
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${pmColors[p.paymentMethod ?? ""] ?? "bg-gray-100 text-gray-700"}`}>
+                      {(p.paymentMethod ?? "").replace(/_/g, " ")}
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
@@ -539,7 +539,7 @@ function PaymentsCollectedTab() {
 // ─── Hobe Sales Tab ───────────────────────────────────────────────────────────
 
 function HobeSalesTab() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");

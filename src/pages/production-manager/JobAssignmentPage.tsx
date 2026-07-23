@@ -80,10 +80,7 @@ const priorityColor: Record<string, string> = {
   urgent: "bg-red-500 text-white",
 };
 
-const IN_PRODUCTION_STATUSES = new Set([
-  "in-composition", "in-montage", "in-printing",
-  "in-binding", "in-packaging", "quality-check", "ready-for-delivery",
-]);
+
 
 const ASSIGNABLE_STATUSES  = new Set(["confirmed", "in-composition", "in-montage", "in-printing", "in-binding", "in-packaging"]);
 const REJECTABLE_STATUSES  = new Set(["confirmed"]);
@@ -428,9 +425,11 @@ export default function JobAssignmentPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const jobs       = allJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const pendingCount      = useMemo(() => allJobs.filter((j) => j.status === "pending").length, [allJobs]);
-  const inProductionCount = useMemo(() => allJobs.filter((j) => IN_PRODUCTION_STATUSES.has(j.status)).length, [allJobs]);
-  const assignedCount     = useMemo(() => allJobs.filter((j) => !!j.departmentAssignedToId).length, [allJobs]);
+  const pendingCount         = useMemo(() => allJobs.filter((j) => j.status === "pending").length, [allJobs]);
+  const inProductionCount    = useMemo(() => allJobs.filter((j) => j.status === "confirmed").length, [allJobs]);
+  const completedCount       = useMemo(() => allJobs.filter((j) => j.status === "completed").length, [allJobs]);
+  const deliveredCount       = useMemo(() => allJobs.filter((j) => j.status === "delivered").length, [allJobs]);
+  const partialDeliveredCount = useMemo(() => allJobs.filter((j) => j.status === "partial-delivered").length, [allJobs]);
   const deptMap           = useMemo(() => Object.fromEntries(departments.map((d) => [d.id, d.name])), [departments]);
 
   const openModal = (type: ModalType, job: Job) => {
@@ -520,7 +519,7 @@ export default function JobAssignmentPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card className="!p-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-yellow-100 flex items-center justify-center">
@@ -549,8 +548,19 @@ export default function JobAssignmentPage() {
                 <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-xs text-custom-700">Assigned</p>
-                <p className="text-2xl font-bold text-secondary-100">{assignedCount}</p>
+                <p className="text-xs text-custom-700">Completed</p>
+                <p className="text-2xl font-bold text-secondary-100">{completedCount}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center">
+                <HiOutlineClipboardList className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs text-custom-700">Partial Delivered</p>
+                <p className="text-2xl font-bold text-secondary-100">{partialDeliveredCount}</p>
               </div>
             </div>
           </Card>
@@ -558,6 +568,17 @@ export default function JobAssignmentPage() {
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-primary-100 flex items-center justify-center">
                 <HiOutlineClipboardList className="w-5 h-5 text-primary-600" />
+              </div>
+              <div>
+                <p className="text-xs text-custom-700">Delivered</p>
+                <p className="text-2xl font-bold text-secondary-100">{deliveredCount}</p>
+              </div>
+            </div>
+          </Card>
+          <Card className="!p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+                <HiOutlineClipboardList className="w-5 h-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-xs text-custom-700">Total</p>
@@ -652,6 +673,16 @@ export default function JobAssignmentPage() {
                             >
                               <HiOutlineEye className="h-5 w-5" />
                             </button>
+                            {job.status === "confirmed" && (
+                              <button
+                                onClick={() => openModal("complete", job)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-colors"
+                                title="Mark as completed"
+                              >
+                                <HiOutlineCheckCircle className="h-4 w-4" />
+                                Done
+                              </button>
+                            )}
                             <ActionMenu job={job} onAction={openModal} />
                           </div>
                         </td>

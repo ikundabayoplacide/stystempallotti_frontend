@@ -88,7 +88,8 @@ export const recoveryApi = createApi({
     // GET /recovery/debts — all outstanding debts
     getDebts: builder.query<DebtItem[], void>({
       query: () => "/recovery/debts",
-      transformResponse: (res: ApiResponse<DebtItem[]>) => res.data ?? [],
+      transformResponse: (res: ApiResponse<DebtItem[]>) =>
+        (res.data ?? []).filter((d) => d.balanceDue > 0),
       providesTags: [{ type: "Debt", id: "LIST" }],
     }),
 

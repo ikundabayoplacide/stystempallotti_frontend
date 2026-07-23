@@ -230,6 +230,7 @@ export default function AppRoutes() {
       <Route path="/finance/accountant1" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant1Page /></ProtectedRoute>} />
       <Route path="/finance/accountant1/invoices" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="invoices"><Accountant1InvoicesPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/payments" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="payments"><Accountant1PaymentsPage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/proformas" element={<ProtectedRoute allowedRoles={["accountant"]}><ProformasPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/documents" element={<ProtectedRoute allowedRoles={["accountant"]} pageId="documents"><Accountant1DocumentsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/notifications" element={<ProtectedRoute allowedRoles={["accountant"]}><NotificationsPage userRole="accountant" userName="Accountant" /></ProtectedRoute>} />
       <Route path="/finance/accountant1/profile" element={<ProtectedRoute allowedRoles={["accountant"]}><ProfilePage /></ProtectedRoute>} />
