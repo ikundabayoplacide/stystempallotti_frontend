@@ -21,6 +21,7 @@ export interface Withdrawal {
 export interface WithdrawalBalance {
   initialAmount: number;
   totalPaymentsIn: number;
+  totalCashPaymentsIn: number;
   totalWithdrawalsIn: number;
   totalExpensesOut: number;
   totalBalance: number;

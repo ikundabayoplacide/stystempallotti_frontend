@@ -427,7 +427,7 @@ export default function DeliveriesPage() {
                             </span>
                             {job.payments?.map((p) => (
                               <span key={p.id} className="text-xs text-custom-700">
-                                {p.paymentMethod.replace(/_/g, " ")}
+                                {(p.paymentMethod ?? "").replace(/_/g, " ")}
                               </span>
                             ))}
                           </div>
@@ -647,7 +647,7 @@ export default function DeliveriesPage() {
                             </span>
                             {job.payments?.map((p) => (
                               <span key={p.id} className="text-xs text-custom-700">
-                                {p.paymentMethod.replace(/_/g, " ")} ({p.paymentState === "PARTIAL" ? "Partial" : "Full"})
+                                {(p.paymentMethod ?? "").replace(/_/g, " ")} ({p.paymentState === "PARTIAL" ? "Partial" : "Full"})
                               </span>
                             ))}
                             {job.payments?.some((p) => p.paymentState === "PARTIAL") && (

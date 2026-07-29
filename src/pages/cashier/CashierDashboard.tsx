@@ -15,6 +15,7 @@ import { Card } from "../../components/ui";
 import { useGetOutstandsQuery } from "../../store/services/outstandsService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetCasualWorkersQuery } from "../../store/services/casualWorkersService";
+import { useGetWithdrawalBalanceQuery } from "../../store/services/withdrawalsService";
 
 function fmt(n: number) {
   return n.toLocaleString();
@@ -24,20 +25,19 @@ export default function CashierDashboard() {
   const navigate = useNavigate();
 
   const { data: allOutstands, isLoading: loadingOutstands, refetch: refetchOutstands } =
-    useGetOutstandsQuery({ limit: 100 });
-
-  const { data: approvedOutstands } =
-    useGetOutstandsQuery({ status: "approved", limit: 100 });
+    useGetOutstandsQuery({ limit: 1000 });
 
   const { data: paymentsData, isLoading: loadingPayments, refetch: refetchPayments } =
-    useGetPaymentsQuery({ limit: 100 });
+    useGetPaymentsQuery({ limit: 1000, paymentMethod: "CASH" });
 
   const { data: casualData, isLoading: loadingCasual } =
     useGetCasualWorkersQuery({ limit: 100 });
 
+  const { data: balanceData } = useGetWithdrawalBalanceQuery();
+  const fundBalance = balanceData?.totalBalance ?? 0;
+
   // ── Derived values ──────────────────────────────────────────────────────────
   const outstands     = allOutstands?.outstands ?? [];
-  const pendingPayout = approvedOutstands?.outstands ?? [];
   const payments      = paymentsData?.payments ?? [];
   const casualWorkers = casualData?.data ?? [];
 
@@ -47,12 +47,14 @@ export default function CashierDashboard() {
   );
 
   const totalExpenses = useMemo(
-    () => outstands.reduce((s, o) => s + (Number(o.totalAmount) || 0), 0),
+    () => outstands
+      .filter(o => o.status === "approved" || o.status === "paid")
+      .reduce((s, o) => s + (Number(o.totalAmount) || 0), 0),
     [outstands]
   );
 
   const pendingApprovalCount = outstands.filter(o => o.status === "pending").length;
-  const approvedPendingPay   = pendingPayout.length;
+  const approvedPendingPay   = outstands.filter(o => o.status === "approved").length;
 
   const totalCasualOwed = useMemo(
     () => casualWorkers.reduce((s, w) => s + (Number(w.totalAmount) || 0), 0),
@@ -99,7 +101,7 @@ export default function CashierDashboard() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {/* Total Received */}
         <Card
           className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-green-400 transition-all"
@@ -150,7 +152,7 @@ export default function CashierDashboard() {
           </div>
         </Card>
 
-        {/* Approved — Awaiting Payment */}
+        {/* Pending Expenses */}
         <Card
           className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all"
           onClick={() => navigate("/cashier/expenses")}
@@ -160,20 +162,68 @@ export default function CashierDashboard() {
               <HiOutlineClock className="w-5 h-5 text-yellow-600" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-custom-700 truncate">Awaiting Payment</p>
+              <p className="text-xs text-custom-700 truncate">Pending</p>
               {loadingOutstands ? (
                 <div className="h-6 w-10 bg-custom-200 rounded animate-pulse mt-1" />
               ) : (
                 <>
-                  <p className="text-xl font-bold text-yellow-600 leading-tight">{approvedPendingPay}</p>
-                  <p className="text-xs text-custom-700">approved expenses</p>
+                  <p className="text-xl font-bold text-yellow-600 leading-tight">{pendingApprovalCount}</p>
+                  <p className="text-xs text-custom-700">expenses</p>
                 </>
               )}
             </div>
           </div>
         </Card>
 
-        {/* Casual Workers Owed */}
+        {/* Approved Expenses */}
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all"
+          onClick={() => navigate("/cashier/expenses")}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-blue-100 shrink-0">
+              <HiOutlineCheckCircle className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-custom-700 truncate">Approved</p>
+              {loadingOutstands ? (
+                <div className="h-6 w-10 bg-custom-200 rounded animate-pulse mt-1" />
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-blue-600 leading-tight">{approvedPendingPay}</p>
+                  <p className="text-xs text-custom-700">expenses</p>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Fund Balance */}
+        <Card
+          className={`!p-4 overflow-hidden cursor-pointer transition-all ${
+            fundBalance >= 0
+              ? "hover:ring-2 hover:ring-emerald-400 bg-emerald-50 border-emerald-200"
+              : "hover:ring-2 hover:ring-orange-400 bg-orange-50 border-orange-200"
+          }`}
+          onClick={() => navigate("/cashier/withdraws")}
+        >
+          <div className="flex items-start gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+              fundBalance >= 0 ? "bg-emerald-100" : "bg-orange-100"
+            }`}>
+              <HiOutlineCurrencyDollar className={`w-5 h-5 ${fundBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-custom-700 truncate">Fund Balance</p>
+              <p className={`text-xl font-bold leading-tight truncate ${
+                fundBalance >= 0 ? "text-emerald-700" : "text-orange-700"
+              }`}>
+                {fmt(fundBalance)}
+              </p>
+              <p className="text-xs text-custom-700">RWF</p>
+            </div>
+          </div>
+        </Card>
         <Card
           className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
           onClick={() => navigate("/cashier/casual-workers")}
@@ -207,7 +257,7 @@ export default function CashierDashboard() {
           <div className="p-4 rounded-xl bg-green-50 border border-green-200">
             <p className="text-xs font-semibold text-green-700">Total Inflow (Received)</p>
             <p className="text-2xl font-bold text-green-700 mt-1">{fmt(totalReceived)}</p>
-            <p className="text-xs text-green-600">RWF from all payments</p>
+            <p className="text-xs text-green-600">RWF from all payments done by cash</p>
           </div>
           <div className="p-4 rounded-xl bg-red-50 border border-red-200">
             <p className="text-xs font-semibold text-red-700">Total Outflow (Paid)</p>

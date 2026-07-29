@@ -377,7 +377,7 @@ export default function Withdraws() {
   const totalPages  = data?.totalPages ?? 1;
 
   const balance = balanceData ?? {
-    initialAmount: 0, totalPaymentsIn: 0,
+    initialAmount: 0, totalPaymentsIn: 0, totalCashPaymentsIn: 0,
     totalWithdrawalsIn: 0, totalExpensesOut: 0, totalBalance: 0,
   };
   const currentInitial = configData?.initialAmount ?? balance.initialAmount;
@@ -428,9 +428,9 @@ export default function Withdraws() {
             <Card className="!p-4">
               <div className="flex items-center gap-1 mb-1">
                 <HiOutlineCash className="w-3.5 h-3.5 text-green-600" />
-                <p className="text-xs text-custom-700">Payments In</p>
+                <p className="text-xs text-custom-700">Cash Payments In</p>
               </div>
-              <p className="text-lg font-bold text-green-600">+{fmt(balance.totalPaymentsIn)}</p>
+              <p className="text-lg font-bold text-green-600">+{fmt(balance.totalCashPaymentsIn)}</p>
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
             <Card className="!p-4">
@@ -465,7 +465,7 @@ export default function Withdraws() {
         {/* Balance Formula hint */}
         <div className="px-4 py-3 rounded-xl bg-custom-50 border border-custom-200 text-xs text-custom-700">
           <span className="font-semibold text-secondary-100">Balance formula: </span>
-          Initial + Payments In + Withdrawals In − Expenses (paid)
+          Initial + Cash Payments In + Withdrawals In − Expenses (paid)
         </div>
 
         {/* Search */}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
 import {
   HiOutlinePlus, HiOutlineX, HiOutlineCash, HiOutlineShoppingCart,
@@ -142,7 +142,7 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Amount (RWF) *</label>
-            <input type="number" min="0" value={form.amount} onChange={set("amount")} placeholder="0" className={inputCls} required />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" value={form.amount} onChange={e => { if (/^\d*$/.test(e.target.value)) set("amount")(e); }} placeholder="0" className={inputCls} required />
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Purpose *</label>
@@ -403,7 +403,7 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Amount (RWF) *</label>
-            <input type="number" min="0" value={form.amount} onChange={set("amount")} className={inputCls} required />
+            <input type="text" inputMode="numeric" pattern="[0-9]*" value={form.amount} onChange={e => { if (/^\d*$/.test(e.target.value)) set("amount")(e); }} className={inputCls} required />
           </div>
           <div>
             <label className="block text-sm font-semibold text-secondary-100 mb-1">Purpose *</label>
@@ -425,6 +425,98 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
   );
 }
 
+function RowActions({
+  record, onView, onEdit, onReject, onApprove, onPay,
+}: {
+  record: Outstand;
+  onView: () => void;
+  onEdit: () => void;
+  onReject: () => void;
+  onApprove: (id: string) => Promise<any>;
+  onPay: (id: string) => Promise<any>;
+}) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [confirm, setConfirm] = useState<"approve" | "pay" | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const open = pos !== null;
+
+  const openMenu = () => {
+    if (open) { setPos(null); setConfirm(null); return; }
+    const rect = btnRef.current!.getBoundingClientRect();
+    const menuH = 180;
+    const top = rect.top - menuH - 4 < 0 ? rect.bottom + 4 : rect.top - menuH - 4;
+    setPos({ top, left: rect.right - 176 });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (btnRef.current?.contains(e.target as Node)) return;
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) { setPos(null); setConfirm(null); }
+    };
+    const onScroll = () => { setPos(null); setConfirm(null); };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("scroll", onScroll, true);
+    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("scroll", onScroll, true); };
+  }, [open]);
+
+  return (
+    <>
+      <button ref={btnRef} onClick={openMenu} className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700">
+        <HiOutlineDotsHorizontal className="w-4 h-4" />
+      </button>
+      {open && pos && ReactDOM.createPortal(
+        <div ref={menuRef} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999, width: 176 }}
+          className="bg-style-600 border border-custom-300 rounded-2xl shadow-xl p-1.5 space-y-0.5">
+          <button onClick={() => { setPos(null); onView(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors">View Details</button>
+          {record.status === "pending" && (
+            <button onClick={() => { setPos(null); onEdit(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors">
+              <HiOutlinePencil className="w-4 h-4" /> Edit
+            </button>
+          )}
+          {record.status === "pending" && (
+            confirm === "approve" ? (
+              <div className="px-3 py-2 space-y-1.5">
+                <p className="text-xs font-semibold text-emerald-700">Approve this expense?</p>
+                <div className="flex gap-1.5">
+                  <button onClick={async () => { try { await onApprove(record.id); toast.success("Approved"); } catch { toast.error("Failed"); } setPos(null); setConfirm(null); }} className="flex-1 px-2 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors">Yes</button>
+                  <button onClick={() => setConfirm(null)} className="flex-1 px-2 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirm("approve")} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
+                <HiOutlineThumbUp className="w-4 h-4" /> Approve
+              </button>
+            )
+          )}
+          {record.status === "pending" && (
+            <button onClick={() => { setPos(null); onReject(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors">
+              <HiOutlineBan className="w-4 h-4" /> Reject
+            </button>
+          )}
+          {record.status === "approved" && (
+            confirm === "pay" ? (
+              <div className="px-3 py-2 space-y-1.5">
+                <p className="text-xs font-semibold text-blue-700">Mark as paid?</p>
+                <div className="flex gap-1.5">
+                  <button onClick={async () => { try { await onPay(record.id); toast.success("Marked paid"); } catch { toast.error("Failed"); } setPos(null); setConfirm(null); }} className="flex-1 px-2 py-1 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors">Yes</button>
+                  <button onClick={() => setConfirm(null)} className="flex-1 px-2 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setConfirm("pay")} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-blue-600 hover:bg-blue-50 transition-colors">
+                <HiOutlineCash className="w-4 h-4" /> Mark Paid
+              </button>
+            )
+          )}
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 export default function CashierExpensesPage() {
   const [activeTab, setActiveTab]   = useState<OutstandStatus | "all">("all");
   const [search, setSearch]         = useState("");
@@ -432,31 +524,7 @@ export default function CashierExpensesPage() {
   const [showAdd, setShowAdd]       = useState(false);
   const [selected, setSelected]     = useState<Outstand | null>(null);
   const [editing, setEditing]       = useState<Outstand | null>(null);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [menuPos, setMenuPos]       = useState<{ top: number; right: number } | null>(null);
-  const [confirmAction, setConfirmAction] = useState<{ id: string; type: "approve" | "pay" } | null>(null);
-  const [rejectTarget, setRejectTarget]   = useState<Outstand | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handler = (e: MouseEvent) => {
-      if (triggerRef.current?.contains(e.target as Node)) return;
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) { setOpenMenuId(null); setConfirmAction(null); }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [openMenuId]);
-
-  const openMenu = useCallback((e: React.MouseEvent<HTMLButtonElement>, id: string) => {
-    e.stopPropagation();
-    triggerRef.current = e.currentTarget;
-    if (openMenuId === id) { setOpenMenuId(null); setConfirmAction(null); return; }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-    setOpenMenuId(id);
-  }, [openMenuId]);
+  const [rejectTarget, setRejectTarget] = useState<Outstand | null>(null);
 
   const [approveOutstand] = useApproveOutstandMutation();
   const [payOutstand]     = usePayOutstandMutation();
@@ -472,15 +540,20 @@ export default function CashierExpensesPage() {
   const outstands  = data?.outstands ?? [];
   const totalPages = data?.totalPages ?? 1;
 
+  // Separate full-dataset queries for accurate KPI totals across all pages
+  const { data: pendingAll  } = useGetOutstandsQuery({ status: "pending",  limit: 1000 });
+  const { data: approvedAll } = useGetOutstandsQuery({ status: "approved", limit: 1000 });
+  const { data: paidAll     } = useGetOutstandsQuery({ status: "paid",     limit: 1000 });
+
+  const pendingAmt  = (pendingAll?.outstands  ?? []).reduce((s, r) => s + Number(r.totalAmount), 0);
+  const approvedAmt = (approvedAll?.outstands ?? []).reduce((s, r) => s + Number(r.totalAmount), 0);
+  const paidAmt     = (paidAll?.outstands     ?? []).reduce((s, r) => s + Number(r.totalAmount), 0);
+  const totalAmt    = approvedAmt + paidAmt;
+
   const filtered = outstands.filter(r => {
     const q = search.toLowerCase();
     return !q || r.ref.toLowerCase().includes(q) || r.description.toLowerCase().includes(q) || (r.recipientName ?? "").toLowerCase().includes(q);
   });
-
-  const totalAmt    = outstands.reduce((s, r) => s + Number(r.totalAmount), 0);
-  const pendingAmt  = outstands.filter(r => r.status === "pending").reduce((s, r) => s + Number(r.totalAmount), 0);
-  const approvedAmt = outstands.filter(r => r.status === "approved").reduce((s, r) => s + Number(r.totalAmount), 0);
-  const paidAmt     = outstands.filter(r => r.status === "paid").reduce((s, r) => s + Number(r.totalAmount), 0);
 
   return (
     <DashboardLayout>
@@ -556,7 +629,7 @@ export default function CashierExpensesPage() {
               <p className="text-sm text-custom-700">No expenses found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-visible">
               <table className="w-full text-sm">
                 <thead className="bg-custom-50 border-b border-custom-200">
                   <tr>
@@ -583,9 +656,14 @@ export default function CashierExpensesPage() {
                         </td>
                         <td className="px-4 py-3 text-custom-700 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                          <button onClick={e => openMenu(e, r.id)} className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700">
-                            <HiOutlineDotsHorizontal className="w-4 h-4" />
-                          </button>
+                          <RowActions
+                            record={r}
+                            onView={() => setSelected(r)}
+                            onEdit={() => setEditing(r)}
+                            onReject={() => setRejectTarget(r)}
+                            onApprove={approveOutstand}
+                            onPay={payOutstand}
+                          />
                         </td>
                       </tr>
                     );
@@ -607,52 +685,7 @@ export default function CashierExpensesPage() {
           </div>
         )}
 
-        {/* Context menu portal */}
-        {openMenuId && menuPos && ReactDOM.createPortal(
-          <div ref={menuRef} style={{ position: "fixed", top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
-            className="w-44 bg-style-600 border border-custom-300 rounded-2xl shadow-xl p-1.5 space-y-0.5">
-            {(() => {
-              const r = outstands.find(x => x.id === openMenuId);
-              if (!r) return null;
-              return (
-                <>
-                  <button onClick={() => { setSelected(r); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors">View Details</button>
-                  {r.status === "pending" && <button onClick={() => { setEditing(r); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors"><HiOutlinePencil className="w-4 h-4" /> Edit</button>}
-                  {r.status === "pending" && (
-                    confirmAction?.id === r.id && confirmAction.type === "approve" ? (
-                      <div className="px-3 py-2 space-y-1.5">
-                        <p className="text-xs font-semibold text-emerald-700">Approve this expense?</p>
-                        <div className="flex gap-1.5">
-                          <button onClick={async () => { try { await approveOutstand(r.id).unwrap(); toast.success("Approved"); } catch { toast.error("Failed"); } setConfirmAction(null); setOpenMenuId(null); }} className="flex-1 px-2 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors">Yes</button>
-                          <button onClick={() => setConfirmAction(null)} className="flex-1 px-2 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmAction({ id: r.id, type: "approve" })} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50 transition-colors"><HiOutlineThumbUp className="w-4 h-4" /> Approve</button>
-                    )
-                  )}
-                  {r.status === "pending" && (
-                    <button onClick={() => { setRejectTarget(r); setOpenMenuId(null); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors"><HiOutlineBan className="w-4 h-4" /> Reject</button>
-                  )}
-                  {r.status === "approved" && (
-                    confirmAction?.id === r.id && confirmAction.type === "pay" ? (
-                      <div className="px-3 py-2 space-y-1.5">
-                        <p className="text-xs font-semibold text-blue-700">Mark as paid?</p>
-                        <div className="flex gap-1.5">
-                          <button onClick={async () => { try { await payOutstand(r.id).unwrap(); toast.success("Marked paid"); } catch { toast.error("Failed"); } setConfirmAction(null); setOpenMenuId(null); }} className="flex-1 px-2 py-1 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors">Yes</button>
-                          <button onClick={() => setConfirmAction(null)} className="flex-1 px-2 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => setConfirmAction({ id: r.id, type: "pay" })} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-blue-600 hover:bg-blue-50 transition-colors"><HiOutlineCash className="w-4 h-4" /> Mark Paid</button>
-                    )
-                  )}
-                </>
-              );
-            })()}
-          </div>,
-          document.body
-        )}
+
 
         {/* Modals */}
         {showAdd       && <AddRecordModal onClose={() => setShowAdd(false)} />}

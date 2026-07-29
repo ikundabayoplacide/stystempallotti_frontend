@@ -14,8 +14,10 @@ export default function CashierPaymentsPage() {
   const [page, setPage]     = useState(1);
   const [search, setSearch] = useState("");
 
-  const { data, isLoading, isFetching, refetch } = useGetPaymentsQuery({ page, limit: PAGE_SIZE, paymentMethod: "CASH" });
+  const { data, isLoading, isFetching, refetch } = useGetPaymentsQuery({ page, limit: PAGE_SIZE });
+  const { data: allData } = useGetPaymentsQuery({ limit: 1000, paymentMethod: "CASH" });
   const payments   = data?.payments ?? [];
+  const allPayments = allData?.payments ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total      = data?.total ?? 0;
 
@@ -27,10 +29,10 @@ export default function CashierPaymentsPage() {
       (p.job?.jobNumber ?? "").toLowerCase().includes(q);
   });
 
-  const totalReceived = payments.reduce((s, p) => s + Number(p.amountPaid), 0);
-  const totalBalance  = payments.reduce((s, p) => s + Number(p.balance),    0);
-  const fullPay  = payments.filter(p => p.paymentState === "FULL").length;
-  const partial  = payments.filter(p => p.paymentState === "PARTIAL").length;
+  const totalReceived = allPayments.reduce((s, p) => s + Number(p.amountPaid), 0);
+  const totalBalance  = allPayments.reduce((s, p) => s + Number(p.balance),    0);
+  const fullPay  = allPayments.filter(p => p.paymentState === "FULL").length;
+  const partial  = allPayments.filter(p => p.paymentState === "PARTIAL").length;
 
   const { data: balanceData } = useGetWithdrawalBalanceQuery();
   const fundBalance = balanceData?.totalBalance ?? 0;
