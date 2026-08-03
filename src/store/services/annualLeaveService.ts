@@ -5,28 +5,33 @@ import type { RootState } from "../index";
 
 export type AnnualLeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+export type CountdownStatus = "upcoming" | "ongoing" | "completed";
+
+export interface CountdownResult {
+  status: CountdownStatus;
+  totalDays: number;
+  daysUntilStart?: number;
+  daysRemaining?: number;
+  daysAgo?: number;
+}
+
 export interface AnnualLeave {
   id: string;
   fullNames: string;
-  /** Pre-formatted string e.g. "03/07/2026 - 16/07/2026" */
   firstLeave?: string | null;
   secondLeave?: string | null;
   firstLeaveDays?: number | null;
   secondLeaveDays?: number | null;
   phone?: string | null;
   docs?: string | null;
-  status: AnnualLeaveStatus;
   notes?: string | null;
-  viewedAt?: string | null;
-  approvedAt?: string | null;
-  rejectedAt?: string | null;
   editedAt?: string | null;
   createdById?: string | null;
-  approvedById?: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy?: { id: string; name: string; email: string; role: string } | null;
-  approvedBy?: { id: string; name: string } | null;
+  firstLeaveCountdown?: CountdownResult | null;
+  secondLeaveCountdown?: CountdownResult | null;
 }
 
 export interface AnnualLeaveListResponse {
@@ -42,7 +47,6 @@ export interface AnnualLeaveListResponse {
 export interface GetAnnualLeavesParams {
   page?: number;
   limit?: number;
-  status?: AnnualLeaveStatus;
 }
 
 export interface CreateAnnualLeavePayload {
@@ -55,12 +59,6 @@ export interface CreateAnnualLeavePayload {
 
 export interface UpdateAnnualLeavePayload extends Partial<CreateAnnualLeavePayload> {
   id: string;
-}
-
-export interface ReviewAnnualLeavePayload {
-  id: string;
-  action: "approve" | "reject";
-  notes?: string;
 }
 
 export interface ImportAnnualLeaveResponse {
@@ -126,18 +124,11 @@ export const annualLeaveApi = createApi({
       ],
     }),
 
-    // PATCH /annual-leaves/:id/status
-    reviewAnnualLeave: builder.mutation<AnnualLeave, ReviewAnnualLeavePayload>({
-      query: ({ id, ...body }) => ({
-        url: `/annual-leaves/${id}/status`,
-        method: "PATCH",
-        body,
-      }),
+    // GET /annual-leaves/:id/countdown
+    getAnnualLeaveCountdown: builder.query<{ id: string; fullNames: string; firstLeaveCountdown: CountdownResult | null; secondLeaveCountdown: CountdownResult | null }, string>({
+      query: (id) => `/annual-leaves/${id}/countdown`,
       transformResponse: (res: any) => res?.data ?? res,
-      invalidatesTags: (_r, _e, { id }) => [
-        { type: "AnnualLeave", id },
-        { type: "AnnualLeave", id: "LIST" },
-      ],
+      providesTags: (_r, _e, id) => [{ type: "AnnualLeave", id }],
     }),
 
     // DELETE /annual-leaves/:id
@@ -161,9 +152,9 @@ export const annualLeaveApi = createApi({
 export const {
   useGetAnnualLeavesQuery,
   useGetAnnualLeaveByIdQuery,
+  useGetAnnualLeaveCountdownQuery,
   useCreateAnnualLeaveMutation,
   useUpdateAnnualLeaveMutation,
-  useReviewAnnualLeaveMutation,
   useDeleteAnnualLeaveMutation,
   useImportAnnualLeavesMutation,
 } = annualLeaveApi;

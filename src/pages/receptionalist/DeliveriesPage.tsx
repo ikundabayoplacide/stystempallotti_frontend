@@ -235,12 +235,15 @@ export default function DeliveriesPage() {
 
   const isLoading = confirmedLoading || completedAllLoading || partialDelivLoading || readyForDelivLoading || delivLoading;
 
+  const byLatest = (a: { createdAt: string }, b: { createdAt: string }) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
   const allConfirmedCompleted = [
     ...(confirmedData?.jobs ?? []),
     ...(completedAllData?.jobs ?? []),
     ...(partialDelivData?.jobs ?? []),
     ...(readyForDelivData?.jobs ?? []),
-  ];
+  ].sort(byLatest);
 
   // 1. Ready for Delivery: confirmed|completed|partial-delivered + paid|oncredit|partial
   const readyJobs = allConfirmedCompleted.filter((j) =>
@@ -260,7 +263,7 @@ export default function DeliveriesPage() {
     ...(partialDelivData?.jobs ?? []),
     ...(delivData?.jobs ?? []),
     ...(completedAllData?.jobs ?? []),
-  ];
+  ].sort(byLatest);
 
   const delivTotal = delivJobs.length;
 

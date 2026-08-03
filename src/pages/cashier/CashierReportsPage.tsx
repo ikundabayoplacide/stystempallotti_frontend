@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import {
   HiOutlineCash,
   HiOutlineClipboardList,
-  HiOutlineUsers,
   HiOutlineChartBar,
   HiOutlineDocumentDownload,
   HiOutlineDocumentText,
@@ -29,10 +28,8 @@ import {
   useDeleteOutstandMutation,
   type Outstand,
 } from "../../store/services/outstandsService";
-import { useGetCasualWorkersQuery } from "../../store/services/casualWorkersService";
 import {
   useGetWithdrawalsQuery,
-  useGetWithdrawalBalanceQuery,
 } from "../../store/services/withdrawalsService";
 import { GenerateReportModal } from "../../components";
 import { useAuth } from "../../context/AuthContext";
@@ -543,25 +540,23 @@ function PaymentsReport() {
 // ─── Tab 1a: Job Payments ─────────────────────────────────────────────────────
 
 function JobsPaymentsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
   const [useCustom, setUseCustom]   = useState(false);
-  const [methodFilter, setMethodFilter] = useState("");
 
   const range = useCustom && customFrom && customTo
     ? { from: customFrom + "T00:00:00", to: customTo + "T23:59:59" }
     : getDateRange(period);
 
-  const { data, isLoading, refetch } = useGetPaymentsQuery({ from: range.from, to: range.to, limit: 500 });
+  const { data, isLoading, refetch } = useGetPaymentsQuery({ from: range.from, to: range.to, limit: 500, paymentMethod: "CASH" });
   const allPayments = data?.payments ?? [];
 
   const payments = allPayments.filter((p) => {
     const d = new Date(p.paidAt);
     const inRange = d >= new Date(range.from) && d <= new Date(range.to);
-    const methodOk = !methodFilter || p.paymentMethod === methodFilter;
-    return inRange && methodOk;
+    return inRange && p.paymentMethod === "CASH";
   });
 
   const totalPages     = Math.max(1, Math.ceil(payments.length / PAGE_SIZE));
@@ -612,15 +607,6 @@ function JobsPaymentsReport() {
       <div className="flex flex-wrap items-center gap-3">
         <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
         <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <select value={methodFilter} onChange={(e) => { setMethodFilter(e.target.value); setPage(1); }}
-            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors">
-            <option value="">All methods</option>
-            <option value="CASH">Cash</option>
-            <option value="MOBILE_MONEY">Mobile Money</option>
-            <option value="BANK_TRANSFER">Bank Transfer</option>
-            <option value="CHEQUE">Cheque</option>
-            <option value="CARD">Card</option>
-          </select>
           <input type="date" value={customFrom}
             onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
             className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
@@ -868,7 +854,7 @@ const expenseStatusColors: Record<string, string> = {
 };
 
 function ExpensesReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -892,7 +878,7 @@ function ExpensesReport() {
   const totalPages  = Math.max(1, Math.ceil(expenses.length / PAGE_SIZE));
   const paginated   = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const totalAmount  = expenses.reduce((s, e) => s + Number(e.totalAmount), 0);
+  const totalAmount  = expenses.filter((e) => e.status === "approved" || e.status === "paid").reduce((s, e) => s + Number(e.totalAmount), 0);
   const paidAmount   = expenses.filter((e) => e.status === "paid").reduce((s, e) => s + Number(e.totalAmount), 0);
   const pendingCount = expenses.filter((e) => e.status === "pending").length;
   const approvedCount= expenses.filter((e) => e.status === "approved").length;
@@ -900,7 +886,7 @@ function ExpensesReport() {
   const rejectedCount= expenses.filter((e) => e.status === "rejected").length;
 
   const byCategory: Record<string, number> = {};
-  expenses.forEach((e) => {
+  expenses.filter((e) => e.status === "approved" || e.status === "paid").forEach((e) => {
     byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.totalAmount);
   });
 
@@ -1089,176 +1075,10 @@ function ExpensesReport() {
   );
 }
 
-// ─── Tab 3: Casual Workers Report ─────────────────────────────────────────────
-
-function CasualWorkersReport() {
-  const [page, setPage]             = useState(1);
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo]     = useState("");
-  const [useCustom, setUseCustom]   = useState(false);
-
-  const { data, isLoading, refetch } = useGetCasualWorkersQuery({ limit: 200 });
-  const allWorkers = data?.data ?? [];
-
-  const workers = useCustom && customFrom && customTo
-    ? allWorkers.filter((w) => {
-        const d = new Date(w.startDate);
-        return d >= new Date(customFrom) && d <= new Date(customTo);
-      })
-    : allWorkers;
-
-  const totalPages   = Math.max(1, Math.ceil(workers.length / PAGE_SIZE));
-  const paginated    = workers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const totalDays    = workers.reduce((s, w) => s + w.daysWorked, 0);
-  const totalPayable = workers.reduce((s, w) => s + Number(w.totalAmount), 0);
-  const avgRate      = workers.length > 0
-    ? Math.round(workers.reduce((s, w) => s + Number(w.dailyRate), 0) / workers.length)
-    : 0;
-
-  const getExportData = () => ({
-    headers: ["Full Name", "Phone", "Job Done", "Start Date", "End Date", "Days", "Daily Rate (RWF)", "Total (RWF)", "Notes"],
-    rows: workers.map((w) => [
-      w.fullName,
-      w.phoneNumber ?? "—",
-      w.jobDone,
-      w.startDate?.split("T")[0] ?? "—",
-      w.endDate?.split("T")[0]   ?? "—",
-      String(w.daysWorked),
-      Number(w.dailyRate).toLocaleString(),
-      Number(w.totalAmount).toLocaleString(),
-      w.notes ?? "—",
-    ]),
-    summary: [
-      { label: "Total Workers",    value: String(workers.length) },
-      { label: "Total Days",       value: String(totalDays) },
-      { label: "Avg. Daily Rate",  value: `${avgRate.toLocaleString()} RWF` },
-      { label: "TOTAL PAYABLE",    value: `${totalPayable.toLocaleString()} RWF`, bold: true },
-    ] as SummaryRow[],
-  });
-
-  return (
-    <div className="space-y-4">
-      {/* Section header */}
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-600">
-          <HiOutlineUsers className="w-4 h-4" />
-        </div>
-        <h2 className="text-base font-bold text-secondary-100">Casual Workers</h2>
-      </div>
-
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 text-xs text-custom-700">
-          <span>Filter by start date:</span>
-        </div>
-        <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <input type="date" value={customFrom}
-            onChange={(e) => { setCustomFrom(e.target.value); setUseCustom(true); setPage(1); }}
-            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-          <span className="text-xs text-custom-700">to</span>
-          <input type="date" value={customTo} min={customFrom}
-            onChange={(e) => { setCustomTo(e.target.value); setUseCustom(true); setPage(1); }}
-            className="px-2 py-1.5 rounded-lg border border-custom-300 bg-style-500 text-secondary-100 text-xs focus:outline-none focus:border-primary-400 transition-colors" />
-          {useCustom && (
-            <button onClick={() => { setCustomFrom(""); setCustomTo(""); setUseCustom(false); setPage(1); }}
-              className="px-2 py-1.5 rounded-lg border border-custom-300 text-xs text-custom-700 hover:bg-custom-100 transition-colors">Clear</button>
-          )}
-          <button onClick={() => refetch()}
-            className="p-1.5 rounded-lg border border-custom-300 hover:bg-custom-100 transition-colors">
-            <HiOutlineRefresh className={`w-4 h-4 text-custom-700 ${isLoading ? "animate-spin" : ""}`} />
-          </button>
-          <PdfButtons title="Cashier Casual Workers Report" getExportData={getExportData} />
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Workers"  value={workers.length} />
-        <StatCard label="Total Days"     value={totalDays} color="text-primary-500" />
-        <StatCard label="Avg. Daily Rate" value={`${avgRate.toLocaleString()} RWF`} color="text-secondary-100" />
-        <StatCard label="Total Payable"  value={`${totalPayable.toLocaleString()} RWF`} color="text-indigo-600" />
-      </div>
-
-      {/* Table */}
-      <Card className="!p-0 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-custom-100 border-b border-custom-300">
-              <tr>
-                {["Full Name", "Phone", "Job Done", "Start", "End", "Days", "Daily Rate", "Total"].map((h) => (
-                  <th key={h} className="px-3 py-2 text-left text-xs font-bold text-secondary-100 uppercase">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-custom-200">
-              {isLoading ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">Loading...</td></tr>
-              ) : workers.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-custom-700 text-sm">No workers found</td></tr>
-              ) : paginated.map((w) => (
-                <tr key={w.id} className="hover:bg-custom-50 transition-colors">
-                  <td className="px-3 py-2.5">
-                    <p className="text-sm font-semibold text-secondary-100">{w.fullName}</p>
-                    {w.notes && <p className="text-xs text-custom-700 truncate max-w-[120px]">{w.notes}</p>}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-custom-700">{w.phoneNumber ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-sm text-secondary-100 max-w-[140px] truncate">{w.jobDone}</td>
-                  <td className="px-3 py-2.5 text-xs text-custom-700">{w.startDate?.split("T")[0] ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-xs text-custom-700">{w.endDate?.split("T")[0]   ?? "—"}</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-secondary-100 text-center">{w.daysWorked}</td>
-                  <td className="px-3 py-2.5 text-sm text-secondary-100">{Number(w.dailyRate).toLocaleString()} RWF</td>
-                  <td className="px-3 py-2.5 text-sm font-bold text-indigo-600">
-                    {Number(w.totalAmount).toLocaleString()} RWF
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* Pay banner */}
-      {totalPayable > 0 && (
-        <div className="flex items-center justify-between px-5 py-4 rounded-xl bg-indigo-50 border border-indigo-200">
-          <div className="flex items-center gap-3">
-            <HiOutlineUsers className="w-6 h-6 text-indigo-500 shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-indigo-700">Total payable to casual workers</p>
-              <p className="text-xs text-indigo-600">{workers.length} workers · {totalDays} total days worked</p>
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-indigo-600">{totalPayable.toLocaleString()} <span className="text-sm font-normal">RWF</span></p>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {workers.length > PAGE_SIZE && (
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-custom-700">
-            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, workers.length)} of {workers.length}
-          </p>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Prev</button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-              <button key={n} onClick={() => setPage(n)}
-                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-                  n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
-                }`}>{n}</button>
-            ))}
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 hover:bg-custom-100 disabled:opacity-40 transition-colors">Next</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Tab 4: Withdrawals Report ────────────────────────────────────────────────
 
 function WithdrawalsReport() {
-  const [period, setPeriod]         = useState<Period>("month");
+  const [period, setPeriod]         = useState<Period>("day");
   const [page, setPage]             = useState(1);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo]     = useState("");
@@ -1269,7 +1089,6 @@ function WithdrawalsReport() {
     : getDateRange(period);
 
   const { data, isLoading, refetch } = useGetWithdrawalsQuery({ limit: 500 });
-  const { data: balanceData }        = useGetWithdrawalBalanceQuery();
   const allWithdrawals               = data?.withdrawals ?? [];
 
   const withdrawals = allWithdrawals.filter((w) => {
@@ -1296,25 +1115,6 @@ function WithdrawalsReport() {
         </div>
         <h2 className="text-base font-bold text-secondary-100">Withdrawals</h2>
       </div>
-
-      {/* Balance card */}
-      {balanceData && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Fund Balance",    value: balanceData.totalBalance,      color: balanceData.totalBalance >= 0 ? "text-emerald-600" : "text-red-500" },
-            { label: "Payments In",     value: balanceData.totalPaymentsIn,   color: "text-blue-600" },
-            { label: "Withdrawals Out", value: balanceData.totalWithdrawalsIn, color: "text-orange-600" },
-            { label: "Expenses Out",    value: balanceData.totalExpensesOut,  color: "text-red-500" },
-          ].map(k => (
-            <Card key={k.label} className="!p-4">
-              <p className="text-xs text-custom-700 mb-1">{k.label}</p>
-              <p className={`text-lg font-bold ${k.color}`}>{Number(k.value).toLocaleString()}</p>
-              <p className="text-xs text-custom-700">RWF</p>
-            </Card>
-          ))}
-        </div>
-      )}
-
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <PeriodTabs value={period} onChange={(p) => { setPeriod(p); setUseCustom(false); setPage(1); }} />
@@ -1354,11 +1154,9 @@ function WithdrawalsReport() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
         <StatCard label="Withdrawals"  value={withdrawals.length} />
         <StatCard label="Total Amount" value={`${totalAmount.toLocaleString()} RWF`} color="text-orange-600" />
-        <StatCard label="Avg. Amount"
-          value={withdrawals.length > 0 ? `${Math.round(totalAmount / withdrawals.length).toLocaleString()} RWF` : "—"} />
       </div>
 
       {/* By-source pills */}
@@ -1458,13 +1256,12 @@ function WithdrawalsReport() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-type Tab = "payments" | "expenses" | "workers" | "withdrawals";
+type Tab = "payments" | "expenses" | "withdrawals";
 
 const TABS: { value: Tab; label: string; icon: React.ElementType }[] = [
-  { value: "payments",    label: "Payments",      icon: HiOutlineCash },
-  { value: "expenses",    label: "Expenses",       icon: HiOutlineClipboardList },
-  { value: "workers",     label: "Casual Workers", icon: HiOutlineUsers },
-  { value: "withdrawals", label: "Withdrawals",    icon: HiOutlineCurrencyDollar },
+  { value: "payments",    label: "Payments",   icon: HiOutlineCash },
+  { value: "expenses",    label: "Expenses",    icon: HiOutlineClipboardList },
+  { value: "withdrawals", label: "Withdrawals", icon: HiOutlineCurrencyDollar },
 ];
 
 export default function CashierReportsPage() {
@@ -1503,7 +1300,6 @@ export default function CashierReportsPage() {
 
         {tab === "payments"    && <PaymentsReport />}
         {tab === "expenses"    && <ExpensesReport />}
-        {tab === "workers"     && <CasualWorkersReport />}
         {tab === "withdrawals" && <WithdrawalsReport />}
       </div>
     </DashboardLayout>

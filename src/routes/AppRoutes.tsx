@@ -121,7 +121,6 @@ import CashierPage from "../pages/cashier/CashierPage";
 import CashierPaymentsPage from "../pages/cashier/CashierPaymentsPage";
 import CashierBoutiquePaymentsPage from "../pages/cashier/CashierBoutiquePaymentsPage";
 import CashierExpensesPage from "../pages/cashier/CashierExpensesPage";
-import CashierCasualWorkersPage from "../pages/cashier/CashierCasualWorkersPage";
 import CashierReportsPage from "../pages/cashier/CashierReportsPage";
 import Withdraws from "../pages/cashier/Withdraws";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -154,7 +153,12 @@ export default function AppRoutes() {
       <Route path="/admin/workflow" element={<ProtectedRoute allowedRoles={["admin"]}><WorkflowConfigPage /></ProtectedRoute>} />
       <Route path="/admin/ui-permissions" element={<ProtectedRoute allowedRoles={["admin"]}><UIPermissionsPage /></ProtectedRoute>} />
       <Route path="/admin/leave" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLeaveManagementPage /></ProtectedRoute>} />
+      <Route path="/admin/leave/permissions" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLeaveManagementPage mode="permissions" /></ProtectedRoute>} />
+      <Route path="/admin/leave/circumstantial" element={<ProtectedRoute allowedRoles={["admin"]}><AdminLeaveManagementPage mode="circumstantial" /></ProtectedRoute>} />
       <Route path="/admin/annual-leave" element={<ProtectedRoute allowedRoles={["admin"]}><AdminAnnualLeavePage /></ProtectedRoute>} />
+      <Route path="/finance/daf/leave/permissions" element={<ProtectedRoute allowedRoles={["daf"]}><AdminLeaveManagementPage mode="permissions" /></ProtectedRoute>} />
+      <Route path="/finance/daf/leave/circumstantial" element={<ProtectedRoute allowedRoles={["daf"]}><AdminLeaveManagementPage mode="circumstantial" /></ProtectedRoute>} />
+      <Route path="/finance/daf/annual-leave" element={<ProtectedRoute allowedRoles={["daf"]}><AdminAnnualLeavePage /></ProtectedRoute>} />
       <Route path="/admin/expenses" element={<ProtectedRoute allowedRoles={["admin"]}><AdminExpensesPage /></ProtectedRoute>} />
       <Route path="/admin/withdrawals" element={<ProtectedRoute allowedRoles={["admin"]}><AdminWithdrawalsPage /></ProtectedRoute>} />
       <Route path="/admin/machines" element={<ProtectedRoute allowedRoles={["admin"]}><AdminMachinesPage isAdmin /></ProtectedRoute>} />
@@ -335,7 +339,7 @@ export default function AppRoutes() {
       <Route path="/cashier/payments/boutique" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierBoutiquePaymentsPage /></ProtectedRoute>} />
       <Route path="/cashier/withdrows" element={<ProtectedRoute allowedRoles={["cashier"]}><Withdraws /></ProtectedRoute>} />
       <Route path="/cashier/expenses" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierExpensesPage /></ProtectedRoute>} />
-      <Route path="/cashier/casual-workers" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierCasualWorkersPage /></ProtectedRoute>} />
+  
       <Route path="/cashier/cashier" element={<ProtectedRoute allowedRoles={["cashier"]}><CashierPage /></ProtectedRoute>} />
       <Route path="/cashier/notifications" element={<ProtectedRoute allowedRoles={["cashier"]}><NotificationsPage userRole="cashier" userName="Cashier" /></ProtectedRoute>} />
       <Route path="/cashier/profile" element={<ProtectedRoute allowedRoles={["cashier"]}><ProfilePage /></ProtectedRoute>} />

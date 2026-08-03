@@ -1,21 +1,18 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   HiOutlineCalendar,
   HiOutlineRefresh,
   HiOutlineX,
-  HiOutlineCheckCircle,
-  HiOutlineExclamationCircle,
-  HiOutlineClock,
   HiOutlineSearch,
   HiOutlineUpload,
   HiOutlineEye,
-  HiOutlineThumbUp,
-  HiOutlineThumbDown,
   HiOutlinePencil,
   HiOutlineTrash,
   HiOutlinePlus,
   HiOutlineDocumentText,
   HiOutlineDownload,
+  HiOutlineDotsVertical,
+  HiOutlineBell,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import { DashboardLayout } from "../../components";
@@ -24,12 +21,11 @@ import {
   useGetAnnualLeavesQuery,
   useCreateAnnualLeaveMutation,
   useUpdateAnnualLeaveMutation,
-  useReviewAnnualLeaveMutation,
   useDeleteAnnualLeaveMutation,
   useImportAnnualLeavesMutation,
   type AnnualLeave,
-  type AnnualLeaveStatus,
   type CreateAnnualLeavePayload,
+  type CountdownResult,
 } from "../../store/services/annualLeaveService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -39,23 +35,96 @@ function fmt(d?: string | null) {
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-const statusStyle: Record<string, string> = {
-  PENDING:  "bg-yellow-100 text-yellow-700",
-  APPROVED: "bg-emerald-100 text-emerald-700",
-  REJECTED: "bg-red-100 text-red-700",
-};
+function CountdownBadge({ cd }: { cd?: CountdownResult | null }) {
+  if (!cd) return <span className="text-xs text-custom-400">—</span>;
+  if (cd.status === "upcoming")
+    return <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Starts in {cd.daysUntilStart}d</span>;
+  if (cd.status === "ongoing")
+    return <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{cd.daysRemaining}d left / {cd.totalDays}d</span>;
+  return <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-custom-100 text-custom-500">Ended {cd.daysAgo}d ago</span>;
+}
 
-const statusIcon: Record<string, React.ReactElement> = {
-  PENDING:  <HiOutlineClock className="w-3.5 h-3.5" />,
-  APPROVED: <HiOutlineCheckCircle className="w-3.5 h-3.5" />,
-  REJECTED: <HiOutlineExclamationCircle className="w-3.5 h-3.5" />,
-};
+function CountdownBlock({ label, period, cd }: { label: string; period?: string | null; cd?: CountdownResult | null }) {
+  if (!period) return null;
+  const pct = cd?.status === "ongoing" && cd.totalDays > 0
+    ? Math.round(((cd.totalDays - (cd.daysRemaining ?? 0)) / cd.totalDays) * 100)
+    : cd?.status === "completed" ? 100 : 0;
+  return (
+    <div className="rounded-xl border border-custom-200 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-secondary-100">{label}</span>
+        <CountdownBadge cd={cd} />
+      </div>
+      <p className="text-xs text-custom-700">{period}</p>
+      {cd?.status === "ongoing" && (
+        <div className="w-full h-1.5 rounded-full bg-custom-200 overflow-hidden">
+          <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
 
 const inputCls =
   "w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 " +
   "text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 " +
   "focus:ring-2 focus:ring-primary-200 transition-colors " +
   "font-[family-name:var(--font-family-primary)]";
+
+// ─── Actions Dropdown ─────────────────────────────────────────────────────────
+
+function ActionsDropdown({
+  onView,
+  onEdit,
+  onDelete,
+}: {
+  row: AnnualLeave;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const actions = [
+    { label: "View Details", icon: <HiOutlineEye className="w-4 h-4" />, onClick: onView, cls: "text-primary-600 hover:bg-primary-50" },
+    { label: "Edit", icon: <HiOutlinePencil className="w-4 h-4" />, onClick: onEdit, cls: "text-secondary-100 hover:bg-custom-100" },
+    { label: "Delete", icon: <HiOutlineTrash className="w-4 h-4" />, onClick: onDelete, cls: "text-red-600 hover:bg-red-50" },
+  ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className="p-1.5 rounded-lg text-custom-700 hover:bg-custom-100 transition-colors"
+      >
+        <HiOutlineDotsVertical className="w-4 h-4" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 w-44 bg-style-500 border border-custom-200 rounded-xl shadow-lg overflow-hidden">
+          {actions.map((a) => (
+            <button
+              key={a.label}
+              onClick={() => { setOpen(false); a.onClick(); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm font-semibold transition-colors ${a.cls}`}
+            >
+              {a.icon} {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Create / Edit Modal ──────────────────────────────────────────────────────
 
@@ -218,29 +287,17 @@ function DetailModal({
   leave,
   onClose,
   onEdit,
-  onApprove,
-  onReject,
 }: {
   leave: AnnualLeave;
   onClose: () => void;
   onEdit: () => void;
-  onApprove: () => void;
-  onReject: () => void;
 }) {
-  const rows = [
-    { label: "Employee",      value: leave.fullNames },
-    { label: "First Period",  value: leave.firstLeave  ?? "—" },
-    { label: "First Days",    value: leave.firstLeaveDays  != null ? `${leave.firstLeaveDays} day(s)`  : "—" },
-    { label: "Second Period", value: leave.secondLeave ?? "—" },
-    { label: "Second Days",   value: leave.secondLeaveDays != null ? `${leave.secondLeaveDays} day(s)` : "—" },
-    { label: "Total Days",    value: (leave.firstLeaveDays ?? 0) + (leave.secondLeaveDays ?? 0) > 0
-        ? `${(leave.firstLeaveDays ?? 0) + (leave.secondLeaveDays ?? 0)} day(s)` : "—" },
-    { label: "Created",       value: fmt(leave.createdAt) },
-  ];
+  const totalDays = (leave.firstLeaveDays ?? 0) + (leave.secondLeaveDays ?? 0);
 
   return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-md w-full my-8">
+    <div className="fixed inset-0 bg-secondary-100/50 z-50 overflow-y-auto">
+      <div className="flex min-h-full items-start justify-center p-4">
+      <Card className="!p-6 max-w-lg w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-xl font-bold text-secondary-100">Annual Leave Details</h3>
           <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
@@ -250,17 +307,23 @@ function DetailModal({
 
         <div className="space-y-3 mb-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-custom-700">Status</span>
-            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${statusStyle[leave.status]}`}>
-              {statusIcon[leave.status]} {leave.status}
-            </span>
+            <span className="text-sm text-custom-700">Employee</span>
+            <span className="text-sm font-semibold text-secondary-100">{leave.fullNames}</span>
           </div>
-          {rows.map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-sm text-custom-700">{label}</span>
-              <span className="text-sm font-semibold text-secondary-100">{value}</span>
-            </div>
-          ))}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-custom-700">Total Days</span>
+            <span className="text-sm font-bold text-secondary-100">{totalDays > 0 ? `${totalDays} day(s)` : "—"}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-custom-700">Created</span>
+            <span className="text-sm font-semibold text-secondary-100">{fmt(leave.createdAt)}</span>
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <CountdownBlock label="First Leave Period" period={leave.firstLeave} cd={leave.firstLeaveCountdown} />
+            <CountdownBlock label="Second Leave Period" period={leave.secondLeave} cd={leave.secondLeaveCountdown} />
+          </div>
+
           {leave.notes && (
             <div>
               <p className="text-sm text-custom-700 mb-1">Notes</p>
@@ -270,18 +333,6 @@ function DetailModal({
         </div>
 
         <div className="flex gap-2 justify-end border-t border-custom-300 pt-4">
-          {leave.status === "PENDING" && (
-            <>
-              <button onClick={onReject}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
-                <HiOutlineThumbDown className="w-4 h-4" /> Reject
-              </button>
-              <button onClick={onApprove}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-emerald-600 border border-emerald-200 hover:bg-emerald-50 transition-colors">
-                <HiOutlineThumbUp className="w-4 h-4" /> Approve
-              </button>
-            </>
-          )}
           <button onClick={onEdit}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold text-secondary-100 border border-custom-300 hover:bg-custom-100 transition-colors">
             <HiOutlinePencil className="w-4 h-4" /> Edit
@@ -292,94 +343,7 @@ function DetailModal({
           </button>
         </div>
       </Card>
-    </div>
-  );
-}
-
-// ─── Review Modal ─────────────────────────────────────────────────────────────
-
-function ReviewModal({
-  leave,
-  action,
-  onClose,
-  onSuccess,
-}: {
-  leave: AnnualLeave;
-  action: "approve" | "reject";
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
-  const [notes, setNotes] = useState("");
-  const [reviewLeave, { isLoading }] = useReviewAnnualLeaveMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (action === "reject" && !notes.trim()) {
-      toast.error("Please provide a reason for rejection"); return;
-    }
-    try {
-      await reviewLeave({ id: leave.id, action, notes: notes.trim() || undefined }).unwrap();
-      toast.success(`Annual leave ${action === "approve" ? "approved" : "rejected"}`);
-      onSuccess();
-    } catch (err: any) {
-      toast.error(err?.data?.message ?? "Failed to process review");
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-md w-full my-8">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-secondary-100">
-            {action === "approve" ? "Approve" : "Reject"} Annual Leave
-          </h3>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="rounded-xl bg-custom-50 border border-custom-200 p-3 mb-4 space-y-1.5 text-sm">
-          <div className="flex justify-between">
-            <span className="text-custom-700">Employee</span>
-            <span className="font-semibold text-secondary-100">{leave.fullNames}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-custom-700">Total Days</span>
-            <span className="font-semibold text-secondary-100">{(leave.firstLeaveDays ?? 0) + (leave.secondLeaveDays ?? 0)}</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {action === "reject" && (
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Reason *</label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3}
-                placeholder="Explain the rejection reason..."
-                className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors resize-none" />
-            </div>
-          )}
-          {action === "approve" && (
-            <div>
-              <label className="block text-sm font-semibold text-secondary-100 mb-1.5">Notes <span className="font-normal text-custom-700">(optional)</span></label>
-              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
-                placeholder="Optional notes..."
-                className="w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors resize-none" />
-            </div>
-          )}
-          <div className="flex gap-3 justify-end pt-2 border-t border-custom-300">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">
-              Cancel
-            </button>
-            <button type="submit" disabled={isLoading}
-              className={`px-4 py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-colors ${
-                action === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"
-              }`}>
-              {isLoading ? "Processing..." : action === "approve" ? "Approve" : "Reject"}
-            </button>
-          </div>
-        </form>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -539,32 +503,30 @@ function ImportModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminAnnualLeavePage() {
-  const [statusFilter, setStatusFilter] = useState<"" | AnnualLeaveStatus>("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AnnualLeave | null>(null);
   const [detail, setDetail] = useState<AnnualLeave | null>(null);
-  const [reviewTarget, setReviewTarget] = useState<{ leave: AnnualLeave; action: "approve" | "reject" } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AnnualLeave | null>(null);
   const [showImport, setShowImport] = useState(false);
 
-  const { data, isLoading, refetch } = useGetAnnualLeavesQuery({
-    page,
-    limit: 7,
-    ...(statusFilter ? { status: statusFilter } : {}),
-  });
-
-  // Separate query for accurate totals across all pages
-  const { data: countsData } = useGetAnnualLeavesQuery({ limit: 1000 });
-  const allRecords = countsData?.data ?? [];
-  const pendingCount  = allRecords.filter((r) => r.status === "PENDING").length;
-  const approvedCount = allRecords.filter((r) => r.status === "APPROVED").length;
-  const rejectedCount = allRecords.filter((r) => r.status === "REJECTED").length;
+  const { data, isLoading, refetch } = useGetAnnualLeavesQuery({ page, limit: 7 });
 
   const all = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total = data?.total ?? 0;
+
+  const upcomingSoon = all.filter((r) => {
+    const cd1 = r.firstLeaveCountdown;
+    const cd2 = r.secondLeaveCountdown;
+    return (
+      (cd1?.status === "upcoming" && (cd1.daysUntilStart ?? Infinity) >= 1 && (cd1.daysUntilStart ?? Infinity) <= 3) ||
+      (cd2?.status === "upcoming" && (cd2.daysUntilStart ?? Infinity) >= 1 && (cd2.daysUntilStart ?? Infinity) <= 3)
+    );
+  });
+
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   const rows = all.filter((r) => {
     const q = search.trim().toLowerCase();
@@ -603,49 +565,53 @@ export default function AdminAnnualLeavePage() {
           </div>
         </div>
 
+        {/* Upcoming Soon Alert */}
+        {!alertDismissed && upcomingSoon.length > 0 && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <HiOutlineBell className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-800">
+                {upcomingSoon.length} employee{upcomingSoon.length > 1 ? "s" : ""} starting leave within 3 days
+              </p>
+              <ul className="mt-1 space-y-0.5">
+                {upcomingSoon.map((r) => {
+                  const isFirst = r.firstLeaveCountdown?.status === "upcoming" && (r.firstLeaveCountdown.daysUntilStart ?? Infinity) <= 3;
+                  const cd = isFirst ? r.firstLeaveCountdown : r.secondLeaveCountdown;
+                  const period = isFirst ? r.firstLeave : r.secondLeave;
+                  return (
+                    <li key={r.id} className="text-xs text-amber-700">
+                      <span className="font-semibold">{r.fullNames}</span>
+                      {" — "}{period}
+                      {cd?.daysUntilStart === 0 ? " (starts today!)" : ` (in ${cd?.daysUntilStart}d)`}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            <button onClick={() => setAlertDismissed(true)} className="text-amber-500 hover:text-amber-700 shrink-0">
+              <HiOutlineX className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Summary Cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="!p-4 text-center">
-            <p className="text-xs text-custom-700 mb-1">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600">{isLoading ? "—" : pendingCount}</p>
-          </Card>
-          <Card className="!p-4 text-center">
-            <p className="text-xs text-custom-700 mb-1">Approved</p>
-            <p className="text-2xl font-bold text-emerald-600">{isLoading ? "—" : approvedCount}</p>
-          </Card>
-          <Card className="!p-4 text-center">
-            <p className="text-xs text-custom-700 mb-1">Rejected</p>
-            <p className="text-2xl font-bold text-red-600">{isLoading ? "—" : rejectedCount}</p>
+        <div className="grid grid-cols-1 gap-4">
+          <Card className="!p-4">
+            <p className="text-xs text-custom-700 mb-1">Total Records</p>
+            <p className="text-2xl font-bold text-secondary-100">{isLoading ? "—" : total}</p>
           </Card>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search by employee name..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors"
-            />
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {(["", "PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => { setStatusFilter(s); setPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                  statusFilter === s
-                    ? "bg-primary-500 text-white"
-                    : "border border-custom-300 text-custom-700 hover:bg-custom-100"
-                }`}
-              >
-                {s === "" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()}
-              </button>
-            ))}
-          </div>
+        {/* Search */}
+        <div className="relative">
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-custom-700" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search by employee name..."
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors"
+          />
         </div>
 
         {/* Table */}
@@ -663,11 +629,7 @@ export default function AdminAnnualLeavePage() {
             <HiOutlineCalendar className="w-10 h-10 text-custom-400 mx-auto mb-3" />
             <p className="font-semibold text-secondary-100">No annual leave records found</p>
             <p className="text-sm text-custom-700 mt-1">
-              {search
-                ? `No results for "${search}"`
-                : statusFilter
-                ? `No ${statusFilter.toLowerCase()} records`
-                : "Import an Excel file or add records manually"}
+              {search ? `No results for "${search}"` : "Import an Excel file or add records manually"}
             </p>
           </Card>
         ) : (
@@ -683,7 +645,7 @@ export default function AdminAnnualLeavePage() {
                       "2nd Period",
                       "2nd Days",
                       "Total Days",
-                      "Status",
+                      "Countdown",
                       "Actions",
                     ].map((h) => (
                       <th
@@ -726,54 +688,18 @@ export default function AdminAnnualLeavePage() {
                         {(row.firstLeaveDays ?? 0) + (row.secondLeaveDays ?? 0)}d
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${statusStyle[row.status]}`}
-                        >
-                          {statusIcon[row.status]} {row.status}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <CountdownBadge cd={row.firstLeaveCountdown} />
+                          {row.secondLeave && <CountdownBadge cd={row.secondLeaveCountdown} />}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => setDetail(row)}
-                            className="p-1.5 rounded-lg text-primary-600 hover:bg-primary-50 transition-colors"
-                            title="View"
-                          >
-                            <HiOutlineEye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditing(row)}
-                            className="p-1.5 rounded-lg text-custom-700 hover:bg-custom-100 transition-colors"
-                            title="Edit"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          {row.status === "PENDING" && (
-                            <>
-                              <button
-                                onClick={() => setReviewTarget({ leave: row, action: "approve" })}
-                                className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                title="Approve"
-                              >
-                                <HiOutlineThumbUp className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setReviewTarget({ leave: row, action: "reject" })}
-                                className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                                title="Reject"
-                              >
-                                <HiOutlineThumbDown className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => setDeleteTarget(row)}
-                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                            title="Delete"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <ActionsDropdown
+                          row={row}
+                          onView={() => setDetail(row)}
+                          onEdit={() => setEditing(row)}
+                          onDelete={() => setDeleteTarget(row)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -823,6 +749,8 @@ export default function AdminAnnualLeavePage() {
       </div>
 
       {/* Modals */}
+
+
       {showCreate && (
         <AnnualLeaveFormModal
           onClose={() => setShowCreate(false)}
@@ -838,22 +766,11 @@ export default function AdminAnnualLeavePage() {
         />
       )}
 
-      {detail && !reviewTarget && (
+      {detail && (
         <DetailModal
           leave={detail}
           onClose={() => setDetail(null)}
           onEdit={() => { setEditing(detail); setDetail(null); }}
-          onApprove={() => setReviewTarget({ leave: detail, action: "approve" })}
-          onReject={() => setReviewTarget({ leave: detail, action: "reject" })}
-        />
-      )}
-
-      {reviewTarget && (
-        <ReviewModal
-          leave={reviewTarget.leave}
-          action={reviewTarget.action}
-          onClose={() => setReviewTarget(null)}
-          onSuccess={() => { setReviewTarget(null); setDetail(null); refetch(); }}
         />
       )}
 

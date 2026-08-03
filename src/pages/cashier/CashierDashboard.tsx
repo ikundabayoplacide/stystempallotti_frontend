@@ -7,14 +7,12 @@ import {
   HiOutlineRefresh,
   HiOutlineTrendingDown,
   HiOutlineTrendingUp,
-  HiOutlineUsers,
 } from "react-icons/hi";
 import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "../../components";
 import { Card } from "../../components/ui";
 import { useGetOutstandsQuery } from "../../store/services/outstandsService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
-import { useGetCasualWorkersQuery } from "../../store/services/casualWorkersService";
 import { useGetWithdrawalBalanceQuery } from "../../store/services/withdrawalsService";
 
 function fmt(n: number) {
@@ -30,17 +28,12 @@ export default function CashierDashboard() {
   const { data: paymentsData, isLoading: loadingPayments, refetch: refetchPayments } =
     useGetPaymentsQuery({ limit: 1000, paymentMethod: "CASH" });
 
-  const { data: casualData, isLoading: loadingCasual } =
-    useGetCasualWorkersQuery({ limit: 100 });
-
   const { data: balanceData } = useGetWithdrawalBalanceQuery();
   const fundBalance = balanceData?.totalBalance ?? 0;
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const outstands     = allOutstands?.outstands ?? [];
   const payments      = paymentsData?.payments ?? [];
-  const casualWorkers = casualData?.data ?? [];
-
   const totalReceived = useMemo(
     () => payments.reduce((s, p) => s + (Number(p.amountPaid) || 0), 0),
     [payments]
@@ -55,11 +48,6 @@ export default function CashierDashboard() {
 
   const pendingApprovalCount = outstands.filter(o => o.status === "pending").length;
   const approvedPendingPay   = outstands.filter(o => o.status === "approved").length;
-
-  const totalCasualOwed = useMemo(
-    () => casualWorkers.reduce((s, w) => s + (Number(w.totalAmount) || 0), 0),
-    [casualWorkers]
-  );
 
   const recentPayments = useMemo(
     () =>
@@ -151,6 +139,23 @@ export default function CashierDashboard() {
             </div>
           </div>
         </Card>
+          <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-orange-400 transition-all"
+          onClick={() => navigate("/cashier/withdrows")}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-orange-100 shrink-0">
+              <HiOutlineTrendingDown className="w-5 h-5 text-orange-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-custom-700 truncate">Total Withdrawals</p>
+              <p className="text-xl font-bold text-orange-500 leading-tight truncate">
+                {fmt(balanceData?.totalWithdrawalsIn ?? 0)}
+              </p>
+              <p className="text-xs text-custom-700">RWF</p>
+            </div>
+          </div>
+        </Card>
 
         {/* Pending Expenses */}
         <Card
@@ -224,27 +229,10 @@ export default function CashierDashboard() {
             </div>
           </div>
         </Card>
-        <Card
-          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
-          onClick={() => navigate("/cashier/casual-workers")}
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-primary-100 shrink-0">
-              <HiOutlineUsers className="w-5 h-5 text-primary-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs text-custom-700 truncate">Casual Workers Owed</p>
-              {loadingCasual ? (
-                <div className="h-6 w-10 bg-custom-200 rounded animate-pulse mt-1" />
-              ) : (
-                <>
-                  <p className="text-xl font-bold text-primary-500 leading-tight">{fmt(totalCasualOwed)}</p>
-                  <p className="text-xs text-custom-700">RWF · {casualWorkers.length} workers</p>
-                </>
-              )}
-            </div>
-          </div>
-        </Card>
+
+        {/* Total Withdrawals */}
+      
+
       </div>
 
       {/* Cash Flow Summary */}
@@ -394,63 +382,7 @@ export default function CashierDashboard() {
         </Card>
       </div>
 
-      {/* Casual Workers Summary */}
-      <Card className="!p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <HiOutlineUsers className="w-5 h-5 text-primary-500" />
-            <h2 className="font-bold text-secondary-100">Casual Workers (Abanyabiraka)</h2>
-          </div>
-          <button
-            onClick={() => navigate("/cashier/casual-workers")}
-            className="text-xs font-semibold text-primary-500 hover:underline"
-          >
-            Manage payments →
-          </button>
-        </div>
 
-        {loadingCasual ? (
-          <div className="grid grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-custom-100 rounded-xl animate-pulse" />)}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-primary-50 border border-primary-200 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center shrink-0">
-                <HiOutlineUsers className="w-5 h-5 text-primary-500" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-primary-700">Total Workers</p>
-                <p className="text-2xl font-bold text-primary-700">{casualWorkers.length}</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                <HiOutlineCash className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-orange-700">Total Owed</p>
-                <p className="text-2xl font-bold text-orange-700">{fmt(totalCasualOwed)}</p>
-                <p className="text-xs text-orange-600">RWF</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
-                <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-green-700">Avg. Daily Rate</p>
-                <p className="text-2xl font-bold text-green-700">
-                  {casualWorkers.length > 0
-                    ? fmt(Math.round(casualWorkers.reduce((s, w) => s + w.dailyRate, 0) / casualWorkers.length))
-                    : "—"}
-                </p>
-                <p className="text-xs text-green-600">RWF / day</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </Card>
     </div>
     </DashboardLayout>
   );

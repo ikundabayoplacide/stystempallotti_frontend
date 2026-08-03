@@ -404,7 +404,8 @@ export default function DAFJobApprovalPage() {
   const rejectedJobs  = rejectedData?.jobs  ?? [];
   const completedJobs = completedData?.jobs ?? [];
   const verifiedJobs  = verifiedData?.jobs  ?? [];
-  const allJobs       = [...pendingJobs, ...approvedJobs, ...rejectedJobs, ...completedJobs, ...verifiedJobs];
+  const allJobs       = [...pendingJobs, ...approvedJobs, ...rejectedJobs, ...completedJobs, ...verifiedJobs]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const filtered = allJobs.filter(
     (job) =>

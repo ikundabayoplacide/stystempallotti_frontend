@@ -30,13 +30,18 @@ import {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const LEAVE_TYPE_LABELS: Record<string, string> = {
-  ANNUAL: "Annual",
-  SICK: "Sick",
-  MATERNITY: "Maternity",
-  PATERNITY: "Paternity",
-  EMERGENCY: "Emergency",
-  UNPAID: "Unpaid",
-  OTHER: "Other",
+  PERMISSION: "Permission",
+  MATERNITY: "Maternity Leave",
+  PATERNITY: "Paternity Leave",
+  CIVIL_MARRIAGE: "Civil Marriage",
+  ANNUAL: "Annual Leave",
+  DEATH_SPOUSE: "Death of Spouse",
+  DEATH_CHILD: "Death of Child",
+  DEATH_FATHER: "Death of Father",
+  DEATH_MOTHER: "Death of Mother",
+  DEATH_FATHER_IN_LAW: "Death of Father-in-law",
+  DEATH_MOTHER_IN_LAW: "Death of Mother-in-law",
+  DEATH_GRANDPARENT: "Death of Grandparent",
 };
 
 const statusStyle: Record<string, string> = {
@@ -300,8 +305,16 @@ function LeaveDetailModal({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function AdminLeaveManagementPage() {
+const PERMISSION_TYPES = new Set(["PERMISSION"]);
+const CIRCUMSTANTIAL_TYPES = new Set([
+  "MATERNITY", "PATERNITY", "CIVIL_MARRIAGE", "ANNUAL",
+  "DEATH_SPOUSE", "DEATH_CHILD", "DEATH_FATHER", "DEATH_MOTHER",
+  "DEATH_FATHER_IN_LAW", "DEATH_MOTHER_IN_LAW", "DEATH_GRANDPARENT",
+]);
+
+export default function AdminLeaveManagementPage({ mode = "all" }: { mode?: "all" | "permissions" | "circumstantial" }) {
   const [statusFilter, setStatusFilter] = useState<"" | LeaveStatus>("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [search, setSearch] = useState("");
   const [detailLeave, setDetailLeave] = useState<LeaveRequest | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
@@ -311,11 +324,17 @@ export default function AdminLeaveManagementPage() {
     ...(statusFilter ? { status: statusFilter } : {}),
   });
 
-  const allLeaves = data?.data ?? [];
+  const allLeaves = (data?.data ?? []).filter((l) => {
+    if (mode === "permissions") return PERMISSION_TYPES.has(l.type);
+    if (mode === "circumstantial") return CIRCUMSTANTIAL_TYPES.has(l.type);
+    return true;
+  });
 
   const leaves = allLeaves.filter((l) => {
     const q = search.trim().toLowerCase();
-    return !q || (l.user?.name ?? "").toLowerCase().includes(q);
+    const matchSearch = !q || (l.user?.name ?? "").toLowerCase().includes(q);
+    const matchType = !typeFilter || l.type === typeFilter;
+    return matchSearch && matchType;
   });
 
   const pendingCount = allLeaves.filter((l) => l.status === "PENDING").length;
@@ -333,8 +352,12 @@ export default function AdminLeaveManagementPage() {
               <HiOutlineCalendar className="w-5 h-5 text-purple-600" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">Leave Managements</h1>
-              <p className="text-sm text-custom-700 mt-0.5">Review and manage all employee permissions</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-secondary-100">
+                {mode === "permissions" ? "Permissions" : mode === "circumstantial" ? "Circumstantial Leave" : "Leave Management"}
+              </h1>
+              <p className="text-sm text-custom-700 mt-0.5">
+                {mode === "permissions" ? "Review and manage employee permission requests" : mode === "circumstantial" ? "Maternity, paternity, marriage and family bereavement leave" : "Review and manage all employee leave requests"}
+              </p>
             </div>
           </div>
           <button
@@ -374,7 +397,7 @@ export default function AdminLeaveManagementPage() {
               className="w-full pl-9 pr-4 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm placeholder:text-custom-700 focus:outline-none focus:border-primary-400 transition-colors"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {(["", "PENDING", "APPROVED", "REJECTED"] as const).map((s) => (
               <button
                 key={s}
@@ -390,6 +413,28 @@ export default function AdminLeaveManagementPage() {
             ))}
           </div>
         </div>
+
+        {/* Type Filter — circumstantial only */}
+        {mode === "circumstantial" && (
+          <div className="flex gap-2 flex-wrap">
+            {["", "MATERNITY", "PATERNITY", "CIVIL_MARRIAGE", "ANNUAL",
+              "DEATH_SPOUSE", "DEATH_CHILD", "DEATH_FATHER", "DEATH_MOTHER",
+              "DEATH_FATHER_IN_LAW", "DEATH_MOTHER_IN_LAW", "DEATH_GRANDPARENT"
+            ].map((t) => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  typeFilter === t
+                    ? "bg-secondary-100 text-style-500"
+                    : "border border-custom-300 text-custom-700 hover:bg-custom-100"
+                }`}
+              >
+                {t === "" ? "All Types" : (LEAVE_TYPE_LABELS[t] ?? t)}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Table */}
         {isLoading ? (
@@ -458,7 +503,7 @@ export default function AdminLeaveManagementPage() {
                           const today = new Date(); today.setHours(0,0,0,0);
                           const start = new Date(leave.startDate); start.setHours(0,0,0,0);
                           if (rem < 0) return <span className="text-xs text-custom-400 font-medium">Ended</span>;
-                          if (today < start) return <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">end in {Math.round((start.getTime()-today.getTime())/(1000*60*60*24))}d</span>;
+                          if (today < start) return <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">start in {Math.round((start.getTime()-today.getTime())/(1000*60*60*24))}d</span>;
                           if (rem === 0) return <span className="text-xs text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-full">Last day</span>;
                           return <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">{rem}d left</span>;
                         })() : <span className="text-xs text-custom-300">—</span>}

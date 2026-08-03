@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   HiOutlineCalendar,
   HiOutlinePlus,
@@ -28,35 +28,28 @@ import {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = "leave_custom_types";
-
 const DEFAULT_LEAVE_TYPES: { value: string; label: string }[] = [
-  { value: "ANNUAL",    label: "Annual Leave" },
-  { value: "SICK",      label: "Sick Leave" },
-  { value: "MATERNITY", label: "Maternity Leave" },
-  { value: "PATERNITY", label: "Paternity Leave" },
-  { value: "EMERGENCY", label: "Emergency Leave" },
-  { value: "UNPAID",    label: "Unpaid Leave" },
-  { value: "OTHER",     label: "Other" },
+  { value: "PERMISSION",         label: "Permission" },
+  { value: "MATERNITY",          label: "Maternity Leave" },
+  { value: "PATERNITY",          label: "Paternity Leave" },
+  { value: "CIVIL_MARRIAGE",     label: "Civil Marriage" },
+  { value: "ANNUAL",             label: "Annual Leave" },
 ];
 
-function loadCustomTypes(): { value: string; label: string }[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
+const FAMILY_DEATH_SUBTYPES: { value: string; label: string }[] = [
+  { value: "DEATH_SPOUSE",        label: "Death of Spouse (Twashakanye)" },
+  { value: "DEATH_CHILD",         label: "Death of Child or Adoptive Child" },
+  { value: "DEATH_FATHER",        label: "Death of Father" },
+  { value: "DEATH_MOTHER",        label: "Death of Mother" },
+  { value: "DEATH_FATHER_IN_LAW", label: "Death of Father-in-law" },
+  { value: "DEATH_MOTHER_IN_LAW", label: "Death of Mother-in-law" },
+  { value: "DEATH_GRANDPARENT",   label: "Death of Grandfather or Grandmother" },
+];
 
-function saveCustomTypes(types: { value: string; label: string }[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(types));
-}
+const ALL_TYPES = [...DEFAULT_LEAVE_TYPES, ...FAMILY_DEATH_SUBTYPES];
 
-/** Resolves a leave type value to its display label (checks defaults + stored customs) */
 function resolveTypeLabel(value: string): string {
-  const all = [...DEFAULT_LEAVE_TYPES, ...loadCustomTypes()];
-  return all.find((t) => t.value === value)?.label ?? value;
+  return ALL_TYPES.find((t) => t.value === value)?.label ?? value;
 }
 
 // ─── SelectOrCustom (same pattern as CreateJobModal) ─────────────────────────
@@ -72,92 +65,62 @@ interface LeaveTypeSelectProps {
 }
 
 function LeaveTypeSelect({ value, onChange }: LeaveTypeSelectProps) {
-  const [customTypes, setCustomTypes] = useState<{ value: string; label: string }[]>(loadCustomTypes);
-  const allTypes = [...DEFAULT_LEAVE_TYPES, ...customTypes];
+  const isFamilyDeath = FAMILY_DEATH_SUBTYPES.some((t) => t.value === value);
+  const [showSubtypes, setShowSubtypes] = useState(isFamilyDeath);
 
-  // isCustom = value is set but isn't one of the known options
-  const isCustom = value !== "" && !allTypes.some((o) => o.value === value);
-  const [custom, setCustom] = useState(false);
-
-  useEffect(() => {
-    setCustom(isCustom);
-  }, [isCustom]);
-
-  const persistAndSelect = (label: string) => {
-    const trimmed = label.trim();
-    if (!trimmed) return;
-    // derive key: "Study Leave" → "STUDY_LEAVE"
-    const key = trimmed.toUpperCase().replace(/\s+/g, "_").replace(/[^A-Z0-9_]/g, "");
-    const isDupe = allTypes.some(
-      (t) => t.value === key || t.label.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (!isDupe) {
-      const updated = [...customTypes, { value: key, label: trimmed }];
-      setCustomTypes(updated);
-      saveCustomTypes(updated);
-      onChange(key);
-    } else {
-      // Already exists — just select it
-      const existing = allTypes.find((t) => t.label.toLowerCase() === trimmed.toLowerCase());
-      onChange(existing?.value ?? key);
-    }
-    setCustom(false);
-  };
-
-  if (custom) {
-    return (
-      <div className="flex gap-1.5">
-        <input
-          type="text"
-          defaultValue={value}
-          onBlur={(e) => {
-            const v = e.target.value.trim();
-            if (v) persistAndSelect(v);
-            else { setCustom(false); onChange("ANNUAL"); }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              const v = (e.target as HTMLInputElement).value.trim();
-              if (v) persistAndSelect(v);
-            }
-            if (e.key === "Escape") { setCustom(false); onChange("ANNUAL"); }
-          }}
-          placeholder="Type leave type name…"
-          autoFocus
-          maxLength={40}
-          className={selectCls + " flex-1"}
-        />
-        <button
-          type="button"
-          title="Back to list"
-          onClick={() => { setCustom(false); onChange("ANNUAL"); }}
-          className="px-2.5 rounded-xl border border-custom-300 text-custom-700 hover:bg-custom-100 transition-colors text-xs font-semibold shrink-0"
-        >
-          ✕
-        </button>
-      </div>
-    );
-  }
+  const selectedSubLabel = isFamilyDeath
+    ? FAMILY_DEATH_SUBTYPES.find((t) => t.value === value)?.label
+    : null;
 
   return (
-    <select
-      value={value}
-      onChange={(e) => {
-        if (e.target.value === "__custom__") {
-          setCustom(true);
-          onChange("");
-        } else {
-          onChange(e.target.value);
-        }
-      }}
-      className={selectCls}
-    >
-      {allTypes.map((t) => (
-        <option key={t.value} value={t.value}>{t.label}</option>
-      ))}
-      <option value="__custom__">＋ Other (type your own)</option>
-    </select>
+    <div className="space-y-2">
+      <select
+        value={isFamilyDeath ? "__family_death__" : value}
+        onChange={(e) => {
+          if (e.target.value === "__family_death__") {
+            setShowSubtypes(true);
+          } else {
+            setShowSubtypes(false);
+            onChange(e.target.value);
+          }
+        }}
+        className={selectCls}
+      >
+        {DEFAULT_LEAVE_TYPES.map((t) => (
+          <option key={t.value} value={t.value}>{t.label}</option>
+        ))}
+        <option value="__family_death__">Family's Death</option>
+      </select>
+
+      {showSubtypes && (
+        <div className="rounded-xl border border-custom-300 bg-style-500 overflow-hidden">
+          {FAMILY_DEATH_SUBTYPES.map((t, i) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => { onChange(t.value); setShowSubtypes(false); }}
+              className={`w-full text-left px-3 py-2.5 text-sm transition-colors
+                ${i !== 0 ? "border-t border-custom-200" : ""}
+                ${value === t.value
+                  ? "bg-red-50 text-red-600 font-semibold border-l-4 border-red-500"
+                  : "text-secondary-100 hover:bg-custom-100"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isFamilyDeath && !showSubtypes && (
+        <p className="text-xs text-red-600 font-semibold px-1">
+          Family's Death — {selectedSubLabel}
+          <button type="button" onClick={() => setShowSubtypes(true)}
+            className="ml-2 underline text-blue-800 hover:text-secondary-100">
+            change
+          </button>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -202,7 +165,7 @@ function formatDate(d: string) {
 const timeCls = "w-full px-3 py-2.5 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-primary-400 transition-colors";
 
 function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [type, setType] = useState<string>("ANNUAL");
+  const [type, setType] = useState<string>("PERMISSION");
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("08:00");
   const [endDate, setEndDate] = useState("");
@@ -254,7 +217,7 @@ function RequestLeaveModal({ onClose, onSuccess }: { onClose: () => void; onSucc
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-lg w-full my-8">
+      <Card className="!p-6 max-w-2xl w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-xl font-bold text-secondary-100">Request Leave</h3>
@@ -435,7 +398,7 @@ function EditLeaveModal({ leave, onClose }: { leave: LeaveRequest; onClose: () =
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-start justify-center p-4 overflow-y-auto">
-      <Card className="!p-6 max-w-lg w-full my-8">
+      <Card className="!p-6 max-w-2xl w-full my-8">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="text-xl font-bold text-secondary-100">Edit Leave Request</h3>
@@ -781,7 +744,7 @@ export default function MyLeavePage() {
                       const today = new Date(); today.setHours(0,0,0,0);
                       const start = new Date(leave.startDate); start.setHours(0,0,0,0);
                       if (rem < 0) return <span className="text-xs text-custom-400 font-medium bg-custom-100 px-2 py-0.5 rounded-full">Ended</span>;
-                      if (today < start) return <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">Ends in {Math.round((start.getTime()-today.getTime())/(1000*60*60*24))}d</span>;
+                      if (today < start) return <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">starts in {Math.round((start.getTime()-today.getTime())/(1000*60*60*24))}d</span>;
                       if (rem === 0) return <span className="text-xs text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-full">Last day</span>;
                       return <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">{rem}d remaining</span>;
                     })()}

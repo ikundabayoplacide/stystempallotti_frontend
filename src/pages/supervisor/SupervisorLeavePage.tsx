@@ -287,7 +287,7 @@ function WorkersLeaveTab() {
                         const today = new Date(); today.setHours(0,0,0,0);
                         const start = new Date(leave.startDate); start.setHours(0,0,0,0);
                         if (rem < 0) return <span className="text-xs text-custom-400 font-medium">Ended</span>;
-                        if (today < start) return <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">End in {Math.round((start.getTime()-today.getTime())/(1000*60*60*24))}d</span>;
+                        if (today < start) return <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">start in {Math.round((start.getTime()-today.getTime())/(1000*60*60*24))}d</span>;
                         if (rem === 0) return <span className="text-xs text-orange-600 font-semibold bg-orange-50 px-2 py-0.5 rounded-full">Last day</span>;
                         return <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full">{rem}d left</span>;
                       })() : <span className="text-xs text-custom-300">—</span>}

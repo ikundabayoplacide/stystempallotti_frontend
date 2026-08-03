@@ -27,6 +27,7 @@ import { useAppSelector } from "../store/hooks";
 import { useGetMyPermissionsQuery } from "../store/services/permissionsService";
 import { useGetUnreadCountQuery } from "../store/services/notificationsService";
 import { useGetDepartmentByIdQuery } from "../store/services/departmentsService";
+import { useGetAnnualLeavesQuery } from "../store/services/annualLeaveService";
 
 interface MenuItem {
   label: string;
@@ -82,10 +83,10 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     {
       label: "Manage Permissions", path: "/admin/leave", icon: HiOutlineCalendar,
       children: [
-        {label: "Existing Leave", path: "/admin/leave", icon: HiOutlineCalendar },
+        // {label: "Existing Leave", path: "/admin/leave", icon: HiOutlineCalendar },
         { label: "Annual Leave", path: "/admin/annual-leave", icon: HiOutlineUsers },
-        { label: "Permissions", path: "/admin/leave", icon: HiOutlineCalendar },
-        { label: " Circum... Leave", path: "/admin/leave", icon: HiOutlineCalendar },
+        { label: "Permissions", path: "/admin/leave/permissions", icon: HiOutlineCalendar },
+        { label: "Circum... Leave", path: "/admin/leave/circumstantial", icon: HiOutlineCalendar },
       ]
     },
     { label: "View Reports", path: "/admin/reports/view", icon: HiOutlineDocumentText },
@@ -188,7 +189,14 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     { label: "Operations", path: "/finance/daf/operations", icon: HiOutlineClipboardList },
     { label: "Extra Workers", path: "/finance/daf/extra-workers", icon: HiOutlineUsers },
     { label: "Emp Overtime", path: "/finance/daf/overtime-management", icon: HiOutlineClock },
-    { label: "Permissions", path: "/hr/leave", icon: HiOutlineCalendar },
+    {
+      label: "Manage Permissions", path: "/finance/daf/leave", icon: HiOutlineCalendar,
+      children: [
+        { label: "Annual Leave", path: "/finance/daf/annual-leave", icon: HiOutlineUsers },
+        { label: "Permissions", path: "/finance/daf/leave/permissions", icon: HiOutlineCalendar },
+        { label: "Circum... Leave", path: "/finance/daf/leave/circumstantial", icon: HiOutlineCalendar },
+      ]
+    },
     {
       label: "Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar, children: [
         { label: "Generate Reports", path: "/finance/daf/reports", icon: HiOutlineChartBar },
@@ -277,7 +285,6 @@ const menuItems: Record<UserRole, MenuItem[]> = {
     },
     { label: "Withdraws", path: "/cashier/withdrows", icon: HiOutlineCurrencyDollar },
     { label: "Expenses", path: "/cashier/expenses", icon: HiOutlineDocumentText },
-    { label: "Casual Workers", path: "/cashier/casual-workers", icon: HiOutlineUsers },
     { label: "My Leave", path: "/cashier/leave", icon: HiOutlineCalendar },
     {
       label: "Reports", path: "/cashier/reports", icon: HiOutlineChartBar, children: [
@@ -366,6 +373,19 @@ export default function DashboardSidebar({
     skip: !token,
     pollingInterval: 30_000,
   });
+
+  const { data: annualLeaveData } = useGetAnnualLeavesQuery(
+    { page: 1, limit: 100 },
+    { skip: !token || (userRole !== "admin" && userRole !== "daf"), pollingInterval: 60_000 }
+  );
+  const upcomingSoonCount = (annualLeaveData?.data ?? []).filter((r) => {
+    const cd1 = r.firstLeaveCountdown;
+    const cd2 = r.secondLeaveCountdown;
+    return (
+      (cd1?.status === "upcoming" && (cd1.daysUntilStart ?? Infinity) >= 1 && (cd1.daysUntilStart ?? Infinity) <= 3) ||
+      (cd2?.status === "upcoming" && (cd2.daysUntilStart ?? Infinity) >= 1 && (cd2.daysUntilStart ?? Infinity) <= 3)
+    );
+  }).length;
 
   const toggleDropdown = (path: string) =>
     setOpenDropdowns((prev) => {
@@ -584,7 +604,12 @@ export default function DashboardSidebar({
                             }`}
                         >
                           <child.icon className="w-4 h-4 flex-shrink-0" />
-                          <span className="font-medium text-sm">{child.label}</span>
+                          <span className="font-medium text-sm flex-1 text-left">{child.label}</span>
+                          {(child.path === "/admin/annual-leave" || child.path === "/finance/daf/annual-leave") && upcomingSoonCount > 0 && (
+                            <span className="w-5 h-5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center flex-shrink-0">
+                              {upcomingSoonCount > 9 ? "9+" : upcomingSoonCount}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
