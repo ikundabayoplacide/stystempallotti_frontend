@@ -337,21 +337,37 @@ function ItemsTab() {
 
 const PAGE_SIZE = 10;
 
-function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
-  if (totalPages <= 1) return null;
+function Pagination({ page, totalPages, total, pageSize, onChange }: { page: number; totalPages: number; total: number; pageSize: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1 && total === 0) return null;
   return (
-    <div className="flex items-center justify-center gap-2 pt-2">
-      <button disabled={page === 1} onClick={() => onChange(page - 1)}
-        className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
-        ‹ Prev
-      </button>
-      <span className="text-sm text-custom-700">
-        Page <span className="font-semibold text-secondary-100">{page}</span> of {totalPages}
-      </span>
-      <button disabled={page === totalPages} onClick={() => onChange(page + 1)}
-        className="px-3 py-1.5 rounded-lg border border-custom-300 text-sm text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
-        Next ›
-      </button>
+    <div className="flex items-center justify-between px-1 py-2">
+      <p className="text-xs text-custom-700">
+        Showing{" "}
+        <span className="font-semibold text-secondary-100">
+          {total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)}
+        </span>{" "}
+        of <span className="font-semibold text-secondary-100">{total}</span> requests
+      </p>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <button disabled={page === 1} onClick={() => onChange(page - 1)}
+            className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
+            Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <button key={n} onClick={() => onChange(n)}
+              className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                n === page ? "bg-primary-500 text-white" : "border border-custom-300 text-secondary-100 hover:bg-custom-100"
+              }`}>
+              {n}
+            </button>
+          ))}
+          <button disabled={page === totalPages} onClick={() => onChange(page + 1)}
+            className="px-3 py-1.5 rounded-lg border border-custom-300 text-xs font-semibold text-secondary-100 disabled:opacity-40 hover:bg-custom-100 transition-colors">
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -485,7 +501,7 @@ function SortiesTab() {
         ))}
       </div>
 
-      <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+      <Pagination page={safePage} totalPages={totalPages} total={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
 
       {approveTarget && (
         <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">

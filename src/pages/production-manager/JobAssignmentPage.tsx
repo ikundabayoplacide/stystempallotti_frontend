@@ -10,7 +10,6 @@ import {
   HiOutlinePencil,
   HiOutlineRefresh,
   HiOutlineSearch,
-  HiOutlineThumbDown,
   HiOutlineX,
 } from "react-icons/hi";
 import { DashboardLayout } from "../../components";
@@ -23,7 +22,6 @@ import {
   useGetJobDetailsQuery,
   useGetJobsQuery,
   useReassignJobMutation,
-  useRejectJobMutation,
   useUpdateJobMutation,
 } from "../../store/services/jobsService";
 import { jobStatusConfig } from "../../types/JobStatus";
@@ -83,7 +81,6 @@ const priorityColor: Record<string, string> = {
 
 
 const ASSIGNABLE_STATUSES  = new Set(["confirmed", "in-composition", "in-montage", "in-printing", "in-binding", "in-packaging"]);
-const REJECTABLE_STATUSES  = new Set(["confirmed"]);
 const EDITABLE_STATUSES    = new Set(["confirmed"]);
 const COMPLETABLE_STATES = new Set([
   "composition-done", "montage-done", "printing-done",
@@ -92,7 +89,7 @@ const COMPLETABLE_STATES = new Set([
 
 const PAGE_SIZE = 5;
 
-type ModalType = "assign" | "reject" | "edit" | "complete" | null;
+type ModalType = "assign" | "edit" | "complete" | null;
 
 // ─── Job Details Modal ────────────────────────────────────────────────────────
 
@@ -237,6 +234,12 @@ function JobDetailsModal({ jobId, onClose }: { jobId: string; onClose: () => voi
                   <p className="text-secondary-100 font-medium leading-snug">{d.notes}</p>
                 </div>
               )}
+              {d.status === "rejected" && d.rejectReason && (
+                <div className="pt-1 border-t border-red-200">
+                  <p className="text-red-500 mb-0.5 font-semibold">Rejection Reason</p>
+                  <p className="text-red-700 font-medium leading-snug">{d.rejectReason}</p>
+                </div>
+              )}
             </SectionDetail>
 
             <SectionDetail title="Materials Needed">
@@ -346,7 +349,6 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
   if (job.status === "delivered") return null;
 
   const canAssign    = ASSIGNABLE_STATUSES.has(job.status);
-  const canReject    = REJECTABLE_STATUSES.has(job.status);
   const canEdit      = EDITABLE_STATUSES.has(job.status);
   const canComplete  = !!job.state && COMPLETABLE_STATES.has(job.state);
 
@@ -355,7 +357,6 @@ function ActionMenu({ job, onAction }: { job: Job; onAction: (type: ModalType, j
     ...(canAssign   ? [{ label: job.departmentAssignedToId ? "Reassign" : "Assign", type: "assign" as ModalType, icon: <HiOutlineClipboardList className="h-4 w-4" />, cls: "text-primary-700 hover:bg-primary-50" }] : []),
     ...(canComplete ? [{ label: "Complete", type: "complete" as ModalType, icon: <HiOutlineCheckCircle className="h-4 w-4" />, cls: "text-blue-700 hover:bg-blue-50" }] : []),
     ...(canEdit     ? [{ label: "Edit",     type: "edit"     as ModalType, icon: <HiOutlinePencil className="h-4 w-4" />,     cls: "text-secondary-100 hover:bg-custom-50" }] : []),
-    ...(canReject   ? [{ label: "Reject",   type: "reject"   as ModalType, icon: <HiOutlineThumbDown className="h-4 w-4" />, cls: "text-red-600 hover:bg-red-50" }] : []),
   ];
 
   if (actions.length === 0) return null;
@@ -407,14 +408,13 @@ export default function JobAssignmentPage() {
   const [activeJob, setActiveJob]       = useState<Job | null>(null);
   const [detailsJobId, setDetailsJobId] = useState<string | null>(null);
   const [deptId, setDeptId]             = useState("");
-  const [rejectReason, setRejectReason] = useState("");
+  const [, setRejectReason] = useState("");
   const [editTitle, setEditTitle]       = useState("");
   const [editDueDate, setEditDueDate]   = useState("");
   const [error, setError]               = useState("");
 
   const { data: allData, isLoading, isFetching, refetch } = useGetJobsQuery({ limit: 1000, search: search || undefined });
   const { data: departments = [] }               = useGetDepartmentsQuery();
-  const [rejectJob,   { isLoading: isRejecting }]   = useRejectJobMutation();
   const [assignJob,   { isLoading: isAssigning }]   = useAssignJobMutation();
   const [reassignJob, { isLoading: isReassigning }] = useReassignJobMutation();
   const [updateJob,   { isLoading: isUpdatingJob }] = useUpdateJobMutation();
@@ -467,16 +467,6 @@ export default function JobAssignmentPage() {
     }
   };
 
-  const handleReject = async () => {
-    if (!activeJob) return;
-    try {
-      await rejectJob({ id: activeJob.id, rejectReason: rejectReason.trim() || undefined }).unwrap();
-      closeAndRefetch();
-    } catch (err: any) {
-      setError(err?.data?.message ?? "Failed to reject job");
-    }
-  };
-
   const handleEdit = async () => {
     if (!activeJob) return;
     try {
@@ -497,7 +487,7 @@ export default function JobAssignmentPage() {
     }
   };
 
-  const isSaving = isRejecting || isAssigning || isReassigning || isUpdatingJob || isCompleting;
+  const isSaving = isAssigning || isReassigning || isUpdatingJob || isCompleting;
 
   return (
     <DashboardLayout userRole="production-manager" userName="Production Manager" notificationCount={pendingCount}>
@@ -645,6 +635,11 @@ export default function JobAssignmentPage() {
                           <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${statusCfg.bgColor} ${statusCfg.color}`}>
                             {statusCfg.label}
                           </span>
+                          {job.status === "rejected" && job.rejectReason && (
+                            <p className="text-xs text-red-500 mt-1 max-w-[180px] truncate" title={job.rejectReason}>
+                              {job.rejectReason}
+                            </p>
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <StateBadge state={job.state ?? null} />
@@ -733,9 +728,8 @@ export default function JobAssignmentPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold text-secondary-100">
-                    {modalType === "assign"  && (activeJob.departmentAssignedToId ? "Reassign Job" : "Assign Job")}
-                    {modalType === "reject"  && "Reject Job"}
-                    {modalType === "edit"    && "Edit Job"}
+                    {modalType === "assign"   && (activeJob.departmentAssignedToId ? "Reassign Job" : "Assign Job")}
+                    {modalType === "edit"     && "Edit Job"}
                     {modalType === "complete" && "Complete Job"}
                   </h3>
                   <p className="text-sm text-custom-700 mt-1">{activeJob.jobNumber} — {activeJob.title}</p>
@@ -793,31 +787,6 @@ export default function JobAssignmentPage() {
                     className="w-full px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-semibold disabled:opacity-50"
                   >
                     {isSaving ? "Saving…" : "Confirm Complete"}
-                  </button>
-                </div>
-              )}
-
-              {modalType === "reject" && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-custom-700 mb-1">
-                      Reason <span className="text-custom-500 font-normal">(optional)</span>
-                    </label>
-                    <textarea
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                      maxLength={1000}
-                      rows={4}
-                      placeholder="Explain why this job is being rejected…"
-                      className="w-full px-4 py-2 rounded-xl border border-custom-300 focus:outline-none focus:border-primary-500 resize-none"
-                    />
-                  </div>
-                  <button
-                    onClick={handleReject}
-                    disabled={isSaving}
-                    className="w-full px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 transition-colors text-sm font-semibold disabled:opacity-50"
-                  >
-                    {isSaving ? "Saving…" : "Confirm Rejection"}
                   </button>
                 </div>
               )}

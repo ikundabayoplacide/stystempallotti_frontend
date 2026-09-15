@@ -273,7 +273,7 @@ function Pagination({ page, totalPages, onChange }: { page: number; totalPages: 
 
 // ─── Items Tab ────────────────────────────────────────────────────────────────
 
-function ItemsTab() {
+function ItemsTab({ readOnly = false }: { readOnly?: boolean }) {
   const [showForm, setShowForm]       = useState(false);
   const [editItem, setEditItem]       = useState<BoutiqueStockItem | null>(null);
   const [restockItem, setRestockItem] = useState<BoutiqueStockItem | null>(null);
@@ -300,10 +300,12 @@ function ItemsTab() {
         <button onClick={() => refetch()} className="p-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700">
           <HiOutlineRefresh className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
         </button>
-        <button onClick={() => { setEditItem(null); setShowForm(true); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">
-          <HiOutlinePlus className="w-4 h-4" /> Add Item
-        </button>
+        {!readOnly && (
+          <button onClick={() => { setEditItem(null); setShowForm(true); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors">
+            <HiOutlinePlus className="w-4 h-4" /> Add Item
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -361,20 +363,22 @@ function ItemsTab() {
                     </span>
                   </td>
                   <td className="px-3 py-2.5">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setRestockItem(item)} title="Restock"
-                        className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
-                        <HiOutlinePlus className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => { setEditItem(item); setShowForm(true); }} title="Edit"
-                        className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
-                        <HiOutlinePencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => setDeleteTarget(item)} title="Delete"
-                        className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
-                        <HiOutlineTrash className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {!readOnly && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setRestockItem(item)} title="Restock"
+                          className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
+                          <HiOutlinePlus className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => { setEditItem(item); setShowForm(true); }} title="Edit"
+                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                          <HiOutlinePencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => setDeleteTarget(item)} title="Delete"
+                          className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                          <HiOutlineTrash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -704,14 +708,14 @@ function SortiesTab() {
 
 type Tab = "items" | "sorties";
 
-export default function AdminBoutiqueStockPage() {
+export default function AdminBoutiqueStockPage({ readOnly = false }: { readOnly?: boolean }) {
   const [tab, setTab] = useState<Tab>("items");
 
   const { data: sortiesData } = useGetBoutiqueStockSortiesQuery({ status: "pending", limit: 200 });
   const pendingCount = sortiesData?.data?.length ?? 0;
 
   return (
-    <DashboardLayout userRole="admin" userName="Director">
+    <DashboardLayout userRole={readOnly ? "production-manager" : "admin"} userName={readOnly ? "Production Manager" : "Director"}>
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
 
         {/* Header */}
@@ -746,7 +750,7 @@ export default function AdminBoutiqueStockPage() {
           ))}
         </div>
 
-        {tab === "items"   && <ItemsTab />}
+        {tab === "items"   && <ItemsTab readOnly={readOnly} />}
         {tab === "sorties" && <SortiesTab />}
       </div>
     </DashboardLayout>
