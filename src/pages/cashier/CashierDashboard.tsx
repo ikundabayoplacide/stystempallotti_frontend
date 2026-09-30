@@ -29,7 +29,6 @@ export default function CashierDashboard() {
     useGetPaymentsQuery({ limit: 1000, paymentMethod: "CASH" });
 
   const { data: balanceData } = useGetWithdrawalBalanceQuery();
-  const fundBalance = balanceData?.totalBalance ?? 0;
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const outstands     = allOutstands?.outstands ?? [];
@@ -39,12 +38,20 @@ export default function CashierDashboard() {
     [payments]
   );
 
-  const totalExpenses = useMemo(
+  const expenseRowsTotal = useMemo(
     () => outstands
       .filter(o => o.status === "approved" || o.status === "paid")
       .reduce((s, o) => s + (Number(o.totalAmount) || 0), 0),
     [outstands]
   );
+  // Use the same expense rows shown on the Expenses page so an approved item
+  // is reflected immediately, even if the balance endpoint is stale.
+  const totalExpenses = expenseRowsTotal;
+  const initialAmount = balanceData?.initialAmount ?? 0;
+  const cashPaymentsIn = balanceData?.totalCashPaymentsIn ?? totalReceived;
+  const totalWithdrawalsIn = balanceData?.totalWithdrawalsIn ?? 0;
+  const totalInflow = initialAmount + cashPaymentsIn + totalWithdrawalsIn;
+  const cashFlowBalance = initialAmount + cashPaymentsIn + totalWithdrawalsIn - totalExpenses;
 
   const pendingApprovalCount = outstands.filter(o => o.status === "pending").length;
   const approvedPendingPay   = outstands.filter(o => o.status === "approved").length;
@@ -206,7 +213,7 @@ export default function CashierDashboard() {
         {/* Fund Balance */}
         <Card
           className={`!p-4 overflow-hidden cursor-pointer transition-all ${
-            fundBalance >= 0
+            totalInflow >= 0
               ? "hover:ring-2 hover:ring-emerald-400 bg-emerald-50 border-emerald-200"
               : "hover:ring-2 hover:ring-orange-400 bg-orange-50 border-orange-200"
           }`}
@@ -214,16 +221,16 @@ export default function CashierDashboard() {
         >
           <div className="flex items-start gap-3">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-              fundBalance >= 0 ? "bg-emerald-100" : "bg-orange-100"
+              totalInflow >= 0 ? "bg-emerald-100" : "bg-orange-100"
             }`}>
-              <HiOutlineCurrencyDollar className={`w-5 h-5 ${fundBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+              <HiOutlineCurrencyDollar className={`w-5 h-5 ${totalInflow >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-custom-700 truncate">Fund Balance</p>
+              <p className="text-xs text-custom-700 truncate">Total Inflow</p>
               <p className={`text-xl font-bold leading-tight truncate ${
-                fundBalance >= 0 ? "text-emerald-700" : "text-orange-700"
+                totalInflow >= 0 ? "text-emerald-700" : "text-orange-700"
               }`}>
-                {fmt(fundBalance)}
+                {fmt(totalInflow)}
               </p>
               <p className="text-xs text-custom-700">RWF</p>
             </div>
@@ -243,24 +250,24 @@ export default function CashierDashboard() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-green-50 border border-green-200">
-            <p className="text-xs font-semibold text-green-700">Total Inflow (Received)</p>
-            <p className="text-2xl font-bold text-green-700 mt-1">{fmt(totalReceived)}</p>
-            <p className="text-xs text-green-600">RWF from all payments done by cash</p>
+            <p className="text-xs font-semibold text-green-700">Total Inflow</p>
+            <p className="text-2xl font-bold text-green-700 mt-1">{fmt(initialAmount + cashPaymentsIn + totalWithdrawalsIn)}</p>
+            <p className="text-xs text-green-600">RWF including opening balance, cash payments, and withdrawals</p>
           </div>
           <div className="p-4 rounded-xl bg-red-50 border border-red-200">
             <p className="text-xs font-semibold text-red-700">Total Outflow (Paid)</p>
             <p className="text-2xl font-bold text-red-700 mt-1">{fmt(totalExpenses)}</p>
-            <p className="text-xs text-red-600">RWF in expenses</p>
+            <p className="text-xs text-red-600">RWF approved or paid</p>
           </div>
-          <div className={`p-4 rounded-xl border ${totalReceived - totalExpenses >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}>
-            <p className={`text-xs font-semibold ${totalReceived - totalExpenses >= 0 ? "text-blue-700" : "text-orange-700"}`}>
-              Net Balance
+          <div className={`p-4 rounded-xl border ${cashFlowBalance >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}`}>
+            <p className={`text-xs font-semibold ${cashFlowBalance >= 0 ? "text-blue-700" : "text-orange-700"}`}>
+              Balance
             </p>
-            <p className={`text-2xl font-bold mt-1 ${totalReceived - totalExpenses >= 0 ? "text-blue-700" : "text-orange-700"}`}>
-              {fmt(totalReceived - totalExpenses)}
+            <p className={`text-2xl font-bold mt-1 ${cashFlowBalance >= 0 ? "text-blue-700" : "text-orange-700"}`}>
+              {fmt(cashFlowBalance)}
             </p>
-            <p className={`text-xs ${totalReceived - totalExpenses >= 0 ? "text-blue-600" : "text-orange-600"}`}>
-              RWF net cash position
+            <p className={`text-xs ${cashFlowBalance >= 0 ? "text-blue-600" : "text-orange-600"}`}>
+              Opening balance + cash payments + withdrawals − paid expenses
             </p>
           </div>
         </div>

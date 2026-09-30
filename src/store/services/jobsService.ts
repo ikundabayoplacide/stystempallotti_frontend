@@ -36,7 +36,12 @@ export type JobState =
 
 export type JobPriority = "low" | "normal" | "high" | "urgent";
 
-export type PaymentMethod = "CASH" | "MOBILE_MONEY" | "BANK_TRANSFER" | "CARD" | "ONCREDIT";
+export type PaymentMethod =
+  | "CASH"
+  | "MOBILE_MONEY"
+  | "BANK_TRANSFER"
+  | "CARD"
+  | "ONCREDIT";
 
 export type PaymentStatus = "unpaid" | "paid" | "oncredit" | "partial";
 
@@ -48,6 +53,22 @@ export interface JobPayment {
   balance: string;
   receiptNo: string;
   paidAt: string;
+}
+
+export interface ThesisOwner {
+  fullName: string;
+  phone: string;
+  email?: string;
+  description: string;
+}
+
+export interface JobDocument {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileUrl: string;
+  uploadedById: string;
+  createdAt: string;
 }
 
 export interface Job {
@@ -67,6 +88,9 @@ export interface Job {
   state?: JobState;
   rejectReason?: string;
   jobFor?: "hobe" | "general" | null;
+  isThesisJob?: boolean;
+  thesisOwner?: ThesisOwner;
+  documents?: JobDocument[];
   paymentStatus?: PaymentStatus;
   amount?: number;
   paymentMethod?: PaymentMethod;
@@ -135,12 +159,15 @@ export interface UpdateJobItemPayload {
 
 export interface CreateJobPayload {
   title: string;
-  customerId?: string;          // required for general jobs
-  owner?: {                     // required for hobe jobs (backend auto-creates customer)
+  customerId?: string; // required for general jobs
+  owner?: {
+    // required for hobe jobs (backend auto-creates customer)
     fullName: string;
     phone: string;
     email?: string;
   };
+  isThesisJob?: boolean; // mark as thesis job
+  thesisOwner?: ThesisOwner; // thesis owner info (required if isThesisJob=true)
   description?: string;
   jobType?: string;
   jobFor?: "hobe" | "general";
@@ -202,6 +229,7 @@ export interface GetJobsParams {
   priority?: JobPriority;
   customerId?: string;
   departmentAssignedToId?: string;
+  isThesisJob?: boolean;
   createdById?: string;
   jobType?: string;
   jobFor?: "hobe" | "general";
@@ -318,9 +346,23 @@ export const jobsApi = createApi({
   tagTypes: ["Job"],
 
   endpoints: (builder) => ({
-
     // GET /jobs/stats
-    getJobStats: builder.query<{ totalJobs: number; inProgress: number; completedToday: number; delayed: number; totalRevenue: number; totalPaid: number; outstanding: number; expensesToday: number; expensesCountToday: number; withdrawalsToday: number; withdrawalsCountToday: number }, void>({
+    getJobStats: builder.query<
+      {
+        totalJobs: number;
+        inProgress: number;
+        completedToday: number;
+        delayed: number;
+        totalRevenue: number;
+        totalPaid: number;
+        outstanding: number;
+        expensesToday: number;
+        expensesCountToday: number;
+        withdrawalsToday: number;
+        withdrawalsCountToday: number;
+      },
+      void
+    >({
       query: () => "/jobs/stats",
       transformResponse: (res: ApiResponse<any>) => res.data,
       providesTags: [{ type: "Job", id: "LIST" }],
@@ -328,11 +370,19 @@ export const jobsApi = createApi({
 
     // GET /jobs
     getJobs: builder.query<PaginatedJobs, GetJobsParams | void>({
-      query: (params) => ({ url: "/jobs", params: (params ?? {}) as Record<string, any> }),
+      query: (params) => ({
+        url: "/jobs",
+        params: (params ?? {}) as Record<string, any>,
+      }),
       transformResponse: (res: any) => {
-        console.log("[jobsService] raw GET /jobs response:", JSON.stringify(res).slice(0, 800));
+        console.log(
+          "[jobsService] raw GET /jobs response:",
+          JSON.stringify(res).slice(0, 800),
+        );
         const pagination = res?.pagination ?? {};
-        const jobs = Array.isArray(res?.data) ? res.data : (res?.data?.jobs ?? []);
+        const jobs = Array.isArray(res?.data)
+          ? res.data
+          : (res?.data?.jobs ?? []);
         const total = pagination.total ?? res?.data?.total ?? jobs.length;
         const limit = pagination.limit ?? 10;
         return {
@@ -374,9 +424,14 @@ export const jobsApi = createApi({
     }),
 
     // POST /jobs
-    createJob: builder.mutation<Job, CreateJobPayload>({
+    createJob: builder.mutation<Job, CreateJobPayload | FormData>({
       query: (body) => {
-        const { documents, items, ...rest } = body;
+        // If body is already FormData (from thesis job modal), send it directly
+        if (body instanceof FormData) {
+          return { url: "/jobs", method: "POST", body };
+        }
+
+        const { documents, items, thesisOwner, owner, ...rest } = body;
 
         if (!documents || documents.length === 0) {
           // No files — send plain JSON as before (backend handles it natively)
@@ -386,6 +441,8 @@ export const jobsApi = createApi({
             body: {
               ...rest,
               ...(items && items.length > 0 && { items }),
+              ...(thesisOwner && { thesisOwner }),
+              ...(owner && { owner }),
             },
           };
         }
@@ -395,6 +452,15 @@ export const jobsApi = createApi({
         Object.entries(rest).forEach(([k, v]) => {
           if (v !== undefined && v !== null) form.append(k, String(v));
         });
+
+        // Handle complex objects as JSON strings
+        if (thesisOwner) {
+          form.append("thesisOwner", JSON.stringify(thesisOwner));
+        }
+        if (owner) {
+          form.append("owner", JSON.stringify(owner));
+        }
+
         // Send items as a single JSON string so no field is ever
         // serialized as the string "undefined" by FormData
         if (items && items.length > 0) {
@@ -403,10 +469,10 @@ export const jobsApi = createApi({
               quantityNeeded: item.quantityNeeded,
             };
             if (item.stockItemId) obj.stockItemId = item.stockItemId;
-            if (item.itemName)    obj.itemName    = item.itemName;
-            if (item.unit)        obj.unit        = item.unit;
-            if (item.unitCost)    obj.unitCost    = item.unitCost;
-            if (item.notes)       obj.notes       = item.notes;
+            if (item.itemName) obj.itemName = item.itemName;
+            if (item.unit) obj.unit = item.unit;
+            if (item.unitCost) obj.unitCost = item.unitCost;
+            if (item.notes) obj.notes = item.notes;
             return obj;
           });
           form.append("items", JSON.stringify(itemsPayload));
@@ -506,8 +572,20 @@ export const jobsApi = createApi({
     }),
 
     // PATCH /jobs/:id/deliver
-    deliverJob: builder.mutation<Job, { id: string; quantityDelivered: number; deliveredByName?: string; deliveredByContact?: string }>({
-      query: ({ id, ...body }) => ({ url: `/jobs/${id}/deliver`, method: "PATCH", body }),
+    deliverJob: builder.mutation<
+      Job,
+      {
+        id: string;
+        quantityDelivered: number;
+        deliveredByName?: string;
+        deliveredByContact?: string;
+      }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/jobs/${id}/deliver`,
+        method: "PATCH",
+        body,
+      }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
       invalidatesTags: (_r, _e, { id }) => [
         { type: "Job", id },
@@ -517,7 +595,10 @@ export const jobsApi = createApi({
     }),
 
     // PATCH /jobs/:id/payment
-    recordJobPayment: builder.mutation<RecordJobPaymentResponse, RecordJobPaymentPayload>({
+    recordJobPayment: builder.mutation<
+      RecordJobPaymentResponse,
+      RecordJobPaymentPayload
+    >({
       query: ({ id, ...body }) => ({
         url: `/jobs/${id}/payment`,
         method: "PATCH",
@@ -537,9 +618,16 @@ export const jobsApi = createApi({
     }),
 
     // GET /jobs/completed-and-paid
-    getCompletedAndPaidJobs: builder.query<PaginatedJobs, GetCompletedPaidJobsParams | void>({
-      query: (params) => ({ url: "/jobs/completed-and-paid", params: (params ?? {}) as Record<string, any> }),
-      transformResponse: (res: ApiResponse<unknown>) => normalizePaginatedJobs(res.data),
+    getCompletedAndPaidJobs: builder.query<
+      PaginatedJobs,
+      GetCompletedPaidJobsParams | void
+    >({
+      query: (params) => ({
+        url: "/jobs/completed-and-paid",
+        params: (params ?? {}) as Record<string, any>,
+      }),
+      transformResponse: (res: ApiResponse<unknown>) =>
+        normalizePaginatedJobs(res.data),
       providesTags: (result) =>
         result?.jobs?.length
           ? [
@@ -596,37 +684,53 @@ export const jobsApi = createApi({
     markJobDone: builder.mutation<Job, string>({
       query: (id) => ({ url: `/jobs/${id}/done`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Job", id },
+        { type: "Job", id: "LIST" },
+      ],
     }),
 
     // PATCH /jobs/:id/start
     startJob: builder.mutation<Job, string>({
       query: (id) => ({ url: `/jobs/${id}/start`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Job", id },
+        { type: "Job", id: "LIST" },
+      ],
     }),
 
     // PATCH /jobs/:id/pause
     pauseJob: builder.mutation<Job, string>({
       query: (id) => ({ url: `/jobs/${id}/pause`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Job", id },
+        { type: "Job", id: "LIST" },
+      ],
     }),
 
     // PATCH /jobs/:id/resume
     resumeJob: builder.mutation<Job, string>({
       query: (id) => ({ url: `/jobs/${id}/resume`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<Job>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "Job", id }, { type: "Job", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "Job", id },
+        { type: "Job", id: "LIST" },
+      ],
     }),
 
     // GET /jobs/departments/:id/jobs/history
-    getJobDepartmentHistory: builder.query<PaginatedJobs, { departmentId: string; page?: number; limit?: number }>({
+    getJobDepartmentHistory: builder.query<
+      PaginatedJobs,
+      { departmentId: string; page?: number; limit?: number }
+    >({
       query: ({ departmentId, page, limit }) => ({
         url: `/jobs/departments/${departmentId}/jobs/history`,
         params: { page, limit },
       }),
-      transformResponse: (res: ApiResponse<unknown>) => normalizePaginatedJobs(res.data),
+      transformResponse: (res: ApiResponse<unknown>) =>
+        normalizePaginatedJobs(res.data),
       providesTags: [{ type: "Job", id: "LIST" }],
     }),
 
@@ -645,7 +749,9 @@ export const jobsApi = createApi({
         body,
       }),
       transformResponse: (res: ApiResponse<JobItem>) => res.data,
-      invalidatesTags: (_r, _e, { jobId }) => [{ type: "Job", id: `${jobId}-items` }],
+      invalidatesTags: (_r, _e, { jobId }) => [
+        { type: "Job", id: `${jobId}-items` },
+      ],
     }),
 
     updateJobItem: builder.mutation<JobItem, UpdateJobItemPayload>({
@@ -655,7 +761,9 @@ export const jobsApi = createApi({
         body,
       }),
       transformResponse: (res: ApiResponse<JobItem>) => res.data,
-      invalidatesTags: (_r, _e, { jobId }) => [{ type: "Job", id: `${jobId}-items` }],
+      invalidatesTags: (_r, _e, { jobId }) => [
+        { type: "Job", id: `${jobId}-items` },
+      ],
     }),
 
     removeJobItem: builder.mutation<void, { jobId: string; itemId: string }>({
@@ -663,7 +771,9 @@ export const jobsApi = createApi({
         url: `/jobs/${jobId}/items/${itemId}`,
         method: "DELETE",
       }),
-      invalidatesTags: (_r, _e, { jobId }) => [{ type: "Job", id: `${jobId}-items` }],
+      invalidatesTags: (_r, _e, { jobId }) => [
+        { type: "Job", id: `${jobId}-items` },
+      ],
     }),
   }),
 });

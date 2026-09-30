@@ -21,9 +21,13 @@ export interface BoutiqueStockEntry {
   id: string;
   stockItemId: string;
   stockItem?: BoutiqueStockItem;
-  quantity: number;
+  quantity?: number;
+  quantityIn?: number;
+  totalCost?: number;
+  supplier?: string | null;
   note?: string;
   createdBy?: { id: string; name: string };
+  entryDate?: string;
   createdAt: string;
 }
 
@@ -143,7 +147,7 @@ export const boutiqueStockApi = createApi({
       invalidatesTags: (_r, _e, id) => [{ type: "BSItem", id }, { type: "BSItem", id: "LIST" }],
     }),
     // Entries
-    getBoutiqueStockEntries: builder.query<Paginated<BoutiqueStockEntry>, { stockItemId?: string; limit?: number } | void>({
+    getBoutiqueStockEntries: builder.query<Paginated<BoutiqueStockEntry>, { stockItemId?: string; from?: string; to?: string; limit?: number } | void>({
       query: (params) => ({ url: "/entries", params: { limit: 50, ...(params ?? {}) } as Record<string, unknown> }),
       transformResponse: (res: ApiResponse<BoutiqueStockEntry[]>) => toPaginated(res),
       providesTags: [{ type: "BSEntry", id: "LIST" }],
@@ -154,7 +158,7 @@ export const boutiqueStockApi = createApi({
       invalidatesTags: [{ type: "BSEntry", id: "LIST" }, { type: "BSItem", id: "LIST" }],
     }),
     // Sorties
-    getBoutiqueStockSorties: builder.query<Paginated<BoutiqueStockSortie>, { status?: SortieStatus; limit?: number } | void>({
+    getBoutiqueStockSorties: builder.query<Paginated<BoutiqueStockSortie>, { status?: SortieStatus; from?: string; to?: string; limit?: number } | void>({
       query: (params) => ({ url: "/sorties", params: { limit: 200, ...(params ?? {}) } as Record<string, unknown> }),
       transformResponse: (res: ApiResponse<BoutiqueStockSortie[]>) => toPaginated(res),
       providesTags: (r) => r ? [...r.data.map(({ id }) => ({ type: "BSSortie" as const, id })), { type: "BSSortie", id: "LIST" }] : [{ type: "BSSortie", id: "LIST" }],

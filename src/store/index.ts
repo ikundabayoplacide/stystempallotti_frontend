@@ -1,42 +1,43 @@
 import { configureStore } from "@reduxjs/toolkit";
+import { annualLeaveApi } from "./services/annualLeaveService";
 import { authApi } from "./services/authService";
+import { bindingStockApi } from "./services/bindingStockService";
 import { boutiqueApi } from "./services/boutiqueService";
+import { boutiqueStockApi } from "./services/boutiqueStockService";
+import { casualWorkersApi } from "./services/casualWorkersService";
 import { customersApi } from "./services/customersService";
+import { departmentSamplesApi } from "./services/departmentSamplesService";
 import { departmentsApi } from "./services/departmentsService";
 import { employeesApi } from "./services/employeesService";
+import { extraWorkersApi } from "./services/extraWorkersService";
+import { generalStockApi } from "./services/generalStockService";
+import { hobeApi } from "./services/hobeService";
 import { invoicesApi } from "./services/invoicesService";
 import { jobAssignmentsApi } from "./services/jobAssignmentsService";
 import { jobDocumentsApi } from "./services/jobDocumentsService";
+import { jobSpecsApi } from "./services/jobSpecsService";
 import { jobsApi } from "./services/jobsService";
+import { leaveApi } from "./services/leaveService";
+import { machinesApi } from "./services/machinesService";
+import { notificationsApi } from "./services/notificationsService";
+import { outstandsApi } from "./services/outstandsService";
+import { overtimeApi } from "./services/overtimeService";
 import { paymentsApi } from "./services/paymentsService";
+import { payrollApi } from "./services/payrollService";
 import { permissionsApi } from "./services/permissionsService";
 import { procurementApi } from "./services/procurementService";
 import { proformasApi } from "./services/proformasService";
+import { receptionRequestsApi } from "./services/receptionRequestsService";
+import { recoveryApi } from "./services/recoveryService";
+import { reportsApi } from "./services/reportsService";
 import { rolesApi } from "./services/rolesService";
+import { sheetsApi } from "./services/sheetsService";
+import { stockReportsApi } from "./services/stockReportsService";
+import { stockRequestsApi } from "./services/stockRequestsService";
 import { stockApi } from "./services/stockService";
 import { usersApi } from "./services/usersService";
 import { visitsApi } from "./services/visitsService";
-import { reportsApi } from "./services/reportsService";
-import { hobeApi } from "./services/hobeService";
-import { notificationsApi } from "./services/notificationsService";
-import { recoveryApi } from "./services/recoveryService";
-import { leaveApi } from "./services/leaveService";
-import { outstandsApi } from "./services/outstandsService";
-import { casualWorkersApi } from "./services/casualWorkersService";
-import { payrollApi } from "./services/payrollService";
-import { boutiqueStockApi } from "./services/boutiqueStockService";
-import { generalStockApi } from "./services/generalStockService";
-import { bindingStockApi } from "./services/bindingStockService";
-import { machinesApi } from "./services/machinesService";
-import { jobSpecsApi } from "./services/jobSpecsService";
-import { departmentSamplesApi } from "./services/departmentSamplesService";
 import { withdrawalsApi } from "./services/withdrawalsService";
-import { sheetsApi } from "./services/sheetsService";
-import { stockRequestsApi } from "./services/stockRequestsService";
-import { receptionRequestsApi } from "./services/receptionRequestsService";
-import { extraWorkersApi } from "./services/extraWorkersService";
-import { overtimeApi } from "./services/overtimeService";
-import { annualLeaveApi } from "./services/annualLeaveService";
 import authReducer from "./slices/authSlice";
 
 export const store = configureStore({
@@ -80,6 +81,7 @@ export const store = configureStore({
     [extraWorkersApi.reducerPath]: extraWorkersApi.reducer,
     [overtimeApi.reducerPath]: overtimeApi.reducer,
     [annualLeaveApi.reducerPath]: annualLeaveApi.reducer,
+    [stockReportsApi.reducerPath]: stockReportsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
@@ -120,7 +122,8 @@ export const store = configureStore({
       .concat(receptionRequestsApi.middleware)
       .concat(extraWorkersApi.middleware)
       .concat(overtimeApi.middleware)
-      .concat(annualLeaveApi.middleware),
+      .concat(annualLeaveApi.middleware)
+      .concat(stockReportsApi.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

@@ -23,9 +23,13 @@ export interface GeneralStockEntry {
   id: string;
   stockItemId: string;
   stockItem?: GeneralStockItem;
-  quantity: number;
+  quantity?: number;
+  quantityIn?: number;
+  totalCost?: number;
+  supplier?: string | null;
   note?: string;
   createdBy?: { id: string; name: string };
+  entryDate?: string;
   createdAt: string;
 }
 
@@ -51,20 +55,35 @@ export interface GeneralStockSortie {
 
 export interface Paginated<T> {
   data: T[];
-  pagination: { total: number; page: number; limit: number; totalPages: number };
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
-  pagination?: { total: number; page: number; limit: number; totalPages: number };
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 function toPaginated<T>(res: ApiResponse<T[]>): Paginated<T> {
   return {
     data: res.data ?? [],
-    pagination: res.pagination ?? { total: res.data?.length ?? 0, page: 1, limit: 100, totalPages: 1 },
+    pagination: res.pagination ?? {
+      total: res.data?.length ?? 0,
+      page: 1,
+      limit: 100,
+      totalPages: 1,
+    },
   };
 }
 
@@ -82,69 +101,197 @@ export const generalStockApi = createApi({
   }),
   tagTypes: ["GSItem", "GSEntry", "GSSortie"],
   endpoints: (builder) => ({
-    getGeneralStockItems: builder.query<Paginated<GeneralStockItem>, { search?: string; stockStatus?: string; limit?: number } | void>({
-      query: (params) => ({ url: "/items", params: { limit: 200, ...(params ?? {}) } as Record<string, unknown> }),
-      transformResponse: (res: ApiResponse<GeneralStockItem[]>) => toPaginated(res),
-      providesTags: (r) => r ? [...r.data.map(({ id }) => ({ type: "GSItem" as const, id })), { type: "GSItem", id: "LIST" }] : [{ type: "GSItem", id: "LIST" }],
+    getGeneralStockItems: builder.query<
+      Paginated<GeneralStockItem>,
+      { search?: string; stockStatus?: string; limit?: number } | void
+    >({
+      query: (params) => ({
+        url: "/items",
+        params: { limit: 200, ...(params ?? {}) } as Record<string, unknown>,
+      }),
+      transformResponse: (res: ApiResponse<GeneralStockItem[]>) =>
+        toPaginated(res),
+      providesTags: (r) =>
+        r
+          ? [
+              ...r.data.map(({ id }) => ({ type: "GSItem" as const, id })),
+              { type: "GSItem", id: "LIST" },
+            ]
+          : [{ type: "GSItem", id: "LIST" }],
     }),
-    createGeneralStockItem: builder.mutation<GeneralStockItem, { itemName: string; description?: string; category: string; unit: string; currentStock: number; alarmStock: number; amountPerUnit?: number }>({
+    createGeneralStockItem: builder.mutation<
+      GeneralStockItem,
+      {
+        itemName: string;
+        description?: string;
+        category: string;
+        unit: string;
+        currentStock: number;
+        alarmStock: number;
+        amountPerUnit?: number;
+      }
+    >({
       query: (body) => ({ url: "/items", method: "POST", body }),
       transformResponse: (res: ApiResponse<GeneralStockItem>) => res.data,
       invalidatesTags: [{ type: "GSItem", id: "LIST" }],
     }),
-    updateGeneralStockItem: builder.mutation<GeneralStockItem, { id: string; itemName?: string; description?: string; category?: string; unit?: string; currentStock?: number; alarmStock?: number; amountPerUnit?: number }>({
-      query: ({ id, ...body }) => ({ url: `/items/${id}`, method: "PUT", body }),
+    updateGeneralStockItem: builder.mutation<
+      GeneralStockItem,
+      {
+        id: string;
+        itemName?: string;
+        description?: string;
+        category?: string;
+        unit?: string;
+        currentStock?: number;
+        alarmStock?: number;
+        amountPerUnit?: number;
+      }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/items/${id}`,
+        method: "PUT",
+        body,
+      }),
       transformResponse: (res: ApiResponse<GeneralStockItem>) => res.data,
-      invalidatesTags: (_r, _e, { id }) => [{ type: "GSItem", id }, { type: "GSItem", id: "LIST" }],
+      invalidatesTags: (_r, _e, { id }) => [
+        { type: "GSItem", id },
+        { type: "GSItem", id: "LIST" },
+      ],
     }),
     deleteGeneralStockItem: builder.mutation<void, string>({
       query: (id) => ({ url: `/items/${id}`, method: "DELETE" }),
-      invalidatesTags: (_r, _e, id) => [{ type: "GSItem", id }, { type: "GSItem", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "GSItem", id },
+        { type: "GSItem", id: "LIST" },
+      ],
     }),
-    getGeneralStockEntries: builder.query<Paginated<GeneralStockEntry>, { stockItemId?: string; limit?: number } | void>({
-      query: (params) => ({ url: "/entries", params: { limit: 50, ...(params ?? {}) } as Record<string, unknown> }),
-      transformResponse: (res: ApiResponse<GeneralStockEntry[]>) => toPaginated(res),
+    getGeneralStockEntries: builder.query<
+      Paginated<GeneralStockEntry>,
+      {
+        stockItemId?: string;
+        from?: string;
+        to?: string;
+        limit?: number;
+      } | void
+    >({
+      query: (params) => ({
+        url: "/entries",
+        params: { limit: 50, ...(params ?? {}) } as Record<string, unknown>,
+      }),
+      transformResponse: (res: ApiResponse<GeneralStockEntry[]>) =>
+        toPaginated(res),
       providesTags: [{ type: "GSEntry", id: "LIST" }],
     }),
-    createGeneralStockEntry: builder.mutation<GeneralStockEntry, { stockItemId: string; quantity: number; note?: string }>({
+    createGeneralStockEntry: builder.mutation<
+      GeneralStockEntry,
+      { stockItemId: string; quantity: number; note?: string }
+    >({
       query: (body) => ({ url: "/entries", method: "POST", body }),
       transformResponse: (res: ApiResponse<GeneralStockEntry>) => res.data,
-      invalidatesTags: [{ type: "GSEntry", id: "LIST" }, { type: "GSItem", id: "LIST" }],
+      invalidatesTags: [
+        { type: "GSEntry", id: "LIST" },
+        { type: "GSItem", id: "LIST" },
+      ],
     }),
-    getGeneralStockSorties: builder.query<Paginated<GeneralStockSortie>, { status?: SortieStatus; limit?: number } | void>({
-      query: (params) => ({ url: "/sorties", params: { limit: 200, ...(params ?? {}) } as Record<string, unknown> }),
-      transformResponse: (res: ApiResponse<GeneralStockSortie[]>) => toPaginated(res),
-      providesTags: (r) => r ? [...r.data.map(({ id }) => ({ type: "GSSortie" as const, id })), { type: "GSSortie", id: "LIST" }] : [{ type: "GSSortie", id: "LIST" }],
+    getGeneralStockSorties: builder.query<
+      Paginated<GeneralStockSortie>,
+      {
+        status?: SortieStatus;
+        from?: string;
+        to?: string;
+        limit?: number;
+      } | void
+    >({
+      query: (params) => ({
+        url: "/sorties",
+        params: { limit: 200, ...(params ?? {}) } as Record<string, unknown>,
+      }),
+      transformResponse: (res: ApiResponse<GeneralStockSortie[]>) =>
+        toPaginated(res),
+      providesTags: (r) =>
+        r
+          ? [
+              ...r.data.map(({ id }) => ({ type: "GSSortie" as const, id })),
+              { type: "GSSortie", id: "LIST" },
+            ]
+          : [{ type: "GSSortie", id: "LIST" }],
     }),
-    getMyGeneralStockSorties: builder.query<Paginated<GeneralStockSortie>, { limit?: number } | void>({
-      query: (params) => ({ url: "/sorties/my", params: { limit: 100, ...(params ?? {}) } as Record<string, unknown> }),
-      transformResponse: (res: ApiResponse<GeneralStockSortie[]>) => toPaginated(res),
+    getMyGeneralStockSorties: builder.query<
+      Paginated<GeneralStockSortie>,
+      { limit?: number } | void
+    >({
+      query: (params) => ({
+        url: "/sorties/my",
+        params: { limit: 100, ...(params ?? {}) } as Record<string, unknown>,
+      }),
+      transformResponse: (res: ApiResponse<GeneralStockSortie[]>) =>
+        toPaginated(res),
       providesTags: [{ type: "GSSortie", id: "MY" }],
     }),
-    createGeneralStockSortie: builder.mutation<GeneralStockSortie, { stockItemId?: string; customItemName?: string; quantityOut: number; reason: string; notes?: string }>({
+    createGeneralStockSortie: builder.mutation<
+      GeneralStockSortie,
+      {
+        stockItemId?: string;
+        customItemName?: string;
+        quantityOut: number;
+        reason: string;
+        notes?: string;
+      }
+    >({
       query: (body) => ({ url: "/sorties", method: "POST", body }),
       transformResponse: (res: ApiResponse<GeneralStockSortie>) => res.data,
-      invalidatesTags: [{ type: "GSSortie", id: "LIST" }, { type: "GSSortie", id: "MY" }],
+      invalidatesTags: [
+        { type: "GSSortie", id: "LIST" },
+        { type: "GSSortie", id: "MY" },
+      ],
     }),
-    createBulkGeneralStockSortie: builder.mutation<GeneralStockSortie[], { items: { stockItemId?: string; customItemName?: string; quantityOut: number; reason: string }[]; notes?: string }>({
+    createBulkGeneralStockSortie: builder.mutation<
+      GeneralStockSortie[],
+      {
+        items: {
+          stockItemId?: string;
+          customItemName?: string;
+          quantityOut: number;
+          reason: string;
+        }[];
+        notes?: string;
+      }
+    >({
       query: (body) => ({ url: "/sorties/bulk", method: "POST", body }),
       transformResponse: (res: ApiResponse<GeneralStockSortie[]>) => res.data,
-      invalidatesTags: [{ type: "GSSortie", id: "LIST" }, { type: "GSSortie", id: "MY" }],
+      invalidatesTags: [
+        { type: "GSSortie", id: "LIST" },
+        { type: "GSSortie", id: "MY" },
+      ],
     }),
     approveGeneralStockSortie: builder.mutation<GeneralStockSortie, string>({
       query: (id) => ({ url: `/sorties/${id}/approve`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<GeneralStockSortie>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "GSSortie", id }, { type: "GSSortie", id: "LIST" }, { type: "GSItem", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "GSSortie", id },
+        { type: "GSSortie", id: "LIST" },
+        { type: "GSItem", id: "LIST" },
+      ],
     }),
     rejectGeneralStockSortie: builder.mutation<GeneralStockSortie, string>({
       query: (id) => ({ url: `/sorties/${id}/reject`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<GeneralStockSortie>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "GSSortie", id }, { type: "GSSortie", id: "LIST" }, { type: "GSSortie", id: "MY" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "GSSortie", id },
+        { type: "GSSortie", id: "LIST" },
+        { type: "GSSortie", id: "MY" },
+      ],
     }),
     takeGeneralStockSortie: builder.mutation<GeneralStockSortie, string>({
       query: (id) => ({ url: `/sorties/${id}/take`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<GeneralStockSortie>) => res.data,
-      invalidatesTags: (_r, _e, id) => [{ type: "GSSortie", id }, { type: "GSSortie", id: "LIST" }, { type: "GSSortie", id: "MY" }, { type: "GSItem", id: "LIST" }],
+      invalidatesTags: (_r, _e, id) => [
+        { type: "GSSortie", id },
+        { type: "GSSortie", id: "LIST" },
+        { type: "GSSortie", id: "MY" },
+        { type: "GSItem", id: "LIST" },
+      ],
     }),
   }),
 });

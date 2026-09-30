@@ -11,6 +11,7 @@ import { toast } from "react-toastify";
 import DashboardLayout from "../../components/DashboardLayout";
 import { Card } from "../../components/ui";
 import PhoneInput from "../../components/ui/PhoneInput";
+import { useGetOutstandsQuery } from "../../store/services/outstandsService";
 import {
   useGetWithdrawalBalanceQuery,
   useGetWithdrawalsQuery,
@@ -370,6 +371,7 @@ export default function Withdraws() {
   const queryParams: GetWithdrawalsParams = { page, limit: PAGE_SIZE, ...(search ? { search } : {}) };
 
   const { data: balanceData, isLoading: loadingBalance, refetch: refetchBalance } = useGetWithdrawalBalanceQuery();
+  const { data: outstandsData, refetch: refetchOutstands } = useGetOutstandsQuery({ limit: 1000 });
   const { data: configData } = useGetWithdrawalConfigQuery();
   const { data, isLoading, isFetching, refetch } = useGetWithdrawalsQuery(queryParams);
 
@@ -381,8 +383,12 @@ export default function Withdraws() {
     totalWithdrawalsIn: 0, totalExpensesOut: 0, totalBalance: 0,
   };
   const currentInitial = configData?.initialAmount ?? balance.initialAmount;
+  const expensesOut = (outstandsData?.outstands ?? [])
+    .filter((expense) => expense.status === "approved" || expense.status === "paid")
+    .reduce((sum, expense) => sum + (Number(expense.totalAmount) || 0), 0);
+  const calculatedBalance = currentInitial + balance.totalCashPaymentsIn + balance.totalWithdrawalsIn - expensesOut;
 
-  const handleRefetch = () => { refetch(); refetchBalance(); };
+  const handleRefetch = () => { refetch(); refetchBalance(); refetchOutstands(); };
 
   return (
     <DashboardLayout>
@@ -446,16 +452,16 @@ export default function Withdraws() {
                 <HiOutlineExclamationCircle className="w-3.5 h-3.5 text-red-500" />
                 <p className="text-xs text-custom-700">Expenses Out</p>
               </div>
-              <p className="text-lg font-bold text-red-500">-{fmt(balance.totalExpensesOut)}</p>
+              <p className="text-lg font-bold text-red-500">-{fmt(expensesOut)}</p>
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
-            <Card className={`!p-4 col-span-2 sm:col-span-1 ${balance.totalBalance >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-orange-50 border-orange-200"}`}>
+            <Card className={`!p-4 col-span-2 sm:col-span-1 ${calculatedBalance >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-orange-50 border-orange-200"}`}>
               <div className="flex items-center gap-1 mb-1">
-                <HiOutlineCurrencyDollar className={`w-3.5 h-3.5 ${balance.totalBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+                <HiOutlineCurrencyDollar className={`w-3.5 h-3.5 ${calculatedBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
                 <p className="text-xs text-custom-700">Total Balance</p>
               </div>
-              <p className={`text-xl font-bold ${balance.totalBalance >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
-                {fmt(balance.totalBalance)}
+              <p className={`text-xl font-bold ${calculatedBalance >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
+                {fmt(calculatedBalance)}
               </p>
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
@@ -465,7 +471,7 @@ export default function Withdraws() {
         {/* Balance Formula hint */}
         <div className="px-4 py-3 rounded-xl bg-custom-50 border border-custom-200 text-xs text-custom-700">
           <span className="font-semibold text-secondary-100">Balance formula: </span>
-          Initial + Cash Payments In + Withdrawals In − Expenses (paid)
+          Initial + Cash Payments In + Withdrawals In − Expenses (approved or paid)
         </div>
 
         {/* Search */}

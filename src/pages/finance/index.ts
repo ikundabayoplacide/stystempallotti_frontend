@@ -10,12 +10,12 @@ export { default as Accountant2Page } from "./Accountant2Page";
 export { default as Accountant2ProcurementPage } from "./Accountant2ProcurementPage";
 export { default as Accountant2RecoveryPage } from "./Accountant2RecoveryPage";
 export { default as Accountant2TaxesPage } from "./Accountant2TaxesPage";
-export {default as Operations} from "./Operations"
+export { default as Operations } from "./Operations";
 
+export { default as HRManagementPage } from "../HR/HRManagementPage";
 export { default as DAFDashboard } from "./DAFDashboard";
 export { default as DAFJobApprovalPage } from "./DAFJobApprovalPage";
 export { default as DAFPage } from "./DAFPage";
 export { default as DAFReportsPage } from "./DAFReportsPage";
 export { default as FinanceControlPage } from "./FinanceControlPage";
-export { default as HRManagementPage } from "../HR/HRManagementPage";
-
+export { default as ThesisJobsPage } from "./ThesisJobsPage";

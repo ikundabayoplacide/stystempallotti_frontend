@@ -147,6 +147,11 @@ export const outstandsApi = createApi({
       query: (id) => ({ url: `/outstands/${id}/approve`, method: "PATCH" }),
       transformResponse: (res: ApiResponse<Outstand>) => res.data,
       invalidatesTags: (_r, _e, id) => [{ type: "Outstand", id }, { type: "Outstand", id: "LIST" }],
+      async onQueryStarted(_id, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        const { withdrawalsApi } = await import("./withdrawalsService");
+        dispatch(withdrawalsApi.util.invalidateTags(["WithdrawalBalance"]));
+      },
     }),
 
     // PATCH /outstands/:id/reject
