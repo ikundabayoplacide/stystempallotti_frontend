@@ -306,14 +306,13 @@ function ConfirmModal({ title, message, confirmLabel, confirmCls, onConfirm, onC
 }
 
 // ─── Inline row actions ───────────────────────────────────────────────────────
-function InlineActions({ record, approveOutstand, payOutstand, deleteOutstand, onEdit, onView, canApprove, canDelete }: {
+function InlineActions({ record, approveOutstand, payOutstand, deleteOutstand, onEdit, onView, canDelete }: {
   record: Outstand;
   approveOutstand: (id: string) => any;
   payOutstand: (id: string) => any;
   deleteOutstand: (id: string) => any;
   onEdit: () => void;
   onView: () => void;
-  canApprove: boolean;
   canDelete: boolean;
 }) {
   const [confirm, setConfirm] = useState<"approve" | "pay" | "delete" | null>(null);
@@ -522,7 +521,6 @@ export default function AdminExpensesPage({ accountantMode = false }: { accounta
                             deleteOutstand={(id) => deleteOutstand(id).unwrap()}
                             onEdit={() => setEditing(r)}
                             onView={() => setSelected(r)}
-                            canApprove={canApprove}
                             canDelete={canDelete}
                           />
                         </td>

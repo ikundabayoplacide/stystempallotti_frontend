@@ -184,6 +184,8 @@ const menuItems: Record<UserRole, MenuItem[]> = {
         { label: "Procurement", path: "/finance/daf/procurement", icon: HiOutlineArchive },
       ]
     },
+    { label: "Expenses", path: "/finance/daf/expenses", icon: HiOutlineCash },
+    { label: "Withdrawals", path: "/finance/daf/withdrawals", icon: HiOutlineTrendingUp },
     { label: "Proforma Invoice", path: "/finance/daf/proforma", icon: HiOutlineDocumentText },
     { label: "Recovery", path: "/finance/daf/recovery", icon: HiOutlineCurrencyDollar },
     { label: "Operations", path: "/finance/daf/operations", icon: HiOutlineClipboardList },
@@ -655,11 +657,12 @@ export default function DashboardSidebar({
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${location.pathname === settingsPath[userRole]
                 ? "bg-primary-500 text-secondary-200"
                 : "text-custom-700 hover:bg-custom-100 hover:text-secondary-100"
-              } ${isCollapsed ? "justify-center" : ""}`}
-            title={isCollapsed ? "Settings" : undefined}
+              } ${isCollapsed
+ ? "justify-center" : ""}`}
+            title={isCollapsed ? "Profile" : undefined}
           >
             <HiOutlineCog className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && <span className="font-semibold text-sm">Settings</span>}
+            {!isCollapsed && <span className="font-semibold text-sm">Profile</span>}
           </button>
         </div>
       </aside>

@@ -228,6 +228,7 @@ export default function AppRoutes() {
       <Route path="/finance/daf/recovery" element={<ProtectedRoute allowedRoles={["daf"]}><Accountant2RecoveryPage /></ProtectedRoute>} />
       <Route path="/finance/daf/operations" element={<ProtectedRoute allowedRoles={["daf"]}><Operations /></ProtectedRoute>} />
       <Route path="/finance/daf/expenses" element={<ProtectedRoute allowedRoles={["daf"]}><AdminExpensesPage /></ProtectedRoute>} />
+      <Route path="/finance/daf/withdrawals" element={<ProtectedRoute allowedRoles={["daf"]}><AdminWithdrawalsPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock/general" element={<ProtectedRoute allowedRoles={["daf"]}><AdminGeneralStockPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock/boutique" element={<ProtectedRoute allowedRoles={["daf"]}><AdminBoutiqueStockPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock/binding" element={<ProtectedRoute allowedRoles={["daf"]}><AdminBindingStockPage /></ProtectedRoute>} />

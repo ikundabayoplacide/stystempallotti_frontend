@@ -18,6 +18,7 @@ import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetSheetsQuery } from "../../store/services/sheetsService";
 import { useGetOutstandsQuery } from "../../store/services/outstandsService";
+import { useGetWithdrawalsQuery } from "../../store/services/withdrawalsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,11 @@ export default function DAFDashboard() {
     useGetDepartmentsQuery();
 
   const { data: pendingExpensesData } = useGetOutstandsQuery({ status: "pending", limit: 100 });
+  const { data: allExpensesData } = useGetOutstandsQuery({ limit: 1000 });
+  const { data: allWithdrawalsData } = useGetWithdrawalsQuery({ limit: 1000 });
   const pendingExpensesCount = pendingExpensesData?.total ?? 0;
+  const totalExpensesAmt = (allExpensesData?.outstands ?? []).reduce((s, r) => s + Number(r.totalAmount), 0);
+  const totalWithdrawalsAmt = (allWithdrawalsData?.withdrawals ?? []).reduce((s, w) => s + Number(w.amount), 0);
   const sheets = sheetsData?.sheets ?? [];
   const totalSheetsQty = sheets.reduce((s, r) => s + Number(r.qty), 0);
   const totalSheetsAmount = sheets.reduce(
@@ -191,7 +196,7 @@ export default function DAFDashboard() {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         {/* Total Revenue */}
         <Card
           className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary-400 transition-all"
@@ -347,6 +352,44 @@ export default function DAFDashboard() {
                   <p className="text-xs text-custom-700">in production</p>
                 </>
               )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Total Expenses */}
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-red-400 transition-all"
+          onClick={() => navigate("/finance/daf/expenses")}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-100 shrink-0">
+              <HiOutlineCurrencyDollar className="w-4.5 h-4.5 text-red-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-custom-700 truncate">Total Expenses</p>
+              <p className="text-xl font-bold text-red-600 leading-tight truncate">
+                {fmt(totalExpensesAmt)}
+              </p>
+              <p className="text-xs text-custom-700">RWF</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Total Withdrawals */}
+        <Card
+          className="!p-4 overflow-hidden cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
+          onClick={() => navigate("/finance/daf/withdrawals")}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-indigo-100 shrink-0">
+              <HiOutlineCurrencyDollar className="w-4.5 h-4.5 text-indigo-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-custom-700 truncate">Total Withdrawals</p>
+              <p className="text-xl font-bold text-indigo-600 leading-tight truncate">
+                {fmt(totalWithdrawalsAmt)}
+              </p>
+              <p className="text-xs text-custom-700">RWF</p>
             </div>
           </div>
         </Card>

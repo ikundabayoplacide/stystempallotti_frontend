@@ -1,12 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import ReactDOM from "react-dom";
+import { useState } from "react";
 import {
   HiOutlinePlus, HiOutlineX, HiOutlineCash, HiOutlineShoppingCart,
   HiOutlineCog, HiOutlineLightBulb, HiOutlineOfficeBuilding,
   HiOutlineClipboardList, HiOutlineCheckCircle, HiOutlineClock,
   HiOutlineExclamationCircle, HiOutlineSearch, HiOutlineRefresh,
-  HiOutlinePencil, HiOutlineThumbUp, HiOutlineDotsHorizontal,
-  HiOutlineBan, HiOutlineCurrencyDollar,
+  HiOutlinePencil, HiOutlineEye,
+  HiOutlineCurrencyDollar,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import DashboardLayout from "../../components/DashboardLayout";
@@ -14,8 +13,7 @@ import { Card } from "../../components/ui";
 import PhoneInput from "../../components/ui/PhoneInput";
 import {
   useGetOutstandsQuery, useCreateOutstandMutation,
-  useUpdateOutstandMutation, useApproveOutstandMutation,
-  useRejectOutstandMutation, usePayOutstandMutation,
+  useUpdateOutstandMutation,
   type Outstand, type OutstandCategory, type OutstandStatus,
   type GetOutstandsParams,
 } from "../../store/services/outstandsService";
@@ -164,54 +162,11 @@ function AddRecordModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function RejectModal({ record, onClose }: { record: Outstand; onClose: () => void }) {
-  const [note, setNote] = useState("");
-  const [rejectOutstand, { isLoading }] = useRejectOutstandMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!note.trim()) { toast.error("Please provide a rejection reason"); return; }
-    try {
-      await rejectOutstand({ id: record.id, rejectionNote: note }).unwrap();
-      toast.success("Expense rejected");
-      onClose();
-    } catch (err: any) { toast.error(err?.data?.message ?? "Failed to reject"); }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
-      <Card className="!p-6 max-w-md w-full">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-secondary-100">Reject Expense</h3>
-          <button onClick={onClose} className="text-custom-700 hover:text-secondary-100"><HiOutlineX className="w-5 h-5" /></button>
-        </div>
-        <p className="text-sm text-custom-700 mb-4">You are rejecting <span className="font-bold text-secondary-100">{record.ref}</span>. Please provide a reason.</p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
-            placeholder="Reason for rejection..."
-            className="w-full px-3 py-2 rounded-xl border border-custom-300 bg-style-500 text-secondary-100 text-sm focus:outline-none focus:border-red-400 transition-colors resize-none" required />
-          <div className="flex gap-3 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Cancel</button>
-            <button type="submit" disabled={isLoading} className="px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-40">
-              {isLoading ? "Rejecting..." : "Reject"}
-            </button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
-}
 
 function DetailModal({ record, onClose, onEdit }: { record: Outstand; onClose: () => void; onEdit: () => void }) {
   const cat = categoryConfig[record.category] ?? categoryConfig.other;
   const st  = statusConfig[record.status];
-  const [approvingConfirm, setApprovingConfirm] = useState(false);
-  const [payingConfirm, setPayingConfirm] = useState(false);
-  const [showReject, setShowReject] = useState(false);
-  const [approveOutstand, { isLoading: approving }] = useApproveOutstandMutation();
-  const [payOutstand,     { isLoading: paying }]    = usePayOutstandMutation();
 
-  if (showReject) return <RejectModal record={record} onClose={() => { setShowReject(false); onClose(); }} />;
 
   return (
     <div className="fixed inset-0 bg-secondary-100/50 z-50 flex items-center justify-center p-4">
@@ -260,42 +215,6 @@ function DetailModal({ record, onClose, onEdit }: { record: Outstand; onClose: (
             <button onClick={onEdit} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">
               <HiOutlinePencil className="w-4 h-4" /> Edit
             </button>
-          )}
-
-          {record.status === "pending" && (
-            approvingConfirm ? (
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-300">
-                <span className="text-sm text-emerald-700 font-semibold">Approve this?</span>
-                <button onClick={async () => { try { await approveOutstand(record.id).unwrap(); toast.success("Approved"); onClose(); } catch { toast.error("Failed"); } setApprovingConfirm(false); }}
-                  disabled={approving} className="px-3 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors disabled:opacity-40">Yes</button>
-                <button onClick={() => setApprovingConfirm(false)} className="px-3 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
-              </div>
-            ) : (
-              <button onClick={() => setApprovingConfirm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors">
-                <HiOutlineThumbUp className="w-4 h-4" /> Approve
-              </button>
-            )
-          )}
-
-          {record.status === "pending" && (
-            <button onClick={() => setShowReject(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors">
-              <HiOutlineBan className="w-4 h-4" /> Reject
-            </button>
-          )}
-
-          {record.status === "approved" && (
-            payingConfirm ? (
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-300">
-                <span className="text-sm text-blue-700 font-semibold">Mark as Paid?</span>
-                <button onClick={async () => { try { await payOutstand(record.id).unwrap(); toast.success("Marked as paid"); onClose(); } catch { toast.error("Failed"); } setPayingConfirm(false); }}
-                  disabled={paying} className="px-3 py-1 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors disabled:opacity-40">Yes, Pay</button>
-                <button onClick={() => setPayingConfirm(false)} className="px-3 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">Cancel</button>
-              </div>
-            ) : (
-              <button onClick={() => setPayingConfirm(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors">
-                <HiOutlineCash className="w-4 h-4" /> Mark as Paid
-              </button>
-            )
           )}
 
           <button onClick={onClose} className="ml-auto px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Close</button>
@@ -425,97 +344,7 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
   );
 }
 
-function RowActions({
-  record, onView, onEdit, onReject, onApprove, onPay,
-}: {
-  record: Outstand;
-  onView: () => void;
-  onEdit: () => void;
-  onReject: () => void;
-  onApprove: (id: string) => Promise<any>;
-  onPay: (id: string) => Promise<any>;
-}) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const [confirm, setConfirm] = useState<"approve" | "pay" | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const open = pos !== null;
 
-  const openMenu = () => {
-    if (open) { setPos(null); setConfirm(null); return; }
-    const rect = btnRef.current!.getBoundingClientRect();
-    const menuH = 180;
-    const top = rect.top - menuH - 4 < 0 ? rect.bottom + 4 : rect.top - menuH - 4;
-    setPos({ top, left: rect.right - 176 });
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (btnRef.current?.contains(e.target as Node)) return;
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) { setPos(null); setConfirm(null); }
-    };
-    const onScroll = () => { setPos(null); setConfirm(null); };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("scroll", onScroll, true);
-    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("scroll", onScroll, true); };
-  }, [open]);
-
-  return (
-    <>
-      <button ref={btnRef} onClick={openMenu} className="p-1.5 rounded-lg hover:bg-custom-100 transition-colors text-custom-700">
-        <HiOutlineDotsHorizontal className="w-4 h-4" />
-      </button>
-      {open && pos && ReactDOM.createPortal(
-        <div ref={menuRef} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999, width: 176 }}
-          className="bg-style-600 border border-custom-300 rounded-2xl shadow-xl p-1.5 space-y-0.5">
-          <button onClick={() => { setPos(null); onView(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors">View Details</button>
-          {record.status === "pending" && (
-            <button onClick={() => { setPos(null); onEdit(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-secondary-100 hover:bg-custom-100 transition-colors">
-              <HiOutlinePencil className="w-4 h-4" /> Edit
-            </button>
-          )}
-          {record.status === "pending" && (
-            confirm === "approve" ? (
-              <div className="px-3 py-2 space-y-1.5">
-                <p className="text-xs font-semibold text-emerald-700">Approve this expense?</p>
-                <div className="flex gap-1.5">
-                  <button onClick={async () => { try { await onApprove(record.id); toast.success("Approved"); } catch { toast.error("Failed"); } setPos(null); setConfirm(null); }} className="flex-1 px-2 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-colors">Yes</button>
-                  <button onClick={() => setConfirm(null)} className="flex-1 px-2 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setConfirm("approve")} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-emerald-600 hover:bg-emerald-50 transition-colors">
-                <HiOutlineThumbUp className="w-4 h-4" /> Approve
-              </button>
-            )
-          )}
-          {record.status === "pending" && (
-            <button onClick={() => { setPos(null); onReject(); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-colors">
-              <HiOutlineBan className="w-4 h-4" /> Reject
-            </button>
-          )}
-          {record.status === "approved" && (
-            confirm === "pay" ? (
-              <div className="px-3 py-2 space-y-1.5">
-                <p className="text-xs font-semibold text-blue-700">Mark as paid?</p>
-                <div className="flex gap-1.5">
-                  <button onClick={async () => { try { await onPay(record.id); toast.success("Marked paid"); } catch { toast.error("Failed"); } setPos(null); setConfirm(null); }} className="flex-1 px-2 py-1 rounded-lg bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 transition-colors">Yes</button>
-                  <button onClick={() => setConfirm(null)} className="flex-1 px-2 py-1 rounded-lg border border-custom-300 text-xs font-semibold text-custom-700 hover:bg-custom-100 transition-colors">No</button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setConfirm("pay")} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-blue-600 hover:bg-blue-50 transition-colors">
-                <HiOutlineCash className="w-4 h-4" /> Mark Paid
-              </button>
-            )
-          )}
-        </div>,
-        document.body
-      )}
-    </>
-  );
-}
 
 export default function CashierExpensesPage() {
   const [activeTab, setActiveTab]   = useState<OutstandStatus | "all">("all");
@@ -524,11 +353,6 @@ export default function CashierExpensesPage() {
   const [showAdd, setShowAdd]       = useState(false);
   const [selected, setSelected]     = useState<Outstand | null>(null);
   const [editing, setEditing]       = useState<Outstand | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<Outstand | null>(null);
-
-  const [approveOutstand] = useApproveOutstandMutation();
-  const [payOutstand]     = usePayOutstandMutation();
-
   const queryParams: GetOutstandsParams = {
     page, limit: PAGE_SIZE,
     ...(activeTab !== "all" && { status: activeTab }),
@@ -633,7 +457,7 @@ export default function CashierExpensesPage() {
               <table className="w-full text-sm">
                 <thead className="bg-custom-50 border-b border-custom-200">
                   <tr>
-                    {["Ref", "Description", "Category", "Recipient", "Amount (RWF)", "Status", "Date", ""].map(h => (
+                    {["Ref", "Description", "Category", "Recipient", "Amount (RWF)", "Status", "Date", "Actions"].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-bold text-custom-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -656,14 +480,18 @@ export default function CashierExpensesPage() {
                         </td>
                         <td className="px-4 py-3 text-custom-700 whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                          <RowActions
-                            record={r}
-                            onView={() => setSelected(r)}
-                            onEdit={() => setEditing(r)}
-                            onReject={() => setRejectTarget(r)}
-                            onApprove={approveOutstand}
-                            onPay={payOutstand}
-                          />
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setSelected(r)} title="View"
+                              className="p-1.5 rounded-lg hover:bg-primary-50 text-primary-500 transition-colors">
+                              <HiOutlineEye className="w-4 h-4" />
+                            </button>
+                            {r.status === "pending" && (
+                              <button onClick={() => setEditing(r)} title="Edit"
+                                className="p-1.5 rounded-lg hover:bg-custom-100 text-custom-700 hover:text-secondary-100 transition-colors">
+                                <HiOutlinePencil className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -688,10 +516,9 @@ export default function CashierExpensesPage() {
 
 
         {/* Modals */}
-        {showAdd       && <AddRecordModal onClose={() => setShowAdd(false)} />}
-        {editing       && <EditModal record={editing} onClose={() => setEditing(null)} />}
-        {rejectTarget  && <RejectModal record={rejectTarget} onClose={() => setRejectTarget(null)} />}
-        {selected      && <DetailModal record={selected} onClose={() => setSelected(null)} onEdit={() => { setEditing(selected); setSelected(null); }} />}
+        {showAdd  && <AddRecordModal onClose={() => setShowAdd(false)} />}
+        {editing  && <EditModal record={editing} onClose={() => setEditing(null)} />}
+        {selected && <DetailModal record={selected} onClose={() => setSelected(null)} onEdit={() => { setEditing(selected); setSelected(null); }} />}
       </div>
     </DashboardLayout>
   );
