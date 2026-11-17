@@ -59,6 +59,8 @@ export default function AdminDashboard() {
   const { data: employeesData }    = useGetAllEmployeesQuery({ limit: 200 });
   const { data: balanceData }      = useGetWithdrawalBalanceQuery();
   const { data: expensesData }     = useGetOutstandsQuery({ limit: 5, status: undefined });
+  const { data: pendingExpensesData } = useGetOutstandsQuery({ status: "pending", limit: 100 });
+  const pendingExpensesCount = pendingExpensesData?.total ?? 0;
   const { data: leavesData }       = useGetAllLeavesQuery({ status: "PENDING", limit: 100 });
   const { data: usersData }        = useGetUsersQuery({ limit: 1 });
 
@@ -134,6 +136,18 @@ export default function AdminDashboard() {
           >
             <HiOutlineRefresh className="w-4 h-4 text-custom-700" />
           </button>
+          {pendingExpensesCount > 0 && (
+            <a
+              href="/admin/expenses"
+              className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-300 hover:bg-red-100 transition-colors text-red-700 text-sm font-semibold"
+            >
+              <HiOutlineExclamationCircle className="w-4 h-4" />
+              <span>{pendingExpensesCount} expense{pendingExpensesCount > 1 ? "s" : ""} pending approval</span>
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                {pendingExpensesCount > 9 ? "9+" : pendingExpensesCount}
+              </span>
+            </a>
+          )}
         </div>
       </div>
 

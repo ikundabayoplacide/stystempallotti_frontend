@@ -207,12 +207,13 @@ const menuItems: Record<UserRole, MenuItem[]> = {
   accountant: [
     { label: "Dashboard", path: "/finance/accountant1", icon: HiOutlineHome },
     { label: "Payments", path: "/finance/accountant1/payments", icon: HiOutlineCurrencyDollar },
-    { label: "Porforma Invoice", path: "/finance/accountant1/proformas", icon: HiOutlineDocumentText },
 
     // { label: "Invoices", path: "/finance/accountant1/invoices", icon: HiOutlineDocumentText },
     // { label: "Documents", path: "/finance/accountant1/documents", icon: HiOutlineClipboardList },
     { label: "Operations", path: "/finance/accountant1/operations", icon: HiOutlineClipboardList },
     { label: "Proforma Invoice", path: "/finance/accountant1/proformas", icon: HiOutlineDocumentText },
+    { label: "Expenses", path: "/finance/accountant1/expenses", icon: HiOutlineCash },
+    { label: "Withdrawals", path: "/finance/accountant1/withdrawals", icon: HiOutlineTrendingUp },
     { label: "Recovery", path: "/finance/accountant2/recovery", icon: HiOutlineCurrencyDollar },
     { label: "Payroll", path: "/finance/accountant1/payroll", icon: HiOutlineCurrencyDollar },
     { label: "My Leave", path: "/finance/accountant1/leave", icon: HiOutlineCalendar },

@@ -190,7 +190,7 @@ function EditModal({ record, onClose }: { record: Outstand; onClose: () => void 
 }
 
 // ─── Detail Modal (with delete) ───────────────────────────────────────────────
-function DetailModal({ record, onClose, onEdit }: { record: Outstand; onClose: () => void; onEdit: () => void }) {
+function DetailModal({ record, onClose, onEdit, canApprove, canDelete }: { record: Outstand; onClose: () => void; onEdit: () => void; canApprove: boolean; canDelete: boolean }) {
   const cat = categoryConfig[record.category] ?? categoryConfig.other;
   const st  = statusConfig[record.status];
   const [action, setAction] = useState<"approve" | "pay" | "delete" | "reject" | null>(null);
@@ -261,16 +261,16 @@ function DetailModal({ record, onClose, onEdit }: { record: Outstand; onClose: (
             {record.status === "pending" && (
               <button onClick={onEdit} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors"><HiOutlinePencil className="w-4 h-4" /> Edit</button>
             )}
-            {record.status === "pending" && (
+            {record.status === "pending" && canApprove && (
               <button onClick={() => setAction("approve")} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold hover:bg-emerald-600 transition-colors"><HiOutlineThumbUp className="w-4 h-4" /> Approve</button>
             )}
-            {record.status === "pending" && (
+            {record.status === "pending" && canApprove && (
               <button onClick={() => setAction("reject")} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"><HiOutlineBan className="w-4 h-4" /> Reject</button>
             )}
-            {record.status === "approved" && (
+            {record.status === "approved" && canApprove && (
               <button onClick={() => setAction("pay")} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors"><HiOutlineCash className="w-4 h-4" /> Mark as Paid</button>
             )}
-            {record.status !== "paid" && (
+            {record.status === "pending" && canDelete && (
               <button onClick={() => setAction("delete")} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"><HiOutlineTrash className="w-4 h-4" /> Delete</button>
             )}
             <button onClick={onClose} className="ml-auto px-4 py-2 rounded-xl border border-custom-300 text-sm font-semibold text-secondary-100 hover:bg-custom-100 transition-colors">Close</button>
@@ -306,13 +306,15 @@ function ConfirmModal({ title, message, confirmLabel, confirmCls, onConfirm, onC
 }
 
 // ─── Inline row actions ───────────────────────────────────────────────────────
-function InlineActions({ record, approveOutstand, payOutstand, deleteOutstand, onEdit, onView }: {
+function InlineActions({ record, approveOutstand, payOutstand, deleteOutstand, onEdit, onView, canApprove, canDelete }: {
   record: Outstand;
   approveOutstand: (id: string) => any;
   payOutstand: (id: string) => any;
   deleteOutstand: (id: string) => any;
   onEdit: () => void;
   onView: () => void;
+  canApprove: boolean;
+  canDelete: boolean;
 }) {
   const [confirm, setConfirm] = useState<"approve" | "pay" | "delete" | null>(null);
   return (
@@ -327,7 +329,7 @@ function InlineActions({ record, approveOutstand, payOutstand, deleteOutstand, o
           <HiOutlinePencil className="w-4 h-4" />
         </button>
       )}
-      {record.status !== "paid" && (
+      {record.status === "pending" && canDelete && (
         <button onClick={() => setConfirm("delete")} title="Delete"
           className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
           <HiOutlineTrash className="w-4 h-4" />
@@ -364,7 +366,9 @@ function InlineActions({ record, approveOutstand, payOutstand, deleteOutstand, o
   );
 }
 
-export default function AdminExpensesPage() {
+export default function AdminExpensesPage({ accountantMode = false }: { accountantMode?: boolean }) {
+  const canApprove = !accountantMode;
+  const canDelete  = !accountantMode;
   const [activeTab,  setActiveTab]  = useState<OutstandStatus | "all">("all");
   const [search,     setSearch]     = useState("");
   const [page,       setPage]       = useState(1);
@@ -404,7 +408,7 @@ export default function AdminExpensesPage() {
       {showAdd  && <AddRecordModal onClose={() => setShowAdd(false)} />}
       {editing  && <EditModal record={editing} onClose={() => setEditing(null)} />}
       {selected && !editing && (
-        <DetailModal record={selected} onClose={() => setSelected(null)} onEdit={() => { setEditing(selected); setSelected(null); }} />
+        <DetailModal record={selected} onClose={() => setSelected(null)} onEdit={() => { setEditing(selected); setSelected(null); }} canApprove={canApprove} canDelete={canDelete} />
       )}
 
       <div className="space-y-6 font-[family-name:var(--font-family-primary)]">
@@ -518,6 +522,8 @@ export default function AdminExpensesPage() {
                             deleteOutstand={(id) => deleteOutstand(id).unwrap()}
                             onEdit={() => setEditing(r)}
                             onView={() => setSelected(r)}
+                            canApprove={canApprove}
+                            canDelete={canDelete}
                           />
                         </td>
                       </tr>

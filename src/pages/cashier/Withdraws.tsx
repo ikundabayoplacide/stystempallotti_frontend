@@ -1,17 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactDOM from "react-dom";
 import {
-  HiOutlinePlus, HiOutlineX, HiOutlineCash, HiOutlineRefresh,
+  HiOutlinePlus, HiOutlineX, HiOutlineRefresh,
   HiOutlineSearch, HiOutlinePencil, HiOutlineTrash,
   HiOutlineClipboardList, HiOutlineDotsHorizontal,
   HiOutlineTrendingUp, HiOutlineCurrencyDollar,
-  HiOutlineLibrary, HiOutlineExclamationCircle,
+  HiOutlineLibrary,
 } from "react-icons/hi";
 import { toast } from "react-toastify";
 import DashboardLayout from "../../components/DashboardLayout";
 import { Card } from "../../components/ui";
 import PhoneInput from "../../components/ui/PhoneInput";
-import { useGetOutstandsQuery } from "../../store/services/outstandsService";
 import {
   useGetWithdrawalBalanceQuery,
   useGetWithdrawalsQuery,
@@ -371,7 +370,6 @@ export default function Withdraws() {
   const queryParams: GetWithdrawalsParams = { page, limit: PAGE_SIZE, ...(search ? { search } : {}) };
 
   const { data: balanceData, isLoading: loadingBalance, refetch: refetchBalance } = useGetWithdrawalBalanceQuery();
-  const { data: outstandsData, refetch: refetchOutstands } = useGetOutstandsQuery({ limit: 1000 });
   const { data: configData } = useGetWithdrawalConfigQuery();
   const { data, isLoading, isFetching, refetch } = useGetWithdrawalsQuery(queryParams);
 
@@ -383,12 +381,8 @@ export default function Withdraws() {
     totalWithdrawalsIn: 0, totalExpensesOut: 0, totalBalance: 0,
   };
   const currentInitial = configData?.initialAmount ?? balance.initialAmount;
-  const expensesOut = (outstandsData?.outstands ?? [])
-    .filter((expense) => expense.status === "approved" || expense.status === "paid")
-    .reduce((sum, expense) => sum + (Number(expense.totalAmount) || 0), 0);
-  const calculatedBalance = currentInitial + balance.totalCashPaymentsIn + balance.totalWithdrawalsIn - expensesOut;
 
-  const handleRefetch = () => { refetch(); refetchBalance(); refetchOutstands(); };
+  const handleRefetch = () => { refetch(); refetchBalance(); };
 
   return (
     <DashboardLayout>
@@ -421,22 +415,14 @@ export default function Withdraws() {
 
         {/* Balance Summary */}
         {loadingBalance ? (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-20 bg-custom-100 rounded-xl animate-pulse" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[1,2,3].map(i => <div key={i} className="h-20 bg-custom-100 rounded-xl animate-pulse" />)}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <Card className="!p-4">
               <p className="text-xs text-custom-700">Initial Amount</p>
-              <p className="text-lg font-bold text-secondary-100">{fmt(balance.initialAmount)}</p>
-              <p className="text-xs text-custom-700">RWF</p>
-            </Card>
-            <Card className="!p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <HiOutlineCash className="w-3.5 h-3.5 text-green-600" />
-                <p className="text-xs text-custom-700">Cash Payments In</p>
-              </div>
-              <p className="text-lg font-bold text-green-600">+{fmt(balance.totalCashPaymentsIn)}</p>
+              <p className="text-lg font-bold text-secondary-100">{fmt(currentInitial)}</p>
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
             <Card className="!p-4">
@@ -447,32 +433,18 @@ export default function Withdraws() {
               <p className="text-lg font-bold text-blue-600">+{fmt(balance.totalWithdrawalsIn)}</p>
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
-            <Card className="!p-4">
+            <Card className={`!p-4 col-span-2 sm:col-span-1 ${(currentInitial + balance.totalWithdrawalsIn) >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-orange-50 border-orange-200"}`}>
               <div className="flex items-center gap-1 mb-1">
-                <HiOutlineExclamationCircle className="w-3.5 h-3.5 text-red-500" />
-                <p className="text-xs text-custom-700">Expenses Out</p>
-              </div>
-              <p className="text-lg font-bold text-red-500">-{fmt(expensesOut)}</p>
-              <p className="text-xs text-custom-700">RWF</p>
-            </Card>
-            <Card className={`!p-4 col-span-2 sm:col-span-1 ${calculatedBalance >= 0 ? "bg-emerald-50 border-emerald-200" : "bg-orange-50 border-orange-200"}`}>
-              <div className="flex items-center gap-1 mb-1">
-                <HiOutlineCurrencyDollar className={`w-3.5 h-3.5 ${calculatedBalance >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
+                <HiOutlineCurrencyDollar className={`w-3.5 h-3.5 ${(currentInitial + balance.totalWithdrawalsIn) >= 0 ? "text-emerald-600" : "text-orange-600"}`} />
                 <p className="text-xs text-custom-700">Total Balance</p>
               </div>
-              <p className={`text-xl font-bold ${calculatedBalance >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
-                {fmt(calculatedBalance)}
+              <p className={`text-xl font-bold ${(currentInitial + balance.totalWithdrawalsIn) >= 0 ? "text-emerald-700" : "text-orange-700"}`}>
+                {fmt(currentInitial + balance.totalWithdrawalsIn)}
               </p>
               <p className="text-xs text-custom-700">RWF</p>
             </Card>
           </div>
         )}
-
-        {/* Balance Formula hint */}
-        <div className="px-4 py-3 rounded-xl bg-custom-50 border border-custom-200 text-xs text-custom-700">
-          <span className="font-semibold text-secondary-100">Balance formula: </span>
-          Initial + Cash Payments In + Withdrawals In − Expenses (approved or paid)
-        </div>
 
         {/* Search */}
         <div className="relative max-w-sm">

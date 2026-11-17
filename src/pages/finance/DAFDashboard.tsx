@@ -17,6 +17,7 @@ import { useGetAllEmployeesQuery } from "../../store/services/employeesService";
 import { useGetJobsQuery } from "../../store/services/jobsService";
 import { useGetPaymentsQuery } from "../../store/services/paymentsService";
 import { useGetSheetsQuery } from "../../store/services/sheetsService";
+import { useGetOutstandsQuery } from "../../store/services/outstandsService";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -91,6 +92,9 @@ export default function DAFDashboard() {
   });
   const { data: departments = [], isLoading: loadingDepts } =
     useGetDepartmentsQuery();
+
+  const { data: pendingExpensesData } = useGetOutstandsQuery({ status: "pending", limit: 100 });
+  const pendingExpensesCount = pendingExpensesData?.total ?? 0;
   const sheets = sheetsData?.sheets ?? [];
   const totalSheetsQty = sheets.reduce((s, r) => s + Number(r.qty), 0);
   const totalSheetsAmount = sheets.reduce(
@@ -159,17 +163,31 @@ export default function DAFDashboard() {
             })}
           </p>
         </div>
-        <button
-          onClick={() => {
-            refetchPending();
-            refetchPayments();
-            refetchThesis();
-          }}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 text-sm w-fit self-start xs:self-auto"
-        >
-          <HiOutlineRefresh className="w-4 h-4" />
-          <span className="font-semibold">Refresh</span>
-        </button>
+        <div className="flex items-center gap-2 self-start xs:self-auto">
+          {pendingExpensesCount > 0 && (
+            <button
+              onClick={() => navigate("/finance/daf/expenses")}
+              className="relative flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-300 hover:bg-red-100 transition-colors text-red-700 text-sm font-semibold"
+            >
+              <HiOutlineExclamationCircle className="w-4 h-4" />
+              <span>{pendingExpensesCount} expense{pendingExpensesCount > 1 ? "s" : ""} pending approval</span>
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                {pendingExpensesCount > 9 ? "9+" : pendingExpensesCount}
+              </span>
+            </button>
+          )}
+          <button
+            onClick={() => {
+              refetchPending();
+              refetchPayments();
+              refetchThesis();
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-custom-300 hover:bg-custom-100 transition-colors text-custom-700 text-sm w-fit"
+          >
+            <HiOutlineRefresh className="w-4 h-4" />
+            <span className="font-semibold">Refresh</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Grid */}

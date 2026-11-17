@@ -227,6 +227,7 @@ export default function AppRoutes() {
       <Route path="/finance/daf/procurement" element={<ProtectedRoute allowedRoles={["daf", "hr"]}><ProdurementPage /></ProtectedRoute>} />
       <Route path="/finance/daf/recovery" element={<ProtectedRoute allowedRoles={["daf"]}><Accountant2RecoveryPage /></ProtectedRoute>} />
       <Route path="/finance/daf/operations" element={<ProtectedRoute allowedRoles={["daf"]}><Operations /></ProtectedRoute>} />
+      <Route path="/finance/daf/expenses" element={<ProtectedRoute allowedRoles={["daf"]}><AdminExpensesPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock/general" element={<ProtectedRoute allowedRoles={["daf"]}><AdminGeneralStockPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock/boutique" element={<ProtectedRoute allowedRoles={["daf"]}><AdminBoutiqueStockPage /></ProtectedRoute>} />
       <Route path="/finance/daf/stock/binding" element={<ProtectedRoute allowedRoles={["daf"]}><AdminBindingStockPage /></ProtectedRoute>} />
@@ -251,6 +252,8 @@ export default function AppRoutes() {
       <Route path="/finance/accountant1/proformas" element={<ProtectedRoute allowedRoles={["accountant"]}><ProformasPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/leave" element={<ProtectedRoute allowedRoles={["accountant"]}><MyLeavePage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/overtime" element={<ProtectedRoute allowedRoles={["accountant"]}><MyOvertimePage /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/expenses" element={<ProtectedRoute allowedRoles={["accountant"]}><AdminExpensesPage accountantMode /></ProtectedRoute>} />
+      <Route path="/finance/accountant1/withdrawals" element={<ProtectedRoute allowedRoles={["accountant"]}><AdminWithdrawalsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/reports" element={<ProtectedRoute allowedRoles={["accountant"]}><AccountantReportsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant1/reports/my" element={<ProtectedRoute allowedRoles={["accountant"]}><MyReportsPage /></ProtectedRoute>} />
       <Route path="/finance/accountant2" element={<ProtectedRoute allowedRoles={["accountant"]}><Accountant2Page /></ProtectedRoute>} />
